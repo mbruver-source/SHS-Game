@@ -253,3 +253,8 @@ Die Meisterschaften stehen mit 🏆 und Qualifikationsstand in den Ausschreibung
   - Geräusche zu den Außenreizen (Vogel, Bellen, Klingel, Klatschen, Knacken)
   - Hecheln abhängig vom Tempo des Hundes und Wind abhängig von der Windstärke
 - **Bedienung:** Taste M oder 🔊 im HUD schaltet die Töne ab; die Einstellung wird gespeichert. Der Ton startet erst nach der ersten Taste oder dem ersten Klick, weil Browser das so verlangen.
+
+## Werteverlauf (v0.14)
+- **Speicherung:** Am Wochenende hält das Spiel die Werte jedes Hundes fest (`team.historie`, höchstens 104 Wochen).
+- **Darstellung:** In der Trainingsempfehlung steht „Entwicklung der Werte“ als kleine Einzeldiagramme, ein Diagramm je Wert. Jedes zeigt eine Linie und das Ziel der aktuellen LK gestrichelt.
+- **Details:** Beim Überfahren erscheint ein Tooltip mit Woche und Wert. Zusätzlich gibt es eine Tabellenansicht.

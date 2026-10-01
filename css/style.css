@@ -220,3 +220,16 @@ table { border-collapse: collapse; width: 100%; }
   .hud-werte { gap: 6px; font-size: .85em; }
   .szene-host { height: calc(100dvh - 20px); }
 }
+/* Werteverlauf (kleine Einzeldiagramme) */
+.vl-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.vl-panel { margin: 0; }
+.vl-panel figcaption { display: flex; gap: 8px; align-items: baseline; font-size: .9em; color: var(--text); }
+.vl-panel figcaption span:first-child { flex: 1; color: var(--leise); }
+.vl-panel svg { display: block; width: 100%; height: 64px; overflow: visible; }
+.vl-linie { fill: none; stroke: var(--balken); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.vl-ziel { stroke: var(--leise); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; opacity: .7; }
+.vl-dot { fill: var(--balken); stroke: var(--karte); stroke-width: 2; opacity: 0; vector-effect: non-scaling-stroke; }
+.vl-kreuz { stroke: var(--leise); stroke-width: 1; opacity: 0; vector-effect: non-scaling-stroke; }
+.vl-pkt:hover .vl-dot, .vl-pkt:hover .vl-kreuz { opacity: 1; }
+.vl-tabelle { margin-top: .8em; font-size: .88em; }
+.tabelle-scroll { overflow-x: auto; }

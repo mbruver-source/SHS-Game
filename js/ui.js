@@ -752,6 +752,7 @@
             : '<p class="klein">Noch keine Suchen protokolliert. Mach eine Übungssuche – danach wertet die Empfehlung auch die Fehler aus.</p>'}
         </section>
       </div>
+      ${verlaufHtml(s)}
       <div class="knopfreihe"><button class="primaer" data-a="hof">Zurück zum Training</button></div>
     </div>`);
     // Empfänger nur am Inhalt dieser Seite: Der Klick, der die Seite geöffnet hat, darf hier nicht ankommen.
@@ -763,6 +764,42 @@
     });
   }
 
+
+  // Entwicklung der Werte: kleine Einzeldiagramme je Wert (eine Linie, Ziel der aktuellen LK gestrichelt).
+  function verlaufHtml(s) {
+    const h = (s.historie || []).slice();
+    if (!h.length || h[h.length - 1].woche !== s.woche) h.push({ woche: s.woche, lk: s.lk, werte: s.hund.werte });
+    if (h.length < 2) {
+      return '<section class="karte"><h2>Entwicklung der Werte</h2><p class="klein">Der Verlauf erscheint, sobald die erste Woche beendet ist.</p></section>';
+    }
+    const B = 220; const Hh = 64; const R = { l: 4, r: 4, o: 6, u: 6 };
+    const w0 = h[0].woche; const w1 = h[h.length - 1].woche;
+    const x = (w) => R.l + ((w - w0) / Math.max(1, w1 - w0)) * (B - R.l - R.r);
+    const y = (v) => R.o + (1 - v / 100) * (Hh - R.o - R.u);
+    const panels = Object.entries(SHS.dog.WERTE).map(([k, name]) => {
+      const ziel = SHS.empfehlung.zielwert(s.lk, k);
+      const pfad = h.map((p, i) => `${i ? 'L' : 'M'}${x(p.woche).toFixed(1)},${y(p.werte[k]).toFixed(1)}`).join(' ');
+      const schritt = (B - R.l - R.r) / Math.max(1, h.length - 1);
+      const punkte = h.map((p) => `<g class="vl-pkt"><rect x="${(x(p.woche) - schritt / 2).toFixed(1)}" y="0" width="${schritt.toFixed(1)}" height="${Hh}" fill="transparent"/>
+        <line class="vl-kreuz" x1="${x(p.woche).toFixed(1)}" x2="${x(p.woche).toFixed(1)}" y1="${R.o}" y2="${Hh - R.u}"/>
+        <circle class="vl-dot" cx="${x(p.woche).toFixed(1)}" cy="${y(p.werte[k]).toFixed(1)}" r="4"/>
+        <title>Woche ${p.woche}: ${name} ${Math.round(p.werte[k])} (LK ${p.lk})</title></g>`).join('');
+      const jetzt = Math.round(s.hund.werte[k]);
+      const diff = Math.round(s.hund.werte[k] - h[0].werte[k]);
+      return `<figure class="vl-panel">
+        <figcaption><span>${esc(name)}</span><b>${jetzt}</b><span class="klein">${diff >= 0 ? '+' : ''}${diff}</span></figcaption>
+        <svg viewBox="0 0 ${B} ${Hh}" preserveAspectRatio="none" role="img" aria-label="${esc(name)}: von ${Math.round(h[0].werte[k])} auf ${jetzt}">
+          <line class="vl-ziel" x1="${R.l}" x2="${B - R.r}" y1="${y(ziel).toFixed(1)}" y2="${y(ziel).toFixed(1)}"><title>Ziel LK ${s.lk}: ${ziel}</title></line>
+          <path class="vl-linie" d="${pfad}"/>${punkte}
+        </svg></figure>`;
+    }).join('');
+    const tabelle = `<details class="vl-tabelle"><summary>Als Tabelle anzeigen</summary><div class="tabelle-scroll"><table class="ln">
+      <tr><th>Woche</th>${Object.values(SHS.dog.WERTE).map((n) => `<th>${esc(n)}</th>`).join('')}</tr>
+      ${h.map((p) => `<tr><td>${p.woche}</td>${Object.keys(SHS.dog.WERTE).map((k) => `<td class="zahl">${Math.round(p.werte[k])}</td>`).join('')}</tr>`).join('')}
+      </table></div></details>`;
+    return `<section class="karte"><h2>Entwicklung der Werte <small>Woche ${w0}–${w1} · gestrichelt = Ziel für LK ${s.lk}</small></h2>
+      <div class="vl-raster">${panels}</div>${tabelle}</section>`;
+  }
 
   function regeln() {
     dialog(`

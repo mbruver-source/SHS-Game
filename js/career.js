@@ -32,6 +32,8 @@
       suchprotokoll: [],
     };
     stand.hund.vertrautheit.korken = 0.3; // erster Gegenstand ist schon angefüttert
+    stand.historie = [];
+    verlaufMerken(stand);
     aktualisiereAusschreibungen(stand);
     return stand;
   }
@@ -69,6 +71,8 @@
     team.hund.fell = fell;
     team.hund.geschlecht = geschlecht || 'Rüde';
     team.woche = vorlage.woche;
+    team.historie = [];
+    verlaufMerken(team);
     team.ausschreibungen = [];
     aktualisiereAusschreibungen(team);
     // bereits gelaufene Prüfungen dieses Profils bleiben für den neuen Hund unberührt (eigene erledigt-Flags)
@@ -257,6 +261,17 @@
     if (stand.suchprotokoll.length > 30) stand.suchprotokoll.splice(0, stand.suchprotokoll.length - 30);
   }
 
+  // Wöchentlicher Schnappschuss der Werte für den Verlauf (max. 104 Wochen).
+  function verlaufMerken(stand) {
+    if (!stand.historie) stand.historie = [];
+    const werte = {};
+    for (const [k, v] of Object.entries(stand.hund.werte)) werte[k] = Math.round(v * 10) / 10;
+    const letzter = stand.historie[stand.historie.length - 1];
+    if (letzter && letzter.woche === stand.woche) stand.historie.pop();
+    stand.historie.push({ woche: stand.woche, lk: stand.lk, werte });
+    if (stand.historie.length > 104) stand.historie.shift();
+  }
+
   function wocheBeenden(stand) {
     const h = stand.hund;
     const ausgefallen = TRAININGS_JE_WOCHE - stand.trainingsDieseWoche; // ausgelassene Einheiten = zusätzliche Ruhe
@@ -265,6 +280,7 @@
     // Nicht trainierte Gerüche verblassen leicht.
     for (const k of Object.keys(h.vertrautheit)) h.vertrautheit[k] = clamp(h.vertrautheit[k] - 0.004, 0.05, 1);
     stand.woche += 1;
+    verlaufMerken(stand);
     stand.trainingsDieseWoche = 0;
     aktualisiereAusschreibungen(stand);
   }
@@ -354,7 +370,7 @@
   }
 
   SHS.career = {
-    TRAININGS, TRAININGS_JE_WOCHE, TRAININGSTAGE, naechsterTrainingstag, hfErfahrung, protokolliereSuche,
+    TRAININGS, TRAININGS_JE_WOCHE, TRAININGSTAGE, naechsterTrainingstag, hfErfahrung, protokolliereSuche, verlaufMerken,
     MAX_HUNDE_JE_PRUEFUNG, neuesProfil, ausAltemStand, aktivesTeam, hundAufnehmen, wocheBeendenProfil,
     hfErfahrungProfil, eigeneStarts, startVermerken,
     neuerSpielstand, trainieren, uebungssucheVerbuchen, wocheBeenden, eintragen, klasseBestanden,
