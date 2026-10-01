@@ -266,3 +266,15 @@ Die Meisterschaften stehen mit 🏆 und Qualifikationsstand in den Ausschreibung
 - **Statistik je Hund:** im Leistungsnachweis bzw. über „Statistik“: Prüfungen, Quote der bestandenen Prüfungen, Bestwert, Fundquote, Ø Punkte je Suche, Titel, Trainingseinheiten und häufigste Fehler.
 - **Urkunde mit Bewertungsbogen:** Nach jeder Prüfung und im Leistungsnachweis (🖨) kannst du sie drucken. Sie enthält Such- und Anzeigeleistung je Disziplin samt Begründung des WR. Sie ist als Spielergebnis gekennzeichnet.
 - **Sicherungs-Erinnerung:** Spätestens 8 Wochen nach dem letzten Export bietet das Spiel alle 4 Wochen den Export an.
+
+## Gesundheit, Alter, Schwierigkeit, Minispiel (v0.16)
+- **Verletzung** (PO 3.5), ANNAHME: Training oder Übungssuche mit einer Energie unter 35 % birgt ein Verletzungsrisiko von 4–29 %, sonst 0,4 %.
+  - Eine Verletzung (Zerrung, Pfote, Muskelkater, Prellung) bedeutet 1–3 Wochen Pause ohne Training und ohne Prüfung.
+  - Im Hof erscheinen ein Abzeichen und eine Warnung „müde“, die Trainingsempfehlung rät zur Schonung.
+- **Alter:**
+  - Junge Hunde (< 18 Monate) sind etwas unkonzentrierter.
+  - Ab 8 Jahren (Senior) lernt der Hund langsamer und die Ausdauer lässt nach, ab 10 Jahren auch die Nase.
+- **Schwierigkeit je Benutzer:** Einsteiger, Normal oder Profi. Sie wirkt auf das Lerntempo (×1,25 / ×1 / ×0,85) und die Stärke der KI-Konkurrenz (−8 / 0 / +6). Einstellen lässt sie sich bei der Anlage und im Hof unter „Einstellungen“.
+- **Minispiel Anzeigetraining:** 20 Sekunden lang wechselt der Hund zwischen ruhigem Verweisen, Zurückschauen, Scharren und Aufstehen.
+  - „Fein!“ im richtigen Moment bringt +10 Punkte, im falschen −8.
+  - Die Trainingswirkung liegt je nach Timing zwischen ×0,6 und ×1,5.

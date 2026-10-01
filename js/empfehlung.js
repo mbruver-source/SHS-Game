@@ -137,7 +137,9 @@
 
     // Energie: müder Hund zuerst erholen lassen
     const hinweise = [];
-    if (stand.hund.energie < 0.35) {
+    if (SHS.career.istVerletzt(stand)) {
+      liste.unshift({ ziel: 'ruhe', prio: 1000, titel: 'Schonung', text: `${stand.hund.name} ist verletzt (${stand.hund.verletzt.art}). Bis Woche ${stand.hund.verletzt.bisWoche} kein Training und keine Prüfung.`, gruende: ['Verletzung durch Überlastung'] });
+    } else if (stand.hund.energie < 0.35) {
       liste.unshift({ ziel: 'ruhe', prio: 999, titel: 'Erholung', text: 'Der Hund ist müde. Diese Woche weniger trainieren und die Woche beenden – ausgeruht lernt er mehr.', gruende: [`Energie ${Math.round(stand.hund.energie * 100)} %`] });
     }
     if (naechste && naechste.woche === stand.woche && SHS.career.naechsterTrainingstag(stand) === 'Freitag') {

@@ -76,6 +76,7 @@
     team.ausschreibungen = [];
     aktualisiereAusschreibungen(team);
     // bereits gelaufene Prüfungen dieses Profils bleiben für den neuen Hund unberührt (eigene erledigt-Flags)
+    team.schwierigkeit = profil.schwierigkeit || 'normal';
     profil.teams.push(team);
     profil.aktiv = profil.teams.length - 1;
     return team;
@@ -140,7 +141,47 @@
     return stand.hund.geschlecht === 'Hündin' ? 'sie' : 'er';
   }
 
+  // ---------------------------------------------------------------- Gesundheit, Alter, Schwierigkeit
+  // ANNAHME: Training im müden Zustand (Energie < 35 %) kann zu einer Verletzung führen (1–3 Wochen Pause).
+  const VERLETZUNGEN = ['Zerrung', 'Pfotenverletzung', 'Muskelkater', 'Prellung'];
+  function verletzungsRisiko(stand) {
+    const e = stand.hund.energie;
+    return e < 0.35 ? 0.04 + 0.25 * (0.35 - e) / 0.35 : 0.004;
+  }
+
+  function istVerletzt(stand) {
+    const v = stand.hund.verletzt;
+    return !!(v && stand.woche < v.bisWoche);
+  }
+
+  // Altersphase: jung (< 18 Monate), Hochphase, Senior (ab 8 Jahren)
+  function altersPhase(stand) {
+    const m = stand.hund.alterMonate;
+    if (m < 18) return 'jung';
+    if (m >= 96) return 'senior';
+    return 'hoch';
+  }
+
+  // Lernfaktor nach Alter: junge Hunde lernen schneller, Senioren langsamer.
+  function altersLernFaktor(stand) {
+    const m = stand.hund.alterMonate;
+    if (m < 15) return 1.15;
+    if (m >= 96) return Math.max(0.5, 0.85 - (m - 96) / 120);
+    return 1;
+  }
+
+  // Schwierigkeitsgrad je Benutzer: Lerntempo und Stärke der KI-Konkurrenz
+  const SCHWIERIGKEIT = {
+    einsteiger: { name: 'Einsteiger', lernen: 1.25, kiNiveau: -8 },
+    normal: { name: 'Normal', lernen: 1, kiNiveau: 0 },
+    profi: { name: 'Profi', lernen: 0.85, kiNiveau: 6 },
+  };
+  function schwierigkeit(stand) {
+    return SCHWIERIGKEIT[stand.schwierigkeit] || SCHWIERIGKEIT.normal;
+  }
+
   function darfPruefen(stand) {
+    if (istVerletzt(stand)) return false;
     return stand.hund.alterMonate >= po.MINDESTALTER_MONATE;
   }
 
@@ -181,17 +222,31 @@
     stand.trainingsDieseWoche += 1;
   }
 
-  function trainieren(stand, art, gegenstandId) {
+  // Nach einer Einheit: Verletzungsrisiko bei Überlastung prüfen.
+  function verletzungPruefen(stand, r, energieVorher) {
+    const risiko = energieVorher < 0.35 ? 0.04 + 0.25 * (0.35 - energieVorher) / 0.35 : 0.004;
+    if (r() >= risiko) return null;
+    const wochen = r.int(1, 3);
+    stand.hund.verletzt = { art: r.pick(VERLETZUNGEN), bisWoche: stand.woche + wochen };
+    return stand.hund.verletzt;
+  }
+
+  // zusatzFaktor: z. B. aus dem Minispiel des Anzeigetrainings (0,6 … 1,5)
+  function trainieren(stand, art, gegenstandId, zusatzFaktor) {
     if (stand.trainingsDieseWoche >= TRAININGS_JE_WOCHE) {
       return { ok: false, text: 'Diese Woche sind keine Trainingseinheiten mehr frei.' };
+    }
+    if (istVerletzt(stand)) {
+      return { ok: false, text: `${stand.hund.name} ist verletzt (${stand.hund.verletzt.art}) und muss sich bis Woche ${stand.hund.verletzt.bisWoche} schonen.` };
     }
     const t = TRAININGS[art];
     if (!t) return { ok: false, text: 'Unbekanntes Training.' };
     const h = stand.hund;
     const r = rndFuer(stand, art.length * 31);
     const einheit = einheitBeginnen(stand);
+    const energieVorher = h.energie;
     const muede = einheit.faktor < 1;
-    const faktor = einheit.faktor * r.range(0.75, 1.25) * (h.alterMonate < 15 ? 1.15 : 1);
+    const faktor = einheit.faktor * r.range(0.75, 1.25) * altersLernFaktor(stand) * schwierigkeit(stand).lernen * (zusatzFaktor || 1);
     const d = {};
     const add = (k, b) => { d[k] = (d[k] || 0) + steigere(h.werte, k, b, faktor); };
     switch (art) {
@@ -216,16 +271,18 @@
       default: break;
     }
     einheitBeenden(stand, BELASTUNG);
+    const verletzung = verletzungPruefen(stand, r, energieVorher);
     const text = `${einheit.tag}: ${t.name}${einheit.zustand ? ` (Hund ${einheit.zustand})` : ''}`;
     stand.verlauf.push({ woche: stand.woche, text });
-    return { ok: true, text, deltas: d, muede };
+    return { ok: true, text, deltas: d, muede, verletzung };
   }
 
   // Übungssuche als Trainingseinheit: kleiner Zuwachs abhängig vom Ergebnis.
   function uebungssucheVerbuchen(stand, ergebnis, gegenstandId) {
-    if (stand.trainingsDieseWoche >= TRAININGS_JE_WOCHE) return null;
+    if (stand.trainingsDieseWoche >= TRAININGS_JE_WOCHE || istVerletzt(stand)) return null;
     const h = stand.hund;
-    const f = einheitBeginnen(stand).faktor;
+    const energieVorher = h.energie;
+    const f = einheitBeginnen(stand).faktor * altersLernFaktor(stand) * schwierigkeit(stand).lernen;
     const d = {};
     d.nase = steigere(h.werte, 'nase', 3, f);
     d.selbststaendig = steigere(h.werte, 'selbststaendig', 3, f);
@@ -236,6 +293,8 @@
     }
     einheitBeenden(stand, BELASTUNG * 0.9);
     stand.verlauf.push({ woche: stand.woche, text: 'Übungssuche', typ: 'uebung' });
+    const verletzung = verletzungPruefen(stand, rndFuer(stand, 77), energieVorher);
+    if (verletzung) d.verletzung = verletzung;
     return d;
   }
 
@@ -278,6 +337,7 @@
     const ausgefallen = TRAININGS_JE_WOCHE - stand.trainingsDieseWoche; // ausgelassene Einheiten = zusätzliche Ruhe
     h.energie = clamp(h.energie + ERHOLUNG_WOCHENENDE + ausgefallen * ERHOLUNG_RUHETAG, 0, 1);
     h.alterMonate = Math.round((h.alterMonate + 7 / 30.44) * 100) / 100;
+    if (h.verletzt && stand.woche + 1 >= h.verletzt.bisWoche) h.verletzt = null; // ausgeheilt
     // Nicht trainierte Gerüche verblassen leicht.
     for (const k of Object.keys(h.vertrautheit)) h.vertrautheit[k] = clamp(h.vertrautheit[k] - 0.004, 0.05, 1);
     stand.woche += 1;
@@ -375,6 +435,7 @@
     MAX_HUNDE_JE_PRUEFUNG, neuesProfil, ausAltemStand, aktivesTeam, hundAufnehmen, wocheBeendenProfil,
     hfErfahrungProfil, eigeneStarts, startVermerken,
     neuerSpielstand, trainieren, uebungssucheVerbuchen, wocheBeenden, eintragen, klasseBestanden,
+    SCHWIERIGKEIT, schwierigkeit, istVerletzt, verletzungsRisiko, altersPhase, altersLernFaktor,
     MEISTERSCHAFTEN, meisterschaftsQualifikation, darfPruefen, istLaeufig, pronomen, datumText, monatDerWoche, alterText, aktualisiereAusschreibungen,
   };
 })(globalThis.SHS = globalThis.SHS || {});

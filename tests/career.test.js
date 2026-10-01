@@ -73,3 +73,35 @@ test('Meisterschaften: ausgeschrieben, Qualifikation über LK-3-Dreikampf bzw. L
   assert.equal(career.meisterschaftsQualifikation(s, 'BM').ok, true);
   assert.deepEqual(s.titel, ['Landesmeister 2027']);
 });
+
+test('Überlastung kann zu Verletzung führen; verletzt = kein Training, kein Start, heilt aus', () => {
+  const s = career.neuerSpielstand('HF', 'Hund', 'Mischling', 21);
+  s.hund.alterMonate = 20;
+  s.hund.energie = 0.05;
+  let verletzt = false;
+  for (let i = 0; i < 40 && !verletzt; i++) {
+    s.trainingsDieseWoche = 0; s.hund.energie = 0.05; s.woche += 0;
+    const r = career.trainieren(s, 'kondition');
+    verletzt = !!r.verletzung;
+    s.verlauf.length = 0;
+    s.seed += 1;
+  }
+  assert.ok(verletzt, 'bei sehr niedriger Energie tritt irgendwann eine Verletzung auf');
+  assert.equal(career.istVerletzt(s), true);
+  s.trainingsDieseWoche = 0;
+  assert.equal(career.trainieren(s, 'anzeige').ok, false);
+  assert.equal(career.darfPruefen(s), false);
+  for (let i = 0; i < 4; i++) career.wocheBeenden(s);
+  assert.equal(career.istVerletzt(s), false);
+});
+
+test('Alter und Schwierigkeit wirken auf den Lernfaktor', () => {
+  const s = career.neuerSpielstand('HF', 'Hund', 'Mischling', 22);
+  s.hund.alterMonate = 30;
+  assert.equal(career.altersLernFaktor(s), 1);
+  s.hund.alterMonate = 110;
+  assert.ok(career.altersLernFaktor(s) < 0.85);
+  assert.equal(career.altersPhase(s), 'senior');
+  s.schwierigkeit = 'einsteiger';
+  assert.ok(career.schwierigkeit(s).lernen > 1);
+});

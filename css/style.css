@@ -242,3 +242,8 @@ table { border-collapse: collapse; width: 100%; }
 .erfolge-liste li { display: flex; gap: 8px; align-items: center; padding: 6px; border-radius: 8px; border: 1px solid var(--linie); opacity: .6; }
 .erfolge-liste li.ok { opacity: 1; border-color: var(--gruen); background: var(--gruen-hell); }
 .erfolg-symbol { font-size: 1.5em; width: 1.6em; text-align: center; }
+.abzeichen.verletzt { background: #fde2e2; color: #9b1c1c; border-color: #e59a9a; }
+.abzeichen.senior { background: #e7e7f6; color: #3d3d7a; border-color: #b4b4d9; }
+.regel-box.warn { background: #fde2e2; }
+.minispiel { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; }
+.minispiel-leiste { display: flex; justify-content: space-between; margin: .4em 0; font-weight: 600; font-variant-numeric: tabular-nums; }

@@ -162,7 +162,8 @@
     zeige(`
       <div class="karte schmal">
         <h2>${neuerHund ? `Weiteren Hund aufnehmen <small>${esc(app.profil.hfName)}</small>` : 'Neuer Benutzer'}</h2>
-        ${neuerHund ? '' : '<label>Dein Name (Hundeführer/in)<input id="hfName" maxlength="30" placeholder="z. B. Alex"></label>'}
+        ${neuerHund ? '' : `<label>Dein Name (Hundeführer/in)<input id="hfName" maxlength="30" placeholder="z. B. Alex"></label>
+        <label>Schwierigkeit<select id="schwierigkeit">${Object.entries(career.SCHWIERIGKEIT).map(([k, v]) => `<option value="${k}" ${k === 'normal' ? 'selected' : ''}>${v.name}</option>`).join('')}</select></label>`}
         <label>Name des Hundes<input id="hundName" maxlength="20" placeholder="z. B. Aiko"></label>
         <label>Geschlecht<select id="geschlecht"><option>Rüde</option><option>Hündin</option></select></label>
         <label>Rasse<select id="rasse">${rassen.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label>
@@ -203,6 +204,7 @@
         }
         const hf = app.root.querySelector('#hfName').value.trim() || 'Hundeführer';
         profilOeffnen(career.neuesProfil(hf, hund, q('#rasse').value, q('#fell').value, SHS.neuerSeed(), q('#geschlecht').value));
+        schwierigkeitSetzen(q('#schwierigkeit').value);
         speichern();
         hof();
         einfuehrungAnbieten();
@@ -232,6 +234,7 @@
       if (diese) {
         const starts = career.eigeneStarts(app.profil, a.id);
         if (a.erledigt) aktion = '<span class="klein">gestartet ✔</span>';
+        else if (career.istVerletzt(s)) aktion = '<span class="klein warn">Hund verletzt – kein Start</span>';
         else if (!career.darfPruefen(s)) aktion = `<span class="klein warn">Hund zu jung (mind. ${po.MINDESTALTER_MONATE} Monate)</span>`;
         else if (starts.length >= career.MAX_HUNDE_JE_PRUEFUNG) aktion = `<span class="klein warn">Schon ${career.MAX_HUNDE_JE_PRUEFUNG} Hunde gemeldet (PO)</span>`;
         else if (!quali.ok) aktion = `<span class="klein warn">${esc(quali.grund)}</span>`;
@@ -254,7 +257,9 @@
           <canvas class="hund-portrait" title="Fellfarbe ändern"></canvas>
           <div class="hof-name"><h1>${esc(h.name)} <small>${esc(h.rasse)} · ${esc(h.geschlecht || 'Rüde')}</small>
             ${career.istLaeufig(s) ? '<span class="abzeichen" title="PO II.1.3: Start am Ende des Prüfungstages">läufig</span>' : ''}
-            ${(s.titel || []).map((t) => `<span class="abzeichen titel">🏆 ${esc(t)}</span>`).join('')}</h1>
+            ${(s.titel || []).map((t) => `<span class="abzeichen titel">🏆 ${esc(t)}</span>`).join('')}
+            ${career.istVerletzt(s) ? `<span class="abzeichen verletzt">verletzt: ${esc(h.verletzt.art)} bis Woche ${h.verletzt.bisWoche}</span>` : ''}
+            ${career.altersPhase(s) === 'senior' ? '<span class="abzeichen senior">Senior</span>' : ''}</h1>
             <div class="klein">HF ${esc(s.hf.name)} (Erfahrung ${Math.round(career.hfErfahrungProfil(app.profil) * 100)} %) · ${career.alterText(h.alterMonate)} · Leistungsklasse <b>LK ${s.lk}</b></div></div>
           <div class="woche"><div>Woche ${s.woche}</div><div class="klein">bis Sa., ${career.datumText(s.woche)}</div></div>
         </header>
@@ -278,6 +283,7 @@
               ${Object.entries(career.TRAININGS).map(([k, t]) => `<button data-training="${k}" ${frei ? '' : 'disabled'} title="${esc(t.text)}"><b>${t.name}</b><span>${t.text}</span></button>`).join('')}
               <button data-a="uebung" class="uebung"><b>Übungssuche</b><span>Behältnis, Trümmer oder Fläche frei üben – mit Geruchsansicht. ${frei ? 'Zählt als Trainingseinheit.' : 'Diese Woche ohne Trainingseffekt.'}</span></button>
             </div>
+            ${!career.istVerletzt(s) && h.energie < 0.35 && frei ? '<p class="warn klein">⚠ Dein Hund ist müde – Training jetzt erhöht das Verletzungsrisiko deutlich. Besser die Woche beenden.</p>' : ''}
             <div class="knopfreihe"><button class="primaer" data-a="woche">Woche beenden ▶</button></div>
             ${aufstiegHtml(s)}
             <h2>Ausschreibungen</h2>
@@ -293,6 +299,7 @@
             <button data-a="einfuehrung">Einführung</button>
             <button data-a="erfolge">Erfolge (${Object.keys(app.profil.erfolge || {}).length}/${SHS.erfolge.ERFOLGE.length})</button>
             <button data-a="statistik">Statistik</button>
+            <button data-a="einstellungen">Einstellungen</button>
             <button data-a="regeln">Regeln (PO-Kurzfassung)</button>
             <button data-a="export">Spielstand exportieren</button>
             <button data-a="import">Importieren…</button>
@@ -322,6 +329,7 @@
       if (a === 'export') exportieren();
       if (a === 'erfolge') erfolgeZeigen();
       if (a === 'statistik') leistungsnachweis();
+      if (a === 'einstellungen') einstellungen();
       if (a === 'import') app.root.querySelector('#importDatei').click();
       if (a === 'start') start();
       if (z.dataset.pruefung) pruefungAnmeldung(s.ausschreibungen.find((x) => x.id === z.dataset.pruefung));
@@ -371,6 +379,14 @@
 
   function trainingStarten(art) {
     const t = career.TRAININGS[art];
+    if (art === 'anzeige' && !career.istVerletzt(app.stand)) {
+      dialog(`<h3>${t.name}</h3><p>${t.text}</p><p>Mit dem Minispiel bestimmst du selbst, wie gut die Einheit wird: Belohne deinen Hund im richtigen Moment.</p>`, [
+        { text: 'Abbrechen' },
+        { text: 'Ohne Minispiel', aktion: () => { trainingAusfuehren(art); } },
+        { text: 'Mit Minispiel', primaer: true, aktion: () => { anzeigeMinispiel((faktor, text) => trainingAusfuehren(art, undefined, faktor, text)); } },
+      ]);
+      return;
+    }
     if (t.mitGegenstand) {
       const opts = po.GEGENSTAENDE.map((g) => `<option value="${g.id}">${g.name} (${Math.round(app.stand.hund.vertrautheit[g.id] * 100)})</option>`).join('');
       dialog(`<h3>${t.name}</h3><p>${t.text}</p><label>Gegenstand<select id="tg">${opts}</select></label>`, [
@@ -380,12 +396,90 @@
     } else trainingAusfuehren(art);
   }
 
-  function trainingAusfuehren(art, gegenstand) {
-    const r = career.trainieren(app.stand, art, gegenstand);
+  function trainingAusfuehren(art, gegenstand, zusatzFaktor, zusatzText) {
+    const r = career.trainieren(app.stand, art, gegenstand, zusatzFaktor);
     if (!r.ok) { hinweis(r.text); return; }
     speichern();
     hof();
-    dialog(`<h3>${esc(r.text)}</h3><ul>${deltasText(r.deltas)}</ul>${r.deltas.hinweis ? `<p class="hinweis">${r.deltas.hinweis}</p>` : ''}`);
+    dialog(`<h3>${esc(r.text)}</h3>${zusatzText ? `<p>${esc(zusatzText)}</p>` : ''}<ul>${deltasText(r.deltas)}</ul>${r.deltas.hinweis ? `<p class="hinweis">${r.deltas.hinweis}</p>` : ''}
+      ${r.verletzung ? `<div class="regel-box warn"><b>Verletzung!</b> ${esc(app.stand.hund.name)} hat sich überlastet: ${esc(r.verletzung.art)}. Schonung bis Woche ${r.verletzung.bisWoche} (PO 3.5: kein Start mit eingeschränktem Leistungsvermögen).</div>` : ''}`);
+  }
+
+  // Minispiel Anzeigetraining: Der Hund liegt am Behälter. Belohnen, wenn er ruhig mit der Nase an der
+  // Quelle liegt; nicht belohnen, wenn er zurückschaut, scharrt oder aufsteht. 20 Sekunden.
+  function anzeigeMinispiel(fertig) {
+    const s = app.stand; const h = s.hund;
+    const bg = dialog(`<h3>Anzeigetraining – im richtigen Moment belohnen</h3>
+      <canvas class="minispiel"></canvas>
+      <div class="minispiel-leiste"><span class="ms-zeit">20 s</span><span class="ms-punkte">0 Punkte</span><span class="ms-status"></span></div>
+      <p class="hinweis">Klick auf <b>„Fein!“</b> (oder Leertaste), wenn ${esc(h.name)} ruhig liegt und die Nase am Riechloch hat. Belohnung bei Zurückschauen, Scharren oder Aufstehen verstärkt das falsche Verhalten.</p>
+      <div class="knopfreihe"><button class="primaer gross" data-ms="fein">Fein! 🍖</button></div>`, [{ text: 'Abbrechen', aktion: () => { stop(); } }]);
+    const c = bg.querySelector('canvas');
+    const r = SHS.rng(SHS.neuerSeed());
+    let t = 0; let punkte = 0; let richtig = 0; let falsch = 0; let laeuft = true; let letzte = performance.now();
+    // Verhalten wechselt: ruhig (gut) / zurückschauen / scharren / aufstehen
+    let zustand = 'ruhig'; let dauer = 2; let feedback = 0; let feedbackText = '';
+    const naechster = () => {
+      const ruhigAnteil = 0.45 + (h.werte.anzeige / 100) * 0.35;
+      zustand = r() < ruhigAnteil ? 'ruhig' : r.pick(['blick', 'scharren', 'aufstehen']);
+      dauer = zustand === 'ruhig' ? r.range(1.2, 3) : r.range(0.7, 1.6);
+    };
+    const belohnen = () => {
+      if (!laeuft) return;
+      if (zustand === 'ruhig') { richtig += 1; punkte += 10; feedbackText = 'Richtig belohnt!'; } else { falsch += 1; punkte -= 8; feedbackText = 'Falscher Moment!'; }
+      feedback = 0.8;
+      SHS.ton.spiele(zustand === 'ruhig' ? 'such' : 'fehler');
+      naechster();
+    };
+    bg.querySelector('[data-ms=fein]').addEventListener('click', belohnen);
+    const taste = (ev) => { if (ev.key === ' ') { ev.preventDefault(); belohnen(); } };
+    window.addEventListener('keydown', taste);
+    function stop() { laeuft = false; window.removeEventListener('keydown', taste); }
+    function frame(jetzt) {
+      if (!laeuft) return;
+      const dt = Math.min(0.05, (jetzt - letzte) / 1000); letzte = jetzt;
+      t += dt; dauer -= dt; if (feedback > 0) feedback -= dt;
+      if (dauer <= 0) naechster();
+      const dpr = window.devicePixelRatio || 1;
+      const w = c.clientWidth; const hh = c.clientHeight;
+      if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(hh * dpr); }
+      const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      SHS.grafik.zeichneAnzeigeSzene(g, w, hh, {
+        rasse: h.rasse, fell: h.fell, disziplin: 'behaeltnis', lk: 1, quelleHoehe: 0.12, quelleTyp: 'ziel',
+        abstand: zustand === 'aufstehen' ? 0.35 : 0.08, aktiv: zustand === 'scharren', blick: zustand === 'blick', rute: 0.3, t,
+      });
+      if (zustand === 'aufstehen') { g.fillStyle = 'rgba(255,255,255,0.75)'; g.font = 'bold 14px system-ui'; g.fillText('steht auf …', 10, 20); }
+      if (feedback > 0) { g.fillStyle = feedbackText.startsWith('Richtig') ? '#1c7c2c' : '#d33'; g.font = 'bold 18px system-ui'; g.fillText(feedbackText, 10, hh - 12); }
+      bg.querySelector('.ms-zeit').textContent = `${Math.max(0, Math.ceil(20 - t))} s`;
+      bg.querySelector('.ms-punkte').textContent = `${punkte} Punkte`;
+      if (t >= 20) {
+        stop();
+        bg.remove();
+        // Faktor 0,6 (schlecht getimt) … 1,5 (sehr gut)
+        const faktor = Math.max(0.6, Math.min(1.5, 0.8 + richtig * 0.08 - falsch * 0.12));
+        fertig(faktor, `Minispiel: ${richtig}× richtig, ${falsch}× falsch belohnt – Trainingswirkung ×${faktor.toFixed(2)}.`);
+        return;
+      }
+      requestAnimationFrame(frame);
+    }
+    naechster();
+    requestAnimationFrame(frame);
+  }
+
+  function schwierigkeitSetzen(wert) {
+    app.profil.schwierigkeit = wert;
+    for (const t of app.profil.teams) t.schwierigkeit = wert;
+    speichern();
+  }
+
+  function einstellungen() {
+    const p = app.profil;
+    dialog(`<h3>Einstellungen – ${esc(p.hfName)}</h3>
+      <label>Schwierigkeit<select id="esw">${Object.entries(career.SCHWIERIGKEIT).map(([k, v]) => `<option value="${k}" ${k === (p.schwierigkeit || 'normal') ? 'selected' : ''}>${v.name} (Lernen ×${v.lernen}, Konkurrenz ${v.kiNiveau >= 0 ? '+' : ''}${v.kiNiveau})</option>`).join('')}</select></label>
+      <label class="check"><input type="checkbox" id="eton" ${SHS.ton.istAn() ? 'checked' : ''}> Töne</label>`, [
+      { text: 'Abbrechen' },
+      { text: 'Speichern', primaer: true, aktion: (bg) => { schwierigkeitSetzen(bg.querySelector('#esw').value); SHS.ton.setzeAn(bg.querySelector('#eton').checked); hof(); } },
+    ]);
   }
 
   // Die Woche gilt für alle Hunde des Benutzers gemeinsam.
@@ -450,7 +544,10 @@
               const d = career.uebungssucheVerbuchen(s, erg, q('#ug').value);
               speichern();
               hof();
-              if (d) dialog(`<h3>Übungssuche verbucht</h3><ul>${deltasText(d)}</ul>`);
+              if (d) {
+                const v = d.verletzung; delete d.verletzung;
+                dialog(`<h3>Übungssuche verbucht</h3><ul>${deltasText(d)}</ul>${v ? `<div class="regel-box warn"><b>Verletzung!</b> ${esc(s.hund.name)}: ${esc(v.art)}, Schonung bis Woche ${v.bisWoche}.</div>` : ''}`);
+              }
             } else hof();
           });
         },
@@ -581,7 +678,7 @@
         .map((x) => Object.assign({}, x, { eigen: true }));
       const m = a.meisterschaft ? career.MEISTERSCHAFTEN[a.meisterschaft] : null;
       const feld = m ? m.teilnehmer : po.MINDEST_TEILNEHMER;
-      const ausschreibungKI = Object.assign({}, a, { niveau: m ? m.niveau : 0 });
+      const ausschreibungKI = Object.assign({}, a, { niveau: (m ? m.niveau : 0) + career.schwierigkeit(s).kiNiveau });
       const ki = SHS.competition.kiTeams(ausschreibungKI, p.lk, Math.max(1, feld - 1 - eigeneFrueher.length));
       const teilnehmer = ki.map((t, i) => {
         const r = SHS.competition.simuliereTeam(t, ausschreibungKI, p.lk, i + 1);

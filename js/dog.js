@@ -39,6 +39,12 @@
       this.w = {};
       for (const k of Object.keys(WERTE)) this.w[k] = clamp(hund.werte[k], 0, 100) / 100;
       this.vertraut = clamp(hund.vertrautheit[gegenstandId] ?? 0.3, 0.05, 1);
+      const alter = hund.alterMonate || 24;
+      if (alter < 18) this.w.konzentration *= 0.9;
+      if (alter >= 96) {
+        this.w.ausdauer *= Math.max(0.5, 1 - (alter - 96) / 100);
+        if (alter >= 120) this.w.nase *= Math.max(0.7, 1 - (alter - 120) / 150);
+      }
       this.lage = lage;
       this.rnd = rnd;
       this.x = 0; this.y = 0;
