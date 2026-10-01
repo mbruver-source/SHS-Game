@@ -154,6 +154,7 @@
           <input type="file" accept=".json,application/json" class="versteckt" id="importDatei">
         </div>
         <p class="version">Version ${esc(SHS.VERSION || '')} · läuft komplett offline · Spielstände bleiben in diesem Browser</p>
+        <p class="recht-links"><a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a> · <a href="https://github.com/mbruver-source/SHS-Game">Quellcode</a></p>
       </div>`);
     app.root.querySelector('.startseite').addEventListener('click', (e) => {
       const z = e.target.closest('[data-a],[data-profil],[data-loeschen]');
@@ -340,6 +341,7 @@
             <button data-a="start">Hauptmenü</button>
             <input type="file" accept=".json,application/json" class="versteckt" id="importDatei">
           </div>
+          <p class="recht-links"><a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a></p>
         </section>
       </div>`);
 

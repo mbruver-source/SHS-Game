@@ -2,6 +2,9 @@
 
 Alle Versionen sind im Repository als Tag (`vX.Y.Z`) markiert.
 
+## 1.0.1
+- Impressum und Datenschutzerklärung, verlinkt auf dem Startbildschirm und im Hof.
+
 ## 1.0.0
 - Erste öffentliche Version: MIT-Lizenz, README und automatische Tests auf GitHub.
 - Online spielbar über GitHub Pages.

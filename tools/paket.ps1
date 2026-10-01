@@ -16,6 +16,8 @@ if (Test-Path $zip) { Remove-Item -Force $zip }
 New-Item -ItemType Directory -Force $stage | Out-Null
 
 Copy-Item (Join-Path $root 'index.html') $stage
+Copy-Item (Join-Path $root 'impressum.html') $stage
+Copy-Item (Join-Path $root 'datenschutz.html') $stage
 Copy-Item (Join-Path $root 'css') $stage -Recurse
 Copy-Item (Join-Path $root 'js') $stage -Recurse
 

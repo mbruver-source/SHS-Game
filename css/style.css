@@ -265,3 +265,10 @@ table { border-collapse: collapse; width: 100%; }
 .urkunde-ansicht { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.5); overflow: auto; padding: 16px; }
 .urkunde-blatt { background: #fff; color: #222; max-width: 800px; margin: 0 auto; border-radius: 8px; padding: 16px; }
 .urkunde-ansicht .knopfreihe { max-width: 800px; margin: 10px auto; }
+/* Impressum / Datenschutz */
+.rechtstext { max-width: 760px; }
+.rechtstext article { line-height: 1.6; }
+.rechtstext h1 { hyphens: auto; overflow-wrap: anywhere; font-size: clamp(1.5em, 6vw, 2em); }
+.rechtstext h2 { font-size: 1.1em; margin-top: 1.4em; }
+.recht-links { font-size: .85em; color: var(--leise); }
+.recht-links a { color: var(--leise); }
