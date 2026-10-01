@@ -99,6 +99,7 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 | `js/grafik.js` | Zeichenhilfen: Hund mit Fellzeichnung je Rasse und Farbvariante, Trümmerteile, Kiesboden, 3D-Nahaufnahme der Anzeige |
 | `js/search.js` | Canvas-Darstellung und Eingabe der Suchlage |
 | `js/nachbetrachtung.js` | Aufzeichnung exportieren/archivieren, Wiedergabe mit Laufweg, Ereignissen, Zeitleiste |
+| `js/einfuehrung.js` | Einstieg: geführte erste Suche (Coach) und Rundgang durch den Hof |
 | `js/ui.js` | Menüs und Bildschirme |
 
 ## Ideen für später
@@ -177,3 +178,19 @@ Den eigenen Menüpunkt „Trainingsempfehlung“ erreichst du im Hof (💡 neben
   - Bewertung des WR, Geruchsfahne und Nahaufnahme zuschaltbar.
   - Zeitleiste und Tempo 1–8×; Leertaste = Play/Pause, Pfeile = ±5 s.
 - **Suchlage:** Sie wird aus dem Seed neu erzeugt; verschobene Verstecke und der angebrachte Eigengeruch werden aus der Aufzeichnung übernommen.
+
+## Einführung für neue Spieler (v0.8)
+- **Angebot:** Ein neues Team bekommt die Einführung automatisch angeboten. Später geht es jederzeit über „Einführung“ im Hof. Die Einführung zählt nicht als Trainingseinheit.
+- **Geführte erste Suche:** Behältnisstrecke LK 1 mit fester Suchlage (Seed 4242), mit Leine, ohne Außenreize, mit dem bestbekannten Gegenstand. Ein Coach reagiert auf den Spielzustand (`einfuehrung.neuerSuchTutor`):
+  1. Bewegen
+  2. Bereitschaft (H)
+  3. „Such!“
+  4. Mitgehen, Wind und Körpersprache lesen
+  5. Hund im Geruch – nicht eingreifen
+  6. Anzeige in der Nahaufnahme prüfen, dann H
+  7. Anzeigedauer abwarten
+  8. Ergebnis und Nachbetrachtung
+
+  Situationsabhängige Tipps gibt es, wenn der Hund zum HF schaut oder unsicher anzeigt; nach 20 s kommt der Hinweis auf die Geruchsansicht.
+- **Hof-Rundgang:** 9 Sprechblasen mit Markierung des jeweiligen Bereichs: Team, Werte/Energie, Wochenplan, Training, Trainingsempfehlung, Aufstieg, Prüfungen, Woche beenden, Nachbetrachtung/Leistungsnachweis.
+- **Spielstand:** `stand.einfuehrung` merkt sich, was schon angeboten bzw. gesehen wurde.

@@ -9,7 +9,7 @@ Zuerst `docs/Konzept.md` lesen (Aufbau, Spielannahmen, Dateien).
   `(function (SHS) { ... })(globalThis.SHS = globalThis.SHS || {})` an den Namensraum `SHS`.
   Neue Dateien in `index.html` (Reihenfolge beachten) und ggf. `tests/helfer.js` eintragen.
 - Logik (po, scent, layouts, judge, rassen, dog, suchlage, career, empfehlung, competition) bleibt DOM-frei, damit sie
-  in Node testbar ist. DOM/Canvas nur in `grafik.js`, `search.js`, `nachbetrachtung.js` (Wiedergabeteil), `ui.js`, `storage.js`, `main.js`.
+  in Node testbar ist. DOM/Canvas nur in `grafik.js`, `search.js`, `nachbetrachtung.js` (Wiedergabeteil), `einfuehrung.js` (Hof-Rundgang), `ui.js`, `storage.js`, `main.js`.
 - PO-Werte gehören nach `js/po.js`. Wo die PO keine Zahl nennt: als ANNAHME markieren und in
   `docs/Konzept.md` dokumentieren.
 - Wertnoten müssen identisch zu `shs_core.py` im SHS-Prüfungsprogramm bleiben

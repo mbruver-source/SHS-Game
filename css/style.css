@@ -183,3 +183,9 @@ table { border-collapse: collapse; width: 100%; }
 .nb-legende i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; margin-right: 4px; vertical-align: middle; border: 1px solid rgba(0,0,0,.2); }
 .nb-legende i.hf { border: none; border-top: 2px dashed #2f5d8c; height: 0; }
 .ergebnis-karte .knopfreihe { margin-top: .8em; }
+.coach { background: #fffbe8; color: #2b2a24; border: 2px solid #e2b93b; border-radius: 12px; padding: 10px 14px; box-shadow: 0 8px 28px rgba(0,0,0,.35); font-size: .92em; line-height: 1.4; }
+.coach-titel { font-weight: 800; margin-bottom: 4px; color: #6b4e00; }
+.coach-suche { position: absolute; right: 10px; bottom: 10px; max-width: min(420px, 70%); z-index: 6; }
+.coach-blase { position: fixed; z-index: 70; max-width: 360px; }
+.coach-blase .knopfreihe { margin-top: .6em; }
+.coach-ziel { outline: 3px solid #e2b93b; outline-offset: 4px; border-radius: 8px; position: relative; z-index: 1; }

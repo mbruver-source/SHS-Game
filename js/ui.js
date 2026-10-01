@@ -166,6 +166,7 @@
         app.stand.hund.fell = q('#fell').value;
         speichern();
         hof();
+        einfuehrungAnbieten();
       }
     });
   }
@@ -238,6 +239,7 @@
           <div class="knopfreihe links">
             <button data-a="empfehlung">Trainingsempfehlung</button>
             <button data-a="nachbetrachtung">Nachbetrachtung</button>
+            <button data-a="einfuehrung">Einführung</button>
             <button data-a="regeln">Regeln (PO-Kurzfassung)</button>
             <button data-a="export">Spielstand exportieren</button>
             <button data-a="import">Importieren…</button>
@@ -261,6 +263,7 @@
       if (a === 'regeln') regeln();
       if (a === 'empfehlung') trainingsEmpfehlung();
       if (a === 'nachbetrachtung') nachbetrachtungAuswahl();
+      if (a === 'einfuehrung') einfuehrungAnbieten(true);
       if (a === 'export') SHS.storage.exportieren(s);
       if (a === 'import') app.root.querySelector('#importDatei').click();
       if (a === 'start') start();
@@ -556,6 +559,42 @@
         <div class="knopfreihe"><button class="primaer" data-a="hof">Zurück</button></div>
       </div>`);
     app.root.querySelector('[data-a=hof]').addEventListener('click', hof);
+  }
+
+  // ------------------------------------------------------------------ Einführung
+  function einfuehrungAnbieten(manuell) {
+    const s = app.stand;
+    if (!manuell && s.einfuehrung) return;
+    s.einfuehrung = s.einfuehrung || { angeboten: true };
+    speichern();
+    dialog(`<h3>${manuell ? 'Einführung' : `Willkommen, ${esc(s.hf.name)} und ${esc(s.hund.name)}!`}</h3>
+      <p>${manuell ? 'Was möchtest du dir ansehen?' : 'Möchtest du mit einer geführten ersten Suche starten? Ein Coach erklärt dir Schritt für Schritt Steuerung, Ablauf nach PO und wie du deinen Hund liest (ca. 3 Minuten).'}</p>
+      <p class="hinweis">Die Einführung zählt nicht als Trainingseinheit und lässt sich jederzeit unter „Einführung“ im Hof wiederholen.</p>`, [
+      { text: manuell ? 'Schließen' : 'Später' },
+      { text: 'Rundgang durch den Hof', aktion: () => { hof(); SHS.einfuehrung.hofRundgang(); } },
+      { text: 'Geführte erste Suche', primaer: true, aktion: () => einfuehrungsSuche() },
+    ]);
+  }
+
+  function einfuehrungsSuche() {
+    const s = app.stand;
+    suchlageStarten(SHS.einfuehrung.sucheOptionen(s), (erg, szene) => {
+      if (erg) {
+        career.protokolliereSuche(s, { art: 'uebung', disziplin: 'behaeltnis', lk: 1, ergebnis: erg });
+        SHS.nachbetrachtung.archivieren(s, szene && szene.s, { art: 'Einführung', datum: career.datumText(s.woche) });
+      }
+      s.einfuehrung.sucheGemacht = true;
+      speichern();
+      hof();
+      if (!s.einfuehrung.hofGesehen) {
+        s.einfuehrung.hofGesehen = true;
+        speichern();
+        dialog('<h3>Gut gemacht!</h3><p>Jetzt zeige ich dir noch kurz deinen Hof – hier planst du Training und Prüfungen.</p>', [
+          { text: 'Überspringen' },
+          { text: 'Rundgang starten', primaer: true, aktion: () => SHS.einfuehrung.hofRundgang() },
+        ]);
+      }
+    });
   }
 
   // ------------------------------------------------------------------ Nachbetrachtung (Archiv)

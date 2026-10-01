@@ -66,6 +66,7 @@
           <canvas class="spielfeld"></canvas>
           <div class="nahaufnahme versteckt"><div class="nah-titel">Nahaufnahme – Anzeige</div><canvas></canvas></div>
           <div class="szene-overlay versteckt"></div>
+          <div class="coach coach-suche versteckt"><div class="coach-titel"></div><div class="coach-text"></div></div>
         </div>
         <div class="hud-unten">
           <div class="hud-phase"></div>
@@ -96,6 +97,7 @@
         titel: root.querySelector('.hud-titel'), zeit: root.querySelector('.hud-zeit'),
         fa: root.querySelector('.hud-fa'), wind: root.querySelector('.hud-wind'),
         phase: root.querySelector('.hud-phase'), log: root.querySelector('.hud-log'),
+        coach: root.querySelector('.coach-suche'),
         nah: root.querySelector('.nahaufnahme'), nahCanvas: root.querySelector('.nahaufnahme canvas'),
         overlay: root.querySelector('.szene-overlay'), steuerung: root.querySelector('.steuerung'),
       };
@@ -234,10 +236,23 @@
         }
       }
       if (this.wrArm > 0) this.wrArm -= dt;
+      if (this.opts.tutor) this.coach(dt);
       this.zeichne();
       this.hud();
       if (this.s.phase === 'ende' && !this.endeGezeigt) this.zeigeErgebnis();
       requestAnimationFrame(this.frame);
+    }
+
+    // Einführung: Coach-Hinweis passend zum Stand der Suche
+    coach(dt) {
+      const info = this.opts.tutor.update(this, this.pause ? 0 : dt);
+      const schluessel = info ? info.titel + info.text : '';
+      if (schluessel === this.coachZuletzt) return;
+      this.coachZuletzt = schluessel;
+      this.el.coach.classList.toggle('versteckt', !info);
+      if (!info) return;
+      this.el.coach.querySelector('.coach-titel').innerHTML = info.titel;
+      this.el.coach.querySelector('.coach-text').innerHTML = info.text;
     }
 
     // ------------------------------------------------------------------ HUD
