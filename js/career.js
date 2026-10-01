@@ -29,6 +29,7 @@
       leistungsnachweis: [],
       ausschreibungen: [],
       verlauf: [],
+      suchprotokoll: [],
     };
     stand.hund.vertrautheit.korken = 0.3; // erster Gegenstand ist schon angefüttert
     aktualisiereAusschreibungen(stand);
@@ -162,6 +163,19 @@
     return clamp(0.25 + trainings * 0.008 + uebungen * 0.02 + pruefungen * 0.04, 0, 0.95);
   }
 
+  // Protokoll der eigenen Suchen (Übung und Prüfung) für die Trainingsempfehlung.
+  function protokolliereSuche(stand, eintrag) {
+    if (!eintrag.ergebnis) return;
+    if (!stand.suchprotokoll) stand.suchprotokoll = [];
+    const e = eintrag.ergebnis;
+    stand.suchprotokoll.push({
+      woche: stand.woche, art: eintrag.art, disziplin: eintrag.disziplin, lk: eintrag.lk,
+      status: e.status, punkte: e.punkte, gefunden: !!e.gefunden, fehlanzeigen: e.fehlanzeigen || 0,
+      fehler: e.fehler || {}, intensitaet: e.intensitaet || 0,
+    });
+    if (stand.suchprotokoll.length > 30) stand.suchprotokoll.splice(0, stand.suchprotokoll.length - 30);
+  }
+
   function wocheBeenden(stand) {
     const h = stand.hund;
     const ausgefallen = TRAININGS_JE_WOCHE - stand.trainingsDieseWoche; // ausgelassene Einheiten = zusätzliche Ruhe
@@ -222,7 +236,7 @@
   }
 
   SHS.career = {
-    TRAININGS, TRAININGS_JE_WOCHE, TRAININGSTAGE, naechsterTrainingstag, hfErfahrung,
+    TRAININGS, TRAININGS_JE_WOCHE, TRAININGSTAGE, naechsterTrainingstag, hfErfahrung, protokolliereSuche,
     neuerSpielstand, trainieren, uebungssucheVerbuchen, wocheBeenden, eintragen, klasseBestanden,
     darfPruefen, datumText, alterText, aktualisiereAusschreibungen,
   };

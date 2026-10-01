@@ -70,7 +70,7 @@
     ergebnis() {
       if (this.status === 'disq' || this.status === 'abbruch') {
         return {
-          status: this.status, punkte: null, such: 0, anzeige: 0,
+          status: this.status, punkte: null, such: 0, anzeige: 0, fehler: { ...this.fehlerListe }, intensitaet: this.intensitaetsAbzug,
           gefunden: this.gefunden, fehlanzeigen: this.fehlanzeigen,
           begruendung: [this.statusGrund, ...this.protokoll],
         };
@@ -79,7 +79,7 @@
       const anzeige = this.gefunden ? Math.max(0, po.MAX_ANZEIGELEISTUNG - this.abzugFuer('anzeige')) : 0;
       const punkte = Math.max(0, such + anzeige - this.fehlanzeigen * po.FEHLANZEIGE_ABZUG);
       return {
-        status: 'ok', punkte, such, anzeige,
+        status: 'ok', punkte, such, anzeige, fehler: { ...this.fehlerListe }, intensitaet: this.intensitaetsAbzug,
         gefunden: this.gefunden, fehlanzeigen: this.fehlanzeigen,
         bestanden: punkte >= po.MINDESTPUNKTE_JE_DISZIPLIN,
         begruendung: this.begruendung(such, anzeige, punkte),

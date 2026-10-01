@@ -93,6 +93,7 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 | `js/dog.js` | Hundewerte und Such-KI inkl. Bewegungsphysik und Umrunden von Verstecken |
 | `js/suchlage.js` | Ablauf einer Suchlage, HF-Bot, kopflose Simulation |
 | `js/career.js` | Spielstand, Training, Leistungsnachweis, Aufstieg |
+| `js/empfehlung.js` | Trainingsempfehlung: Schwächen, Geruchsbilder, Fehlerauswertung, Rangliste der Trainings |
 | `js/competition.js` | KI-Teams, Prüfungssimulation |
 | `js/storage.js` | localStorage, Export/Import |
 | `js/grafik.js` | Zeichenhilfen: Hund mit Fellzeichnung je Rasse und Farbvariante, Trümmerteile, Kiesboden, 3D-Nahaufnahme der Anzeige |
@@ -143,3 +144,23 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 - **Ergebnis:** Es hängt vom Trainingsstand ab. Die Werte des Hundes steuern die Hunde-KI, die HF-Erfahrung den automatischen Hundeführer (`HFBot`): wie schnell und sicher er eine Anzeige erkennt und wie oft er unnötig hilft.
 - **HF-Erfahrung** (`career.hfErfahrung`): 25 % + 0,8 % je Training + 2 % je Übungssuche + 4 % je Prüfung, höchstens 95 %.
 - **Fläche:** Der Hundeführer bewegt sich nur auf dem Mittelweg. Das gilt für Start und Vorbereitung, für das Mitgehen während der Suche und für das zweite Handzeichen in LK 3, das auf dem Mittelweg auf Höhe des Hundes gegeben wird. Ein Handzeichen neben dem Mittelweg wird nicht angenommen; jedes Verlassen kostet Punkte. Der Mittelweg ist im Spiel gestrichelt markiert.
+
+## Trainingsempfehlung (v0.6)
+Den eigenen Menüpunkt „Trainingsempfehlung“ erreichst du im Hof (💡 neben „Training“ oder unten in der Leiste). Er zeigt:
+- **Empfehlungen:** bis zu 6, gereiht nach Priorität, jeweils mit Begründung und Button zum direkten Trainieren bzw. zur Übungssuche. In die Priorität fließen ein:
+  - Abstand der Werte zum Zielwert der LK. ANNAHME: Ziel LK 1 = 45, LK 2 = 60, LK 3 = 75; Differenzierung wird in LK 1 nur zur Hälfte gefordert.
+  - Geruchsbilder: so viele Gegenstände, wie die LK verlangt, müssen zu mindestens 60 % vertraut sein.
+  - Fehler der letzten 8 eigenen Suchen (Übung und Prüfung, neuere zählen stärker). Zuordnung:
+    - aktiv, ungenau, unruhig, aufstehen, Unterstützung → Anzeigetraining
+    - Verleitung, Randalieren → Impulskontrolle
+    - Außenreiz, Verlassen → Umweltsicherheit
+    - Hilfe, Augensuche, nachlassende Intensität, nicht gefunden → Suchkondition
+    - Fehlanzeigen → Differenzierung
+  - Für den Aufstieg noch fehlende Disziplinen → Übungssuche.
+  - Prüfung in den nächsten 2 Wochen → Übungssuche in deren Disziplin(en).
+  - Energie unter 35 % → zuerst Erholung.
+- **Hinweise für den HF:** Mittelweg, weniger Hilfen, den Hund lesen, kein hartes Freitagstraining vor einer Samstagsprüfung.
+- **Stärken und Schwächen:** Balken je Wert mit Ziel-Strich der aktuellen LK.
+- **Geruchsbilder:** Stand der für die LK benötigten Gegenstände.
+- **Fehler der letzten Suchen:** Häufigkeit je Fehlerart.
+- **Protokoll:** Grundlage ist `stand.suchprotokoll` mit den letzten 30 eigenen Suchen.

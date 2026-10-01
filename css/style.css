@@ -151,3 +151,18 @@ table { border-collapse: collapse; width: 100%; }
 .aufstieg-felder { display: flex; flex-wrap: wrap; gap: 6px; margin-top: .4em; }
 .aufstieg-felder span { background: var(--karte); border: 1px solid var(--linie); border-radius: 6px; padding: .15em .5em; font-size: .88em; }
 .aufstieg-felder span.ok { border-color: var(--gruen); color: var(--gruen); font-weight: 600; }
+.empf-knopf { float: right; font-size: .55em; padding: .35em .8em; }
+.empf-liste { list-style: none; padding: 0; margin: 0; }
+.empf { display: grid; grid-template-columns: 2em 1fr auto; gap: .8em; align-items: start; padding: .8em 0; border-bottom: 1px solid var(--linie); }
+.empf-nr { width: 1.8em; height: 1.8em; border-radius: 50%; background: var(--gruen); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.empf-inhalt ul { margin: .3em 0 0; padding-left: 1.1em; font-size: .9em; }
+.empf-aktion { align-self: center; }
+@media (max-width: 600px) { .empf { grid-template-columns: 2em 1fr; } .empf-aktion { grid-column: 2; } }
+.ziel-balken { position: relative; background: var(--gruen-hell); border-radius: 4px; height: 12px; min-width: 80px; }
+.ziel-balken div { height: 100%; border-radius: 4px; background: var(--balken); }
+.ziel-balken.mittel div { background: #d9a530; }
+.ziel-balken.schwach div { background: var(--warn); }
+.ziel-balken i { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); }
+.geruch-liste { list-style: none; padding: 0; }
+.geruch-liste li { padding: 2px 0; }
+.geruch-liste li.ok { color: var(--gruen); font-weight: 600; }

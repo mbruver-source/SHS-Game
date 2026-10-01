@@ -215,7 +215,8 @@
             <table class="werte">${vertraut}</table>
           </section>
           <section class="karte">
-            <h2>Training <small>${frei ? `nächste Einheit: ${career.naechsterTrainingstag(s)}` : 'diese Woche erledigt'}</small></h2>
+            <h2>Training <small>${frei ? `nächste Einheit: ${career.naechsterTrainingstag(s)}` : 'diese Woche erledigt'}</small>
+              <button class="empf-knopf" data-a="empfehlung">💡 Trainingsempfehlung</button></h2>
             <div class="wochenplan">${['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((tag, i) => {
               const einheit = [0, 2, 4].indexOf(i);
               const cls = einheit >= 0 ? (einheit < s.trainingsDieseWoche ? 'erledigt' : 'training') : 'ruhe';
@@ -235,6 +236,7 @@
           <h2>Leistungsnachweis <small><a href="#" data-a="ln">alle anzeigen</a></small></h2>
           <table class="ln">${letzte}</table>
           <div class="knopfreihe links">
+            <button data-a="empfehlung">Trainingsempfehlung</button>
             <button data-a="regeln">Regeln (PO-Kurzfassung)</button>
             <button data-a="export">Spielstand exportieren</button>
             <button data-a="import">Importieren…</button>
@@ -256,6 +258,7 @@
       if (a === 'woche') wocheBeenden();
       if (a === 'ln') leistungsnachweis();
       if (a === 'regeln') regeln();
+      if (a === 'empfehlung') trainingsEmpfehlung();
       if (a === 'export') SHS.storage.exportieren(s);
       if (a === 'import') app.root.querySelector('#importDatei').click();
       if (a === 'start') start();
@@ -340,12 +343,13 @@
   }
 
   // ------------------------------------------------------------------ Übungssuche
-  function uebungAuswahl() {
+  function uebungAuswahl(vorwahl) {
+    vorwahl = vorwahl || {};
     const s = app.stand;
     const gopts = po.GEGENSTAENDE.map((g) => `<option value="${g.id}">${g.name}</option>`).join('');
     dialog(`
       <h3>Übungssuche</h3>
-      <label>Disziplin<select id="ud">${po.DISZIPLIN_REIHENFOLGE.map((d) => `<option value="${d}">${diszName(d)}</option>`).join('')}</select></label>
+      <label>Disziplin<select id="ud">${po.DISZIPLIN_REIHENFOLGE.map((d) => `<option value="${d}" ${d === vorwahl.disziplin ? 'selected' : ''}>${diszName(d)}</option>`).join('')}</select></label>
       <label>Leistungsklasse<select id="ul">${[1, 2, 3].map((l) => `<option ${l === s.lk ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       <label>Gegenstand<select id="ug">${gopts}</select></label>
       <label>Ansatz<select id="ua"></select></label>
@@ -364,6 +368,7 @@
             auto: q('#uauto').checked, hfErfahrung: career.hfErfahrung(s),
           }, (erg) => {
             if (erg) {
+              career.protokolliereSuche(s, { art: 'uebung', disziplin: q('#ud').value, lk: +q('#ul').value, ergebnis: erg });
               const d = career.uebungssucheVerbuchen(s, erg, q('#ug').value);
               speichern();
               hof();
@@ -465,6 +470,7 @@
       modus: 'pruefung', titel, auto: p.vorfuehrung === 'auto', hfErfahrung: career.hfErfahrung(s),
     };
     const verbuchen = (erg) => {
+      career.protokolliereSuche(s, { art: 'pruefung', disziplin: schritt.disziplin, lk: p.lk, ergebnis: erg });
       p.details[schritt.disziplin] = erg;
       if (erg.status === 'disq') p.status = 'disq';
       p.einzelwerte[schritt.disziplin] = erg.status === 'ok' ? erg.punkte : null;
@@ -547,6 +553,67 @@
       </div>`);
     app.root.querySelector('[data-a=hof]').addEventListener('click', hof);
   }
+
+  // ------------------------------------------------------------------ Trainingsempfehlung
+  function trainingsEmpfehlung() {
+    const s = app.stand;
+    const e = SHS.empfehlung.empfehlungen(s);
+    const frei = career.TRAININGS_JE_WOCHE - s.trainingsDieseWoche;
+    const tag = career.naechsterTrainingstag(s);
+    const karten = e.liste.map((x, i) => {
+      let knopf = '';
+      if (x.training && frei) knopf = `<button class="primaer" data-training="${x.training}" data-gegenstand="${x.gegenstand || ''}">Am ${tag} trainieren</button>`;
+      else if (x.uebung) knopf = `<button class="primaer" data-uebung="${x.uebung}">Übungssuche starten</button>`;
+      else if (x.ziel === 'ruhe') knopf = '<button data-a="hof">Zurück und Woche beenden</button>';
+      return `<li class="empf"><div class="empf-nr">${i + 1}</div><div class="empf-inhalt">
+        <b>${esc(x.titel)}</b><div class="klein">${esc(x.text || '')}</div>
+        <ul>${x.gruende.slice(0, 4).map((g) => `<li>${esc(g)}</li>`).join('')}</ul></div>
+        <div class="empf-aktion">${knopf}</div></li>`;
+    }).join('') || '<li class="klein">Keine Schwächen erkennbar – weiter so! Übungssuchen halten den Hund in Form.</li>';
+    const profil = e.profil.map((p) => {
+      const farbe = p.differenz >= 0 ? 'stark' : p.differenz > -10 ? 'mittel' : 'schwach';
+      return `<tr><td>${esc(p.name)}</td><td><div class="ziel-balken ${farbe}"><div style="width:${p.wert}%"></div><i style="left:${p.ziel}%" title="Ziel LK ${s.lk}: ${p.ziel}"></i></div></td>
+        <td class="zahl">${p.wert}</td><td class="zahl klein">${p.differenz >= 0 ? '+' : ''}${p.differenz}</td></tr>`;
+    }).join('');
+    const gb = e.geruch;
+    const geruch = gb.kandidaten.map((g) => `<li class="${g.wert >= gb.sicher ? 'ok' : ''}">${g.wert >= gb.sicher ? '✔' : '○'} ${esc(g.name)}: ${g.wert} %</li>`).join('');
+    const f = e.fehler;
+    const fehlerZeilen = Object.entries(f.summe).sort((a, b) => b[1] - a[1])
+      .map(([art, n]) => `<tr><td>${esc(po.ABZUEGE[art] ? po.ABZUEGE[art].text : art)}</td><td class="zahl">${n}×</td></tr>`).join('');
+    const ergebnisse = f.liste.slice(-6).map((x) => `${diszName(x.disziplin)} ${x.status === 'ok' ? x.punkte : x.status === 'disq' ? 'DISQ' : 'ABBR'}`).join(' · ');
+    zeige(`
+      <div class="karte">
+        <h2>Trainingsempfehlung – ${esc(s.hund.name)} <small>LK ${s.lk} · Woche ${s.woche} · ${frei ? `${frei} Einheit(en) frei, nächste am ${tag}` : 'diese Woche keine Einheit mehr frei'}</small></h2>
+        <ol class="empf-liste">${karten}</ol>
+        ${e.hinweise.length ? `<div class="regel-box"><b>Hinweise für dich als Hundeführer</b><ul>${e.hinweise.map((h) => `<li>${esc(h)}</li>`).join('')}</ul></div>` : ''}
+      </div>
+      <div class="spalten">
+        <section class="karte">
+          <h2>Stärken und Schwächen <small>Strich = Ziel für LK ${s.lk}</small></h2>
+          <table class="werte">${profil}</table>
+          <h3>Geruchsbilder für LK ${s.lk} <small class="klein">(${gb.benoetigt} sicher bekannt, ab ${gb.sicher} %)</small></h3>
+          <ul class="geruch-liste">${geruch}</ul>
+        </section>
+        <section class="karte">
+          <h2>Fehler der letzten Suchen <small>${f.anzahl} Suche(n)</small></h2>
+          ${f.anzahl ? `<table class="ln">${fehlerZeilen || '<tr><td>Keine Fehler notiert.</td></tr>'}
+            ${f.fehlanzeigen ? `<tr><td>Fehlanzeigen</td><td class="zahl">${f.fehlanzeigen}×</td></tr>` : ''}
+            ${f.nichtGefunden ? `<tr><td>Gegenstand nicht gefunden</td><td class="zahl">${f.nichtGefunden}×</td></tr>` : ''}</table>
+            <p class="klein">Letzte Ergebnisse: ${ergebnisse}</p>`
+            : '<p class="klein">Noch keine Suchen protokolliert. Mach eine Übungssuche – danach wertet die Empfehlung auch die Fehler aus.</p>'}
+        </section>
+      </div>
+      <div class="knopfreihe"><button class="primaer" data-a="hof">Zurück zum Training</button></div>`);
+    const handler = (ev) => {
+      const z = ev.target.closest('[data-training],[data-uebung],[data-a]');
+      if (!z) return;
+      app.root.removeEventListener('click', handler);
+      if (z.dataset.training) trainingAusfuehren(z.dataset.training, z.dataset.gegenstand || undefined);
+      else if (z.dataset.uebung) { hof(); uebungAuswahl({ disziplin: z.dataset.uebung }); } else if (z.dataset.a === 'hof') hof();
+    };
+    app.root.addEventListener('click', handler);
+  }
+
 
   function regeln() {
     dialog(`
