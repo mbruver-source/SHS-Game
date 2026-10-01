@@ -38,7 +38,7 @@
       const e = SHS.simuliereSuche({
         disziplin: d, lk, seed: (pruefung.seed + nr * 1009 + i * 7919) >>> 0,
         hund: team.hund, gegenstand: po.GEGENSTAENDE[(nr + i) % po.GEGENSTAENDE.length].id,
-        ansatzIndex: nr % 2, leine: lk < 3,
+        ansatzIndex: nr % 2, leine: lk < 3, monat: pruefung.woche ? SHS.career.monatDerWoche(pruefung.woche) : undefined,
       }, team.erfahrung);
       if (e.status === 'disq') status = 'disq';
       einzelwerte[d] = e.status === 'ok' ? e.punkte : null;

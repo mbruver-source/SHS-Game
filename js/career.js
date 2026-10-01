@@ -47,9 +47,10 @@
   // Werten, Training, LK und Leistungsnachweis. Kalender (Woche, Ausschreibungen) und HF sind gemeinsam.
   const MAX_HUNDE_JE_PRUEFUNG = 2; // PO: ein HF darf maximal 2 Hunde vorführen
 
-  function neuesProfil(hfName, hundName, rasse, fell, seed) {
+  function neuesProfil(hfName, hundName, rasse, fell, seed, geschlecht) {
     const team = neuerSpielstand(hfName, hundName, rasse, seed);
     team.hund.fell = fell;
+    team.hund.geschlecht = geschlecht || 'Rüde';
     return { version: 2, id: 'p' + (seed >>> 0).toString(36) + Date.now().toString(36), hfName, seed: seed >>> 0, teams: [team], aktiv: 0, pruefungsStarts: {} };
   }
 
@@ -62,10 +63,11 @@
   }
 
   // Weiteren Hund aufnehmen: startet mit 12 Monaten in der aktuellen Woche des Profils.
-  function hundAufnehmen(profil, hundName, rasse, fell) {
+  function hundAufnehmen(profil, hundName, rasse, fell, geschlecht) {
     const vorlage = profil.teams[0];
     const team = neuerSpielstand(profil.hfName, hundName, rasse, profil.seed);
     team.hund.fell = fell;
+    team.hund.geschlecht = geschlecht || 'Rüde';
     team.woche = vorlage.woche;
     team.ausschreibungen = [];
     aktualisiereAusschreibungen(team);
@@ -107,6 +109,10 @@
     return d;
   }
 
+  function monatDerWoche(woche) {
+    return datumDerWoche(woche).getMonth() + 1;
+  }
+
   function datumText(woche) {
     return datumDerWoche(woche).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
@@ -114,6 +120,20 @@
   function alterText(monate) {
     const m = Math.floor(monate);
     return m >= 24 ? `${Math.floor(m / 12)} J. ${m % 12} Mon.` : `${m} Monate`;
+  }
+
+  // Läufigkeit (PO II.1.3): Hündinnen ab 8 Monaten etwa alle 6 Monate für rund 3 Wochen.
+  // ANNAHME: Zyklus 26 Wochen, Beginn je Hündin aus dem Namen abgeleitet.
+  function istLaeufig(stand, woche) {
+    const h = stand.hund;
+    if (h.geschlecht !== 'Hündin' || h.alterMonate < 8) return false;
+    let phase = 0;
+    for (const c of String(h.name)) phase = (phase * 31 + c.charCodeAt(0)) % 26;
+    return ((woche ?? stand.woche) + phase) % 26 < 3;
+  }
+
+  function pronomen(stand) {
+    return stand.hund.geschlecht === 'Hündin' ? 'sie' : 'er';
   }
 
   function darfPruefen(stand) {
@@ -301,6 +321,6 @@
     MAX_HUNDE_JE_PRUEFUNG, neuesProfil, ausAltemStand, aktivesTeam, hundAufnehmen, wocheBeendenProfil,
     hfErfahrungProfil, eigeneStarts, startVermerken,
     neuerSpielstand, trainieren, uebungssucheVerbuchen, wocheBeenden, eintragen, klasseBestanden,
-    darfPruefen, datumText, alterText, aktualisiereAusschreibungen,
+    darfPruefen, istLaeufig, pronomen, datumText, monatDerWoche, alterText, aktualisiereAusschreibungen,
   };
 })(globalThis.SHS = globalThis.SHS || {});

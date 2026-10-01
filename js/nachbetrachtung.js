@@ -29,6 +29,7 @@
       meta: Object.assign({
         disziplin: s.opts.disziplin, lk: s.opts.lk, seed: s.opts.seed, ansatzIndex: s.opts.ansatzIndex || 0,
         leine: s.leine, schleppleine: s.schleppleine, suchzeit: s.suchzeit,
+        wetter: s.wetter || null, windBasis: s.windBasis,
         hund: { name: s.opts.hund.name, rasse: s.opts.hund.rasse, fell: s.opts.hund.fell },
         ergebnis: s.ergebnis ? { status: s.ergebnis.status, punkte: s.ergebnis.punkte, such: s.ergebnis.such, anzeige: s.ergebnis.anzeige, begruendung: s.ergebnis.begruendung } : null,
       }, meta || {}),
@@ -245,6 +246,13 @@
       });
       this.s.hf.x = f.hfx; this.s.hf.y = f.hfy; this.s.hf.richtung = f.hfRichtung; this.s.hf.arm = !!(f.flags & 16);
       this.s.t = this.t;
+      // Wind wie während der Suche (dreht mit dem Wetter)
+      if (this.d.meta.wetter) {
+        const w = SHS.wetter.windZu(this.d.meta.wetter, this.d.meta.windBasis, this.t);
+        const r = (w.richtung * Math.PI) / 180;
+        Object.assign(this.lage.wind, { x: Math.cos(r), y: Math.sin(r), richtung: w.richtung, staerke: w.staerke });
+        this.s.wetter = this.d.meta.wetter;
+      }
       // Anzeige für die Nahaufnahme: letztes Anzeige-Ereignis bis jetzt
       h.anzeige = null;
       if (f.zustand === 'anzeige' || f.zustand === 'anzeigeEinnehmen') {

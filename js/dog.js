@@ -135,9 +135,15 @@
       this.motivation = clamp(this.motivation + 0.08, 0, 1);
     }
 
+    // Liefert false, wenn ein entlaufener Hund das Hörzeichen ignoriert.
     hier() {
+      if (this.zustand === 'entlaufen') {
+        if (this.rnd() < 0.3 + 0.55 * this.w.konzentration + 0.15 * this.w.impuls) { this.setzeZustand('hier'); return true; }
+        return false;
+      }
       if (this.zustand === 'anzeige') this.anzeigeAufloesen(false);
       this.setzeZustand('hier');
+      return true;
     }
 
     richtungsZeichen(x, y) {
@@ -152,6 +158,14 @@
       if (this.zustand === 'anzeige' || this.zustand === 'sitzt' || this.zustand === 'beiHF') return;
       if (this.rnd() < 0.85 * (1 - this.w.konzentration)) {
         this.reizZiel = p;
+        // Sehr unkonzentrierte Hunde laufen dem Reiz nach und verlassen den HF (PO 3.4).
+        if (this.w.konzentration < 0.35 && this.rnd() < 0.35 * (0.35 - this.w.konzentration) / 0.35) {
+          const w = this.lage.welt;
+          this.reizZiel = { x: Math.max(0.3, Math.min(w.w - 0.3, p.x)), y: Math.max(0.3, Math.min(w.h - 0.3, p.y)), ausserhalb: p };
+          this.setzeZustand('entlaufen');
+          ctx.melde({ typ: 'entlaufen' });
+          return;
+        }
         this.setzeZustand('aussenreiz');
         ctx.melde({ typ: 'aussenreiz' });
       }
@@ -175,11 +189,12 @@
       if (this.hinweis) { this.hinweis.rest -= dt; if (this.hinweis.rest <= 0) this.hinweis = null; }
       if (this.kopfschlag > 0) this.kopfschlag -= dt;
 
-      const sucht = ['sucht', 'geruch', 'verleitung', 'schautHF', 'aussenreiz'].includes(this.zustand);
+      const sucht = ['sucht', 'geruch', 'verleitung', 'schautHF', 'aussenreiz', 'entlaufen'].includes(this.zustand);
       if (sucht && ctx.suchePhase) {
         this.suchZeit += dt;
-        this.motivation = clamp(this.motivation - dt * 0.0024 * (1.45 - this.w.ausdauer), 0.15, 1);
-        if (this.motivation < 0.45 || this.zustand === 'schautHF') this.schwachZeit += dt;
+        const hitze = this.lage.wetter ? this.lage.wetter.ermuedung : 1;
+        this.motivation = clamp(this.motivation - dt * 0.0024 * (1.45 - this.w.ausdauer) * hitze, 0.15, 1);
+        if (this.motivation < 0.45 || this.zustand === 'schautHF' || this.zustand === 'entlaufen') this.schwachZeit += dt;
         if (!this.augensucheGemeldet && this.motivation < 0.4 && this.rnd() < dt * 0.02 * (1.2 - this.w.nase)) {
           this.augensucheGemeldet = true;
           ctx.melde({ typ: 'augensuche' });
@@ -196,6 +211,7 @@
         case 'schautHF': this.updateSchautHF(dt, ctx); break;
         case 'aussenreiz': this.updateAussenreiz(dt, ctx); break;
         case 'hier': this.updateHier(dt, ctx); break;
+        case 'entlaufen': this.updateEntlaufen(dt, ctx); break;
         case 'anzeigeEinnehmen': this.updateAnzeigeEinnehmen(dt, ctx); break;
         case 'anzeige': this.updateAnzeige(dt, ctx); break;
         default: break;
@@ -498,6 +514,16 @@
       }
     }
 
+    // Entlaufen: läuft zum Reiz an den Platzrand, stöbert dort; ohne Rückruf verlässt er den Platz.
+    updateEntlaufen(dt) {
+      this.naseTief = false;
+      this.rute = 0.8;
+      this.ruteHoch = true;
+      const ziel = this.zustandSeit > 12 && this.reizZiel.ausserhalb ? this.reizZiel.ausserhalb : this.reizZiel;
+      const rest = this.bewegeZu(ziel, 2.2, dt);
+      if (rest < 0.3 && ziel === this.reizZiel) this.richtung += Math.sin(this.zustandSeit * 2) * dt * 2;
+    }
+
     updateHier(dt, ctx) {
       this.liegt = false;
       this.naseTief = false;
@@ -530,7 +556,7 @@
     }
 
     pruefeVerleitungen(ctx) {
-      if (this.zustand === 'verleitung' || this.zustand === 'aussenreiz') return;
+      if (this.zustand === 'verleitung' || this.zustand === 'aussenreiz' || this.zustand === 'entlaufen') return;
       for (const q of ctx.quellen) {
         if (q.typ !== 'spielzeug' && q.typ !== 'futter') continue;
         if (this.verleitungErledigt.has(q)) continue;

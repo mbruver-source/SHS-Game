@@ -155,12 +155,13 @@
         <h2>${neuerHund ? `Weiteren Hund aufnehmen <small>${esc(app.profil.hfName)}</small>` : 'Neuer Benutzer'}</h2>
         ${neuerHund ? '' : '<label>Dein Name (Hundeführer/in)<input id="hfName" maxlength="30" placeholder="z. B. Alex"></label>'}
         <label>Name des Hundes<input id="hundName" maxlength="20" placeholder="z. B. Aiko"></label>
+        <label>Geschlecht<select id="geschlecht"><option>Rüde</option><option>Hündin</option></select></label>
         <label>Rasse<select id="rasse">${rassen.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label>
         <label>Fellfarbe<select id="fell"></select></label>
         <div class="vorschau-reihe"><canvas id="vorschau" class="hund-vorschau"></canvas><canvas id="vorschauSeite" class="hund-vorschau"></canvas></div>
         <div id="rassenInfo" class="rassen-info"></div>
         <p class="hinweis">Dein Hund ist 12 Monate alt. Prüfungen sind ab 15 Monaten möglich – nutze die Zeit für die Grundausbildung.
-        Den Korken kennt er schon ein wenig.</p>
+        Den Korken kennt dein Hund schon ein wenig.</p>
         <div class="knopfreihe"><button data-a="zurueck">Zurück</button><button class="primaer" data-a="los">Los geht's</button></div>
       </div>`);
     const q = (s) => app.root.querySelector(s);
@@ -186,13 +187,13 @@
         const hund = app.root.querySelector('#hundName').value.trim() || 'Hund';
         if (neuerHund) {
           if (app.profil.teams.some((t) => t.hund.name === hund)) { hinweis('Einen Hund mit diesem Namen gibt es schon.'); return; }
-          app.stand = career.hundAufnehmen(app.profil, hund, q('#rasse').value, q('#fell').value);
+          app.stand = career.hundAufnehmen(app.profil, hund, q('#rasse').value, q('#fell').value, q('#geschlecht').value);
           speichern();
           hof();
           return;
         }
         const hf = app.root.querySelector('#hfName').value.trim() || 'Hundeführer';
-        profilOeffnen(career.neuesProfil(hf, hund, q('#rasse').value, q('#fell').value, SHS.neuerSeed()));
+        profilOeffnen(career.neuesProfil(hf, hund, q('#rasse').value, q('#fell').value, SHS.neuerSeed(), q('#geschlecht').value));
         speichern();
         hof();
         einfuehrungAnbieten();
@@ -238,7 +239,8 @@
         </nav>
         <header class="hof-kopf">
           <canvas class="hund-portrait" title="Fellfarbe ändern"></canvas>
-          <div class="hof-name"><h1>${esc(h.name)} <small>${esc(h.rasse)}</small></h1>
+          <div class="hof-name"><h1>${esc(h.name)} <small>${esc(h.rasse)} · ${esc(h.geschlecht || 'Rüde')}</small>
+            ${career.istLaeufig(s) ? '<span class="abzeichen" title="PO II.1.3: Start am Ende des Prüfungstages">läufig</span>' : ''}</h1>
             <div class="klein">HF ${esc(s.hf.name)} (Erfahrung ${Math.round(career.hfErfahrungProfil(app.profil) * 100)} %) · ${career.alterText(h.alterMonate)} · Leistungsklasse <b>LK ${s.lk}</b></div></div>
           <div class="woche"><div>Woche ${s.woche}</div><div class="klein">bis Sa., ${career.datumText(s.woche)}</div></div>
         </header>
@@ -311,11 +313,12 @@
 
   function fellAendern() {
     const h = app.stand.hund;
-    const bg = dialog(`<h3>Fellfarbe von ${esc(h.name)}</h3>
+    const bg = dialog(`<h3>${esc(h.name)} bearbeiten</h3>
+      <label>Geschlecht<select id="geschlechtNeu">${['Rüde', 'Hündin'].map((g) => `<option ${g === (h.geschlecht || 'Rüde') ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
       <label>Fellfarbe (${esc(h.rasse)})<select id="fellNeu">${fellOptionen(h.rasse, h.fell)}</select></label>
       <div class="vorschau-reihe"><canvas id="fv1" class="hund-vorschau"></canvas><canvas id="fv2" class="hund-vorschau"></canvas></div>`, [
       { text: 'Abbrechen' },
-      { text: 'Übernehmen', primaer: true, aktion: (d) => { h.fell = d.querySelector('#fellNeu').value; speichern(); hof(); } },
+      { text: 'Übernehmen', primaer: true, aktion: (d) => { h.fell = d.querySelector('#fellNeu').value; h.geschlecht = d.querySelector('#geschlechtNeu').value; speichern(); hof(); } },
     ]);
     const zeichne = () => {
       const f = bg.querySelector('#fellNeu').value;
@@ -412,7 +415,7 @@
         text: 'Suche starten', primaer: true, aktion: (bg) => {
           const q = (id) => bg.querySelector(id);
           suchlageStarten({
-            disziplin: q('#ud').value, lk: +q('#ul').value, seed: SHS.neuerSeed(), hund: s.hund,
+            disziplin: q('#ud').value, lk: +q('#ul').value, seed: SHS.neuerSeed(), hund: s.hund, monat: career.monatDerWoche(s.woche),
             gegenstand: q('#ug').value, ansatzIndex: +q('#ua').value, leine: q('#uleine').checked,
             aussenreize: q('#ureize').checked, modus: 'uebung',
             auto: q('#uauto').checked, hfErfahrung: career.hfErfahrungProfil(app.profil),
@@ -471,6 +474,7 @@
     zeige(`
       <div class="karte">
         <h2>Anmeldung: ${esc(a.verein)} – ${a.art === 'DK' ? 'SHS-Dreikampf' : 'SHS-Einzeldisziplin'}, LK ${lk}</h2>
+        ${career.istLaeufig(s, a.woche) ? `<div class="regel-box"><b>${esc(s.hund.name)} ist läufig.</b> Die Läufigkeit wird der Prüfungsleitung gemeldet; ${esc(s.hund.name)} startet am Ende des Prüfungstages und wird bis dahin vom Gelände separiert (PO II.1.3).</div>` : ''}
         <p>HF <b>${esc(s.hf.name)}</b> mit <b>${esc(s.hund.name)}</b> · Sa., ${career.datumText(a.woche)} · ${po.MINDEST_TEILNEHMER} Teams gemeldet</p>
         <div class="regel-box">
           <b>Anforderungen LK ${lk}:</b> ${anf.gegenstaende === 1 ? 'ein Suchgegenstand' : anf.gegenstaende + ' Suchgegenstände'}${lk === 1 ? ', keine Verleitungen' : lk === 2 ? ', Spielzeug- und Eigengeruchsverleitungen' : ', Spielzeug-, Futter- und Eigengeruchsverleitungen sowie Differenzierung'}.
@@ -506,7 +510,7 @@
         return;
       }
       const vorfuehrung = app.root.querySelector('#vorfuehrung').value;
-      pruefungsAblauf({ ausschreibung: a, lk, plan, vorfuehrung, idx: 0, einzelwerte: {}, details: {}, status: 'ok', startNr: 1 + (a.seed % po.MINDEST_TEILNEHMER) });
+      pruefungsAblauf({ ausschreibung: a, lk, plan, vorfuehrung, idx: 0, einzelwerte: {}, details: {}, status: 'ok', startNr: career.istLaeufig(app.stand, a.woche) ? po.MINDEST_TEILNEHMER : 1 + (a.seed % (po.MINDEST_TEILNEHMER - 1)) });
     });
   }
 
@@ -516,7 +520,7 @@
     const schritt = p.plan[p.idx];
     const titel = `${p.ausschreibung.verein} · ${diszName(schritt.disziplin)} · LK ${p.lk} · Start-Nr. ${p.startNr}`;
     const suchOpts = {
-      disziplin: schritt.disziplin, lk: p.lk, seed: (p.ausschreibung.seed + p.idx * 7919 + 17) >>> 0,
+      disziplin: schritt.disziplin, lk: p.lk, seed: (p.ausschreibung.seed + p.idx * 7919 + 17) >>> 0, monat: career.monatDerWoche(p.ausschreibung.woche),
       hund: s.hund, gegenstand: schritt.gegenstand, ansatzIndex: schritt.ansatzIndex, leine: schritt.leine,
       modus: 'pruefung', titel, auto: p.vorfuehrung === 'auto', hfErfahrung: career.hfErfahrungProfil(app.profil),
     };
@@ -532,7 +536,8 @@
     if (p.vorfuehrung === 'sofort') { verbuchen(SHS.simuliereSuche(suchOpts, suchOpts.hfErfahrung)); return; }
     dialog(`<h3>${diszName(schritt.disziplin)}</h3>
       <p>Anmeldung beim WR in Grundstellung: „${esc(s.hf.name)}, ${esc(s.hund.name)}, Start-Nr. ${p.startNr}, Gegenstand ${gegName(schritt.gegenstand)}, LK ${p.lk}.“</p>
-      <p>Du gehst mit deinem Hund außer Sicht – der WR versteckt den Gegenstand.</p>`, [{
+      <p>Du gehst mit deinem Hund außer Sicht – der WR versteckt den Gegenstand.</p>
+      ${(() => { const w = SHS.wetter.erzeuge(suchOpts.seed, suchOpts.monat); return `<p class="regel-box"><b>Wetter: ${w.symbol} ${esc(w.text)}</b>${w.hinweis ? `<br>${esc(w.hinweis)}` : ''}</p>`; })()}`, [{
       text: 'Zum Suchbereich', primaer: true, aktion: () => {
         suchlageStarten(suchOpts, verbuchen);
       },

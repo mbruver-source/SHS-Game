@@ -263,7 +263,9 @@
       this.el.zeit.classList.toggle('knapp', s.phase === 'suche' && rest < 30);
       this.el.fa.textContent = `Fehlanzeigen ${s.richter.fehlanzeigen}/${po.FEHLANZEIGEN_BIS_ABBRUCH}`;
       const ws = this.lage.wind.staerke;
-      this.el.wind.textContent = `Wind ${ws < 0.3 ? 'schwach' : ws < 0.6 ? 'mäßig' : 'frisch'}`;
+      const wt = this.s.wetter;
+      this.el.wind.textContent = `${wt ? `${wt.symbol} ${wt.temp} °C · ` : ''}Wind ${ws < 0.3 ? 'schwach' : ws < 0.6 ? 'mäßig' : 'frisch'}${wt && wt.drift > 0.45 ? ', drehend' : ''}`;
+      if (wt && wt.hinweis) this.el.wind.title = wt.hinweis;
       let phase;
       const mittelwegHinweis = this.lage.mittelweg ? ' Hinweis: Der Hundeführer darf sich nur auf dem Mittelweg bewegen.' : '';
       if (this.pause) phase = 'Pause – P zum Fortsetzen';
@@ -368,12 +370,36 @@
       this.zeichneHund();
       this.zeichneHF();
       this.zeichneWind(W);
+      this.zeichneRegen(W, H);
       this.zeichneNahaufnahme();
       if (this.pause) {
         g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 0, W, H);
         g.fillStyle = '#fff'; g.font = 'bold 28px system-ui, sans-serif'; g.textAlign = 'center';
         g.fillText('Pause', W / 2, H / 2);
       }
+    }
+
+    // Regen: schräge Striche, die mit dem Wind ziehen
+    zeichneRegen(W, H) {
+      const wt = this.s.wetter;
+      if (!wt || !wt.regen) return;
+      const g = this.g;
+      const t = performance.now() / 1000;
+      const n = wt.regen === 2 ? 140 : 55;
+      const wind = this.lage.wind;
+      const [wx, wy] = this.rot ? [wind.y, wind.x] : [wind.x, wind.y];
+      g.save();
+      g.fillStyle = wt.regen === 2 ? 'rgba(40,50,70,0.18)' : 'rgba(60,70,90,0.08)';
+      g.fillRect(0, 0, W, H);
+      g.strokeStyle = 'rgba(210,225,255,0.45)'; g.lineWidth = 1;
+      g.beginPath();
+      for (let i = 0; i < n; i++) {
+        const x = ((i * 137.5 + t * 60 * (1 + wx * wind.staerke)) % (W + 40)) - 20;
+        const y = ((i * 89.3 + t * 420) % (H + 40)) - 20;
+        g.moveTo(x, y); g.lineTo(x + wx * 6 * wind.staerke - 2, y + 12);
+      }
+      g.stroke();
+      g.restore();
     }
 
     rechteck(x, y, w, h, farbe) {

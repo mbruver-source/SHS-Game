@@ -91,6 +91,7 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 | `js/judge.js` | Wertungsrichter |
 | `js/rassen.js` | 30 verbreitete Rassen + Mischling: Spielwerte, Körperbau, Farbvarianten (einzige Quelle) |
 | `js/dog.js` | Hundewerte und Such-KI inkl. Bewegungsphysik und Umrunden von Verstecken |
+| `js/wetter.js` | Wetter je Suchlage (Temperatur, Regen, Wind mit Drehen) und Wirkung auf den Geruch |
 | `js/suchlage.js` | Ablauf einer Suchlage, HF-Bot, kopflose Simulation |
 | `js/career.js` | Spielstand, Training, Leistungsnachweis, Aufstieg |
 | `js/empfehlung.js` | Trainingsempfehlung: Schwächen, Geruchsbilder, Fehlerauswertung, Rangliste der Trainings |
@@ -209,3 +210,22 @@ Den eigenen Menüpunkt „Trainingsempfehlung“ erreichst du im Hof (💡 neben
   - Nach dem ersten Start bietet die Ergebnisseite „Mit … starten“ für den zweiten Hund an.
   - Eigene Hunde in derselben LK stehen gemeinsam in der Rangliste, die KI-Teams füllen auf 8 Teilnehmer auf.
   - Die Starts werden in `profil.pruefungsStarts` vermerkt.
+
+## Wetter, Ungehorsam, Rüde/Hündin (v0.10)
+- **Wetter** (`wetter.js`): Es richtet sich nach dem Monat der Woche und dem Seed. Der Wind dreht während der Suche und hat Böen. ANNAHMEN zur Wirkung:
+
+  | Wetter | Wirkung auf den Geruch | Ermüdung des Hundes |
+  |---|---|---|
+  | Kälte (< 5 °C) | Quelle ×0,85 | – |
+  | Hitze (> 25 °C) | Quelle schwächer, Fahne kürzer | schneller |
+  | Nieselregen | Quelle ×1,1, kompaktere Fahne | – |
+  | Starkregen | Quelle ×0,8 | – |
+
+  Das Wetter steht im HUD und im Prüfungsdialog, Regen ist sichtbar. Die Nachbetrachtung zeigt den drehenden Wind. Die Einführungssuche läuft ohne Wetter.
+- **Ungehorsam** (PO 3.4):
+  - Sehr unkonzentrierte Hunde (Konzentration < 35) können einem Außenreiz nachlaufen (Zustand „entlaufen“).
+  - Die Chance, dass der Hund auf „Hier!“ zurückkommt, hängt von Konzentration und Impulskontrolle ab.
+  - Abbruch wegen Ungehorsams: nach dem dritten erfolglosen Hörzeichen oder wenn der Hund den Vorführplatz länger als 1 s verlässt. Die Disziplin wird mit „Abbruch“ gewertet.
+- **Rüde/Hündin:** Das Geschlecht wählst du bei der Anlage, ändern kannst du es per Klick aufs Hundebild.
+  - Läufigkeit, ANNAHME: Hündinnen ab 8 Monaten zweimal im Jahr je 3 Wochen.
+  - Eine läufige Hündin bekommt im Hof ein Abzeichen und in der Anmeldung einen Hinweis. Sie startet als Letzte (PO II.1.3).

@@ -8,7 +8,7 @@
     const h = stand.hund;
     const bester = Object.keys(h.vertrautheit).sort((a, b) => h.vertrautheit[b] - h.vertrautheit[a])[0] || 'korken';
     return {
-      disziplin: 'behaeltnis', lk: 1, seed: 4242, hund: h, gegenstand: bester, ansatzIndex: 0,
+      disziplin: 'behaeltnis', lk: 1, seed: 4242, hund: h, gegenstand: bester, ansatzIndex: 0, wetter: false,
       leine: true, aussenreize: false, modus: 'uebung', titel: 'Einführung – deine erste Suche',
       tutor: neuerSuchTutor(),
     };

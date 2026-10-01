@@ -7,7 +7,8 @@
 
   const HF_TEMPO = 1.5;
   // Reihenfolge der Hundezustände in der Aufzeichnung (Index = Code)
-  const ZUSTAENDE = ['sitzt', 'beiHF', 'sucht', 'geruch', 'verleitung', 'schautHF', 'aussenreiz', 'hier', 'anzeigeEinnehmen', 'anzeige'];
+  const ZUSTAENDE = ['sitzt', 'beiHF', 'sucht', 'geruch', 'verleitung', 'schautHF', 'aussenreiz', 'hier', 'anzeigeEinnehmen', 'anzeige', 'entlaufen'];
+  const HIER_BIS_ABBRUCH = 3; // PO 3.4: kommt auf dreimaliges Hörzeichen nicht zurück
   const HILFE_SPERRE = 2; // s – Mehrfachbefehle kurz hintereinander zählen einmal
 
   class SuchLage {
@@ -22,6 +23,15 @@
       this.schleppleine = opts.disziplin === 'flaeche' && opts.lk <= 2 && !!opts.leine;
       const idx = Math.min(opts.ansatzIndex || 0, this.lage.ansatzOptionen.length - 1);
       this.ansatz = this.lage.ansatzOptionen[idx];
+      // Wetter (Temperatur, Regen, Wind) wirkt auf die Quellen und den Wind während der Suche
+      this.wetter = opts.wetter === false ? null : SHS.wetter.erzeuge(opts.seed, opts.monat);
+      if (this.wetter) {
+        for (const q of this.lage.quellen) this.wetterAnwenden(q);
+        this.lage.wind.staerke = this.wetter.wind;
+        this.lage.wetter = this.wetter;
+      }
+      this.windBasis = this.lage.wind.richtung;
+      this.hierVersuche = 0;
       this.quellen = this.lage.quellen.slice();
       this.hund = new SHS.dog.SuchHund(opts.hund, opts.gegenstand, this.lage, this.rnd);
       this.hund.setzePosition(this.ansatz.x, this.ansatz.y);
@@ -67,6 +77,12 @@
       }
       teile.push('Danach zurück zum Hund und mit Handzeichen (H) die Bereitschaft melden.');
       return teile.join(' ');
+    }
+
+    wetterAnwenden(q) {
+      if (!this.wetter) return;
+      q.staerke *= this.wetter.staerkeFaktor;
+      q.reichweite = (q.reichweite || 1) * this.wetter.reichweiteFaktor;
     }
 
     meldeWR(text) {
@@ -157,10 +173,20 @@
 
     befehlHier() {
       if (this.phase !== 'suche' || this.meldung) return;
+      const warEntlaufen = this.hund.zustand === 'entlaufen';
       this.hilfe('Hörzeichen „Hier!“ während der Suche');
-      this.hund.hier();
+      const kommt = this.hund.hier();
       this.ersterSuchFrei = true; // erneutes Ansetzen danach ist kein weiterer Fehler
       this.meldeInfo('HF: „Hier!“');
+      if (warEntlaufen) {
+        if (kommt) { this.hierVersuche = 0; this.meldeInfo('Der Hund kommt zurück.'); return; }
+        this.hierVersuche += 1;
+        this.meldeWR(`Der Hund reagiert nicht auf das Hörzeichen (${this.hierVersuche}/${HIER_BIS_ABBRUCH}).`);
+        if (this.hierVersuche >= HIER_BIS_ABBRUCH) {
+          this.richter.abbruchUngehorsam('Abbruch wegen Ungehorsams: Der Hund kam auf dreimaliges Hörzeichen nicht zurück.');
+          this.beenden('Abbruch wegen Ungehorsams des Hundes.');
+        }
+      }
     }
 
     richtungsZeichen(x, y) {
@@ -196,7 +222,9 @@
       if (v.id === this.lage.eigengeruchVersteck && !this.eigengeruchErledigt) {
         if (this.hf.anfassen >= 3) {
           this.eigengeruchErledigt = true;
-          this.quellen.push({ typ: 'eigengeruch', name: 'Eigengeruch HF', x: v.x, y: v.y, hoehe: 0, versteckId: v.id, staerke: 0.75, reichweite: 0.8 });
+          const eg = { typ: 'eigengeruch', name: 'Eigengeruch HF', x: v.x, y: v.y, hoehe: 0, versteckId: v.id, staerke: 0.75, reichweite: 0.8 };
+          this.wetterAnwenden(eg);
+          this.quellen.push(eg);
           this.meldeWR('Eigengeruchsverleitung angebracht. Zurück zum Hund.');
           this.hf.anfassen = 0;
         }
@@ -322,6 +350,10 @@
         case 'augensuche':
           this.richter.fehler('augensuche');
           break;
+        case 'entlaufen':
+          this.richter.fehler('aussenreiz');
+          this.meldeWR('Der Hund verlässt den Hundeführer! Mit „Hier!“ (R) zurückrufen.');
+          break;
         case 'blick':
           if (this.meldung && this.meldung.unruhig < 4) {
             this.meldung.unruhig += 1;
@@ -350,6 +382,13 @@
 
       if (this.phase !== 'suche') return;
       this.zeit += dt;
+      if (this.wetter) {
+        const w = SHS.wetter.windZu(this.wetter, this.windBasis, this.t);
+        const r = (w.richtung * Math.PI) / 180;
+        this.lage.wind.x = Math.cos(r); this.lage.wind.y = Math.sin(r);
+        this.lage.wind.richtung = w.richtung; this.lage.wind.staerke = w.staerke;
+      }
+      if (this.pruefeVorfuehrplatz(dt)) return;
 
       this.pruefeBereich();
       this.pruefeMittelweg();
@@ -396,6 +435,19 @@
       this.meldeWR('Erwidert – Fund! Die Zeitmessung endet.');
       this.meldung = null;
       this.beenden();
+    }
+
+    // PO 3.4: Verlässt der Hund den Vorführplatz, wird die Vorführung abgebrochen.
+    pruefeVorfuehrplatz(dt) {
+      const h = this.hund; const w = this.lage.welt;
+      const draussen = h.x < -0.2 || h.y < -0.2 || h.x > w.w + 0.2 || h.y > w.h + 0.2;
+      this.draussenSeit = draussen ? (this.draussenSeit || 0) + dt : 0;
+      if (this.draussenSeit > 1) {
+        this.richter.abbruchUngehorsam('Abbruch wegen Ungehorsams: Der Hund hat den Vorführplatz verlassen.');
+        this.beenden('Der Hund hat den Vorführplatz verlassen – Abbruch wegen Ungehorsams.');
+        return true;
+      }
+      return false;
     }
 
     pruefeBereich() {
@@ -518,6 +570,11 @@
       }
       this.anzeigeBeobachtet = 0;
       if (h.zustand === 'beiHF') { s.befehlSuch(); return; }
+      if (h.zustand === 'entlaufen') {
+        this.rufZeit = (this.rufZeit || 0) + dt;
+        if (this.rufZeit > 1.5 + (1 - this.erfahrung) * 2) { s.befehlHier(); this.rufZeit = 0; }
+        return;
+      }
       // Unselbstständiger Hund: erfahrene HF gehen weiter statt erneut zu schicken.
       if (h.zustand === 'schautHF') {
         this.warte += dt;
