@@ -80,13 +80,21 @@ label.check { display: flex; gap: .5em; align-items: center; }
 .knopfreihe.links { justify-content: flex-start; }
 
 /* Start */
-.startseite { text-align: center; padding: 8vh 0; }
-.logo { font-size: 64px; }
-.logo span { font-weight: 800; letter-spacing: .05em; color: var(--gruen); }
-.startseite h1 { font-size: 2.4em; }
-.unter { color: var(--leise); }
-.start-knoepfe { display: flex; flex-direction: column; gap: .7em; align-items: center; margin: 2em 0; }
-.version { color: var(--leise); font-size: .85em; }
+/* Startbildschirm */
+.startseite { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; padding-block: 8px 24px; }
+.start-held { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--linie); background: #7fa95c; }
+.start-szene { display: block; width: 100%; height: clamp(180px, 34vw, 280px); }
+.start-titel { position: absolute; left: clamp(14px, 4vw, 32px); top: clamp(12px, 3vw, 26px); right: 14px; color: #1d2a17; text-shadow: 0 1px 0 rgba(255,255,255,.55); }
+.start-kuerzel { display: inline-block; font-weight: 900; letter-spacing: .14em; font-size: .8em; background: #1d2a17; color: #eef5ea; padding: .15em .55em; border-radius: 4px; text-shadow: none; }
+.start-titel h1 { font-size: clamp(1.9em, 6vw, 3em); line-height: 1.05; margin: .15em 0 .2em; letter-spacing: -.01em; text-wrap: balance; }
+.start-titel p { margin: 0; max-width: 30ch; font-weight: 600; font-size: clamp(.85em, 2.2vw, 1em); }
+.start-punkte { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.start-punkte li { font-size: .92em; color: var(--leise); line-height: 1.45; padding-left: 12px; border-left: 3px solid var(--gruen); }
+.start-punkte b { display: block; color: var(--text); font-size: 1.05em; margin-bottom: 2px; }
+.start-bereich h2 { font-size: 1.05em; text-transform: uppercase; letter-spacing: .08em; color: var(--leise); margin: 0 0 8px; }
+.start-knoepfe { display: flex; flex-wrap: wrap; gap: .7em; justify-content: center; }
+.start-fuss { text-align: center; color: var(--leise); font-size: .85em; }
+.start-fuss p { margin: .3em 0; }
 .rassen-info { font-size: .9em; color: var(--gruen); min-height: 1.4em; }
 
 /* Hof */
@@ -203,11 +211,18 @@ table { border-collapse: collapse; width: 100%; }
 .coach-blase { position: fixed; z-index: 70; max-width: 360px; }
 .coach-blase .knopfreihe { margin-top: .6em; }
 .coach-ziel { outline: 3px solid #e2b93b; outline-offset: 4px; border-radius: 8px; position: relative; z-index: 1; }
-.profil-liste { list-style: none; padding: 0; margin: 0 auto 1em; max-width: 420px; display: flex; flex-direction: column; gap: 8px; }
-.profil-liste li { display: flex; gap: 6px; }
-.profil-liste li > button:first-child { flex: 1; display: flex; flex-direction: column; align-items: center; }
-.profil-liste .klein { color: rgba(255,255,255,.85); }
-.profil-loeschen { padding: 0 .8em; }
+.profil-liste { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.profil-karte { display: flex; gap: 6px; align-items: stretch; }
+.profil-oeffnen { flex: 1; min-width: 0; display: flex; gap: 12px; align-items: center; text-align: left; padding: 10px 12px; border-radius: 12px; }
+.profil-oeffnen:hover { border-color: var(--gruen); box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+.profil-oeffnen:focus-visible, .profil-loeschen:focus-visible { outline: 3px solid var(--gruen); outline-offset: 2px; }
+.profil-bild { flex: none; width: 76px; height: 48px; border-radius: 8px; }
+.profil-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.profil-text b { font-size: 1.1em; }
+.profil-text span { overflow-wrap: anywhere; }
+.profil-pfeil { margin-left: auto; color: var(--gruen); font-size: .9em; }
+.profil-loeschen { padding: 0 .7em; border-radius: 12px; color: var(--leise); }
+.profil-loeschen:hover { color: var(--warn); border-color: var(--warn); }
 .hunde-leiste { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .hunde-leiste button { border-radius: 20px; padding: .3em .9em; }
 .hunde-leiste button.aktiv { background: var(--gruen); border-color: var(--gruen); color: #fff; font-weight: 700; }
@@ -272,3 +287,10 @@ table { border-collapse: collapse; width: 100%; }
 .rechtstext h2 { font-size: 1.1em; margin-top: 1.4em; }
 .recht-links { font-size: .85em; color: var(--leise); }
 .recht-links a { color: var(--leise); }
+@media (max-width: 640px) {
+  .start-held { background: var(--karte); }
+  .start-szene { height: 170px; }
+  .start-titel { position: static; color: var(--text); text-shadow: none; padding: 10px 14px 14px; }
+  .start-kuerzel { background: var(--text); color: var(--karte); }
+  .start-titel p { max-width: none; font-weight: 500; color: var(--leise); }
+}

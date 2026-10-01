@@ -2,6 +2,9 @@
 
 Alle Versionen sind im Repository als Tag (`vX.Y.Z`) markiert.
 
+## 1.0.2
+- Neuer Startbildschirm: Szene mit Hund in Platzanzeige (zufällige Rasse), kurze Einführung, Benutzer als Karten mit Hundebild, Hunden, LK und letzter Spielzeit.
+
 ## 1.0.1
 - Impressum und Datenschutzerklärung, verlinkt auf dem Startbildschirm und im Hof.
 

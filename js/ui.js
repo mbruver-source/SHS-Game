@@ -139,23 +139,105 @@
   // ------------------------------------------------------------------ Start
   function start() {
     const profile = SHS.storage.profile();
-    const liste = profile.map((p) => `<li><button class="primaer gross" data-profil="${esc(p.id)}">${esc(p.name)}
-        <span class="klein">${esc((p.hunde || []).join(', '))}</span></button>
-        <button class="profil-loeschen" data-loeschen="${esc(p.id)}" title="Benutzer löschen">✕</button></li>`).join('');
+    const vorZeit = (ms) => {
+      if (!ms) return '';
+      const tage = Math.floor((Date.now() - ms) / 86400000);
+      return tage <= 0 ? 'heute gespielt' : tage === 1 ? 'gestern gespielt' : `vor ${tage} Tagen gespielt`;
+    };
+    const karten = profile.map((eintrag) => {
+      const p = SHS.storage.ladenProfil(eintrag.id);
+      if (!p) return '';
+      const t = career.aktivesTeam(p);
+      const hunde = p.teams.map((x) => `${esc(x.hund.name)} <span class="klein">LK ${x.lk}</span>`).join(' · ');
+      const titel = p.teams.reduce((n, x) => n + (x.titel || []).length, 0);
+      return `<li class="profil-karte">
+        <button class="profil-oeffnen" data-profil="${esc(p.id)}">
+          <canvas class="profil-bild" data-rasse="${esc(t.hund.rasse)}" data-fell="${esc(t.hund.fell || '')}"></canvas>
+          <span class="profil-text">
+            <b>${esc(p.hfName)}</b>
+            <span>${hunde}</span>
+            <span class="klein">Woche ${t.woche} · ${vorZeit(eintrag.geaendert)}${titel ? ` · 🏆 ${titel}` : ''}</span>
+          </span>
+          <span class="profil-pfeil" aria-hidden="true">▶</span>
+        </button>
+        <button class="profil-loeschen" data-loeschen="${esc(p.id)}" title="Benutzer ${esc(p.hfName)} löschen" aria-label="Benutzer ${esc(p.hfName)} löschen">✕</button>
+      </li>`;
+    }).join('');
     zeige(`
       <div class="startseite">
-        <div class="logo">🐕‍🦺 <span>SHS</span></div>
-        <h1>Spürhundesport</h1>
-        <p class="unter">Training und Prüfungen nach der VDH-Spürhundesport-Prüfungsordnung</p>
-        ${profile.length ? `<h3>Weiterspielen</h3><ul class="profil-liste">${liste}</ul>` : ''}
+        <header class="start-held">
+          <canvas class="start-szene" aria-hidden="true"></canvas>
+          <div class="start-titel">
+            <span class="start-kuerzel">SHS</span>
+            <h1>Spürhundesport</h1>
+            <p>Training und Prüfungen nach der VDH-Spürhundesport-Prüfungsordnung</p>
+          </div>
+        </header>
+
+        <ul class="start-punkte">
+          <li><b>Suchen nach PO</b> Trümmerfeld, Fläche und Behältnisstrecke in LK 1 bis 3, bewertet mit 60 Punkten Such- und 40 Punkten Anzeigeleistung.</li>
+          <li><b>Den Hund lesen</b> Rute, Nase und Blick verraten, ob er im Geruch ist oder unsicher anzeigt. Du meldest die Anzeige mit dem Handzeichen.</li>
+          <li><b>Ausbilden und prüfen</b> Mo, Mi und Fr trainieren, dann Prüfungen, Klassenaufstieg und Meisterschaften.</li>
+        </ul>
+
+        ${profile.length ? `<section class="start-bereich"><h2>Weiterspielen</h2><ul class="profil-liste">${karten}</ul></section>` : ''}
+
         <div class="start-knoepfe">
-          <button class="${profile.length ? '' : 'primaer '}gross" data-a="neu">Neuer Benutzer</button>
+          <button class="${profile.length ? '' : 'primaer '}gross" data-a="neu">${profile.length ? 'Neuer Benutzer' : 'Los geht’s – Team anlegen'}</button>
           <button data-a="import">Spielstand importieren…</button>
           <input type="file" accept=".json,application/json" class="versteckt" id="importDatei">
         </div>
-        <p class="version">Version ${esc(SHS.VERSION || '')} · läuft komplett offline · Spielstände bleiben in diesem Browser</p>
-        <p class="recht-links"><a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a> · <a href="https://github.com/mbruver-source/SHS-Game">Quellcode</a></p>
+
+        <footer class="start-fuss">
+          <p>Version ${esc(SHS.VERSION || '')} · läuft komplett offline · Spielstände bleiben in diesem Browser</p>
+          <p class="recht-links"><a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a> · <a href="https://github.com/mbruver-source/SHS-Game">Quellcode</a></p>
+        </footer>
       </div>`);
+
+    // Hundebilder der Benutzer
+    app.root.querySelectorAll('.profil-bild').forEach((c) => hundPortrait(c, c.dataset.rasse, c.dataset.fell || undefined, true));
+
+    // Szene oben: ein zufälliger Hund in Platzanzeige am Behälter (Atmung, Rute)
+    const rassen = SHS.rassen.liste;
+    const rasse = rassen[Math.floor(Math.random() * rassen.length)];
+    const varianten = Object.keys(SHS.rassen.farben(rasse));
+    const fell = varianten[Math.floor(Math.random() * varianten.length)];
+    const canvas = app.root.querySelector('.start-szene');
+    let laeuft = true;
+    const t0 = performance.now();
+    const bild = (jetzt) => {
+      if (!laeuft) return;
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.clientWidth; const h = canvas.clientHeight;
+      if (w && h) {
+        if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+        const g = canvas.getContext('2d');
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const breite = Math.min(w * (w > 640 ? 0.6 : 1), h * 2.6); // breit: links Platz für den Titel
+        g.clearRect(0, 0, w, h);
+        g.save();
+        g.translate(w - breite, 0);
+        SHS.grafik.zeichneAnzeigeSzene(g, breite, h, {
+          rasse, fell, disziplin: 'behaeltnis', lk: 1, quelleHoehe: 0.14, quelleTyp: 'ziel', abstand: 0.09,
+          rute: 0.45, t: (jetzt - t0) / 1000,
+        });
+        g.restore();
+        if (breite < w) {
+          // linken Rand mit Himmel/Wiese der Szene fortsetzen
+          const himmel = g.createLinearGradient(0, 0, 0, h * 0.3);
+          himmel.addColorStop(0, '#cfe3f1'); himmel.addColorStop(1, '#eef5ea');
+          g.fillStyle = himmel; g.fillRect(0, 0, w - breite, h * 0.3);
+          g.fillStyle = '#4f7a3a'; g.fillRect(0, h * 0.24, w - breite, h * 0.06);
+          const wiese = g.createLinearGradient(0, h * 0.3, 0, h);
+          wiese.addColorStop(0, '#7fa95c'); wiese.addColorStop(1, '#4f7a35');
+          g.fillStyle = wiese; g.fillRect(0, h * 0.3, w - breite, h * 0.7);
+        }
+      }
+      if (!window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(bild);
+    };
+    requestAnimationFrame(bild);
+    app.szene = { aufraeumen: () => { laeuft = false; } };
+
     app.root.querySelector('.startseite').addEventListener('click', (e) => {
       const z = e.target.closest('[data-a],[data-profil],[data-loeschen]');
       if (!z) return;
