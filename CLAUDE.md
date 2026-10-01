@@ -26,3 +26,10 @@ Zuerst `docs/Konzept.md` lesen (Aufbau, Spielannahmen, Dateien).
 - Remote: https://github.com/mbruver-source/SHS-Game (privat), Branch `main`.
 - Pro fertiger Version: Version in `js/version.js` + `package.json` erhöhen, Tests grün, Paket bauen,
   committen, Tag `vX.Y.Z` setzen und `git push origin main --tags` (mit Marco am 01.10.2026 so abgestimmt).
+
+## Online-Version (Handy)
+- Privates Claude-Artifact: https://claude.ai/artifact/NDUGkSveHWAy8mizMk4f9p
+- Aktualisieren: `node tools/artifact.js` (baut `dist/artifact/index.html` und gibt die Dateiliste aus), dann mit dem
+  Artifact-Tool an diese `url` veröffentlichen (Datei `dist/artifact/index.html`, `files` = ausgegebene Liste).
+- In der Artifact-Umgebung sind Downloads und Pop-ups gesperrt: Export/Import läuft dort über Text kopieren/einfügen,
+  die Urkunde erscheint als Ansicht im Spiel.

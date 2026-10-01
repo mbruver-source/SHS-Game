@@ -20,10 +20,44 @@
     neu.forEach((e, i) => setTimeout(() => hinweis(`${e.symbol} Erfolg: ${e.name} – ${e.text}`), 600 + i * 1800));
   }
 
+  // Export als Datei; zusätzlich als Text zum Kopieren (z. B. für das Handy oder wo Downloads gesperrt sind)
   function exportieren() {
     app.profil.letzterExport = app.stand.woche;
     speichern();
-    SHS.storage.exportieren(app.profil);
+    try { SHS.storage.exportieren(app.profil); } catch (e) { /* Download gesperrt */ }
+    const text = JSON.stringify(app.profil);
+    const bg = dialog(`<h3>Spielstand sichern</h3>
+      <p>Die Sicherungsdatei wird heruntergeladen, sofern der Browser das erlaubt. Alternativ kopierst du den Spielstand als Text
+      und fügst ihn auf einem anderen Gerät unter „Importieren“ → „Text einfügen“ ein.</p>
+      <textarea id="exportText" class="spielstand-text" readonly></textarea>`, [
+      { text: 'Schließen' },
+      { text: 'Text kopieren', primaer: true, aktion: (d) => {
+        const ta = d.querySelector('#exportText');
+        const markieren = () => { ta.focus(); ta.select(); hinweis('Text markiert – jetzt kopieren (Strg+C bzw. lange tippen).'); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => hinweis('Spielstand kopiert.'), markieren);
+        } else markieren();
+        return false;
+      } },
+    ]);
+    bg.querySelector('#exportText').value = text;
+  }
+
+  // Import: Datei wählen oder Text einfügen
+  function importAuswahl() {
+    dialog(`<h3>Spielstand importieren</h3><p>Wähle eine Sicherungsdatei oder füge den kopierten Spielstand-Text ein. Der Spielstand wird als eigener Benutzer angelegt.</p>
+      <textarea id="importText" class="spielstand-text" placeholder="Spielstand-Text hier einfügen"></textarea>`, [
+      { text: 'Abbrechen' },
+      { text: 'Datei wählen…', aktion: () => { const f = app.root.querySelector('#importDatei'); if (f) f.click(); } },
+      { text: 'Text einfügen', primaer: true, aktion: (d) => {
+        const t = d.querySelector('#importText').value.trim();
+        if (!t) { hinweis('Bitte zuerst den Spielstand-Text einfügen.'); return false; }
+        SHS.storage.importieren({ text: () => Promise.resolve(t) }).then((p) => {
+          profilOeffnen(p); speichern(); hinweis(`Spielstand von ${p.hfName} importiert.`); hof();
+        }).catch((err) => hinweis(err.message === 'Die Datei ist kein gültiger SHS-Spielstand.' ? 'Der Text ist kein gültiger SHS-Spielstand.' : 'Der Text konnte nicht gelesen werden.'));
+        return undefined;
+      } },
+    ]);
   }
 
   function profilOeffnen(profil) {
@@ -139,7 +173,7 @@
         ]);
       }
       if (z.dataset.a === 'neu') neuesSpiel('profil');
-      if (z.dataset.a === 'import') app.root.querySelector('#importDatei').click();
+      if (z.dataset.a === 'import') importAuswahl();
     });
     app.root.querySelector('#importDatei').addEventListener('change', importAusDatei);
   }
@@ -330,7 +364,7 @@
       if (a === 'erfolge') erfolgeZeigen();
       if (a === 'statistik') leistungsnachweis();
       if (a === 'einstellungen') einstellungen();
-      if (a === 'import') app.root.querySelector('#importDatei').click();
+      if (a === 'import') importAuswahl();
       if (a === 'start') start();
       if (z.dataset.pruefung) pruefungAnmeldung(s.ausschreibungen.find((x) => x.id === z.dataset.pruefung));
     });
@@ -827,10 +861,22 @@
       </div>
       <p style="font-family:system-ui;font-size:8pt;color:#888;text-align:center">Erstellt mit SHS-Game ${esc(SHS.VERSION)} – Spielergebnis, kein offizieller Leistungsnachweis.</p>
       </body></html>`;
-    const w = window.open('', '_blank');
-    if (!w) { hinweis('Bitte Pop-ups für dieses Spiel erlauben, um die Urkunde zu öffnen.'); return; }
-    w.document.write(html);
-    w.document.close();
+    let w = null;
+    try { w = window.open('', '_blank'); } catch (err) { w = null; }
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+      return;
+    }
+    // Ohne Pop-up (z. B. eingebettet): Urkunde als Ansicht im Spiel
+    const ansicht = document.createElement('div');
+    ansicht.className = 'urkunde-ansicht';
+    const inhalt = html.slice(html.indexOf('<div class="rahmen">'), html.lastIndexOf('</body>'));
+    const stil = html.slice(html.indexOf('<style>') + 7, html.indexOf('</style>')).replace(/(^|\})\s*([^{}@]+)\{/g, (m, a, sel) => `${a} ${sel.split(',').map((x) => `.urkunde-ansicht ${x.trim()}`).join(', ')} {`);
+    ansicht.innerHTML = `<style>${stil}</style><div class="urkunde-blatt">${inhalt}</div>
+      <div class="knopfreihe"><button class="primaer" data-a="zu">Schließen</button></div>`;
+    ansicht.querySelector('[data-a=zu]').addEventListener('click', () => ansicht.remove());
+    document.body.appendChild(ansicht);
   }
 
   function erfolgeZeigen() {
