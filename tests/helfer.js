@@ -1,7 +1,7 @@
 // Lädt die Spiel-Skripte in Node (sie hängen sich an globalThis.SHS).
 const path = require('path');
 
-const DATEIEN = ['version', 'po', 'rng', 'scent', 'layouts', 'judge', 'rassen', 'dog', 'wetter', 'suchlage', 'career', 'empfehlung', 'competition', 'nachbetrachtung', 'einfuehrung', 'storage'];
+const DATEIEN = ['version', 'po', 'rng', 'scent', 'layouts', 'judge', 'rassen', 'dog', 'wetter', 'suchlage', 'career', 'empfehlung', 'erfolge', 'competition', 'nachbetrachtung', 'einfuehrung', 'storage'];
 for (const f of DATEIEN) require(path.join(__dirname, '..', 'js', f + '.js'));
 
 function testHund(stufe) {

@@ -257,6 +257,7 @@
       woche: stand.woche, art: eintrag.art, disziplin: eintrag.disziplin, lk: eintrag.lk,
       status: e.status, punkte: e.punkte, gefunden: !!e.gefunden, fehlanzeigen: e.fehlanzeigen || 0,
       fehler: e.fehler || {}, intensitaet: e.intensitaet || 0,
+      regen: !!(e.suchlage && e.suchlage.wetter && e.suchlage.wetter.regen) || !!eintrag.regen,
     });
     if (stand.suchprotokoll.length > 30) stand.suchprotokoll.splice(0, stand.suchprotokoll.length - 30);
   }

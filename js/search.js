@@ -460,8 +460,28 @@
     // ------------------------------------------------------------------ Zeichnen
     zeichne() {
       const g = this.g;
-      g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
       const W = this.canvas.width / this.dpr; const H = this.canvas.height / this.dpr;
+      // Unveränderlicher Hintergrund (Gras, Kies, Mittelweg, Band) einmal vorzeichnen – entlastet Tablets/Handys
+      const schluessel = `${this.canvas.width}x${this.canvas.height}:${this.rot}:${this.skala}`;
+      if (!this.hgCache || this.hgSchluessel !== schluessel) {
+        const c = this.hgCache || document.createElement('canvas');
+        c.width = this.canvas.width; c.height = this.canvas.height;
+        const echt = this.g;
+        this.g = c.getContext('2d');
+        this.g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+        this.zeichneHintergrund(W, H);
+        this.g = echt;
+        this.hgCache = c; this.hgSchluessel = schluessel;
+      }
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.drawImage(this.hgCache, 0, 0);
+      g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      const b = this.lage.bereich;
+      this.zeichneVordergrund(W, H, b);
+    }
+
+    zeichneHintergrund(W, H) {
+      const g = this.g;
       g.fillStyle = FARBEN.grasDunkel;
       g.fillRect(0, 0, W, H);
       const welt = this.lage.welt;
@@ -483,6 +503,10 @@
         g2.restore();
       }
       this.rahmen(b.x, b.y, b.w, b.h, FARBEN.band, 2);
+    }
+
+    zeichneVordergrund(W, H) {
+      const g = this.g;
       if (this.geruchsAnsicht) this.zeichneGeruch();
       this.zeichneAnsatz();
       this.zeichneVerstecke();

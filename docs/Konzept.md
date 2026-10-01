@@ -95,6 +95,7 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 | `js/suchlage.js` | Ablauf einer Suchlage, HF-Bot, kopflose Simulation |
 | `js/career.js` | Spielstand, Training, Leistungsnachweis, Aufstieg |
 | `js/empfehlung.js` | Trainingsempfehlung: Schwächen, Geruchsbilder, Fehlerauswertung, Rangliste der Trainings |
+| `js/erfolge.js` | Erfolge/Abzeichen je Benutzer |
 | `js/competition.js` | KI-Teams, Prüfungssimulation |
 | `js/storage.js` | localStorage, Export/Import |
 | `js/ton.js` | Töne per WebAudio (synthetisch): Hörzeichen, Glocke, Bellen, Außenreize, Hecheln, Wind |
@@ -258,3 +259,10 @@ Die Meisterschaften stehen mit 🏆 und Qualifikationsstand in den Ausschreibung
 - **Speicherung:** Am Wochenende hält das Spiel die Werte jedes Hundes fest (`team.historie`, höchstens 104 Wochen).
 - **Darstellung:** In der Trainingsempfehlung steht „Entwicklung der Werte“ als kleine Einzeldiagramme, ein Diagramm je Wert. Jedes zeigt eine Linie und das Ziel der aktuellen LK gestrichelt.
 - **Details:** Beim Überfahren erscheint ein Tooltip mit Woche und Wert. Zusätzlich gibt es eine Tabellenansicht.
+
+## Komfort und Motivation (v0.15)
+- **Leistung:** Der unveränderliche Hintergrund der Suchlage wird einmal vorgezeichnet und zwischengespeichert. Ein Bild braucht dadurch etwa 4-mal weniger Zeit, was auf Tablets und Handys spürbar ist.
+- **Erfolge:** 16 Abzeichen je Benutzer, z. B. erste Suche, fehlerfrei (100 Punkte), stiller Hundeführer, wetterfest, Vorzüglich, Meisterschaft, Champion, fleißig, Supernase und ein Jahr dabei. Sie werden bei jedem Speichern geprüft und per Hinweis gemeldet; die Liste erreichst du im Hof über „Erfolge“.
+- **Statistik je Hund:** im Leistungsnachweis bzw. über „Statistik“: Prüfungen, Quote der bestandenen Prüfungen, Bestwert, Fundquote, Ø Punkte je Suche, Titel, Trainingseinheiten und häufigste Fehler.
+- **Urkunde mit Bewertungsbogen:** Nach jeder Prüfung und im Leistungsnachweis (🖨) kannst du sie drucken. Sie enthält Such- und Anzeigeleistung je Disziplin samt Begründung des WR. Sie ist als Spielergebnis gekennzeichnet.
+- **Sicherungs-Erinnerung:** Spätestens 8 Wochen nach dem letzten Export bietet das Spiel alle 4 Wochen den Export an.

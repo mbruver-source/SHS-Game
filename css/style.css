@@ -233,3 +233,12 @@ table { border-collapse: collapse; width: 100%; }
 .vl-pkt:hover .vl-dot, .vl-pkt:hover .vl-kreuz { opacity: 1; }
 .vl-tabelle { margin-top: .8em; font-size: .88em; }
 .tabelle-scroll { overflow-x: auto; }
+.stat-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.stat-kachel { background: var(--gruen-hell); border-radius: 8px; padding: .5em .7em; display: flex; flex-direction: column; }
+.stat-kachel b { font-size: 1.4em; font-variant-numeric: tabular-nums; }
+.stat-kachel span { font-size: .82em; color: var(--leise); }
+.klein-knopf { padding: .15em .45em; font-size: .9em; }
+.erfolge-liste { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px; }
+.erfolge-liste li { display: flex; gap: 8px; align-items: center; padding: 6px; border-radius: 8px; border: 1px solid var(--linie); opacity: .6; }
+.erfolge-liste li.ok { opacity: 1; border-color: var(--gruen); background: var(--gruen-hell); }
+.erfolg-symbol { font-size: 1.5em; width: 1.6em; text-align: center; }

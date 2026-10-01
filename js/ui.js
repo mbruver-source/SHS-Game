@@ -12,9 +12,18 @@
   const app = { profil: null, stand: null, root: null, szene: null };
 
   function speichern() {
-    if (app.profil && !SHS.storage.speichernProfil(app.profil)) {
+    if (!app.profil) return;
+    const neu = SHS.erfolge.pruefen(app.profil);
+    if (!SHS.storage.speichernProfil(app.profil)) {
       hinweis('Der Spielstand konnte im Browser nicht gespeichert werden. Bitte über „Exportieren“ sichern.');
     }
+    neu.forEach((e, i) => setTimeout(() => hinweis(`${e.symbol} Erfolg: ${e.name} – ${e.text}`), 600 + i * 1800));
+  }
+
+  function exportieren() {
+    app.profil.letzterExport = app.stand.woche;
+    speichern();
+    SHS.storage.exportieren(app.profil);
   }
 
   function profilOeffnen(profil) {
@@ -282,6 +291,8 @@
             <button data-a="empfehlung">Trainingsempfehlung</button>
             <button data-a="nachbetrachtung">Nachbetrachtung</button>
             <button data-a="einfuehrung">Einführung</button>
+            <button data-a="erfolge">Erfolge (${Object.keys(app.profil.erfolge || {}).length}/${SHS.erfolge.ERFOLGE.length})</button>
+            <button data-a="statistik">Statistik</button>
             <button data-a="regeln">Regeln (PO-Kurzfassung)</button>
             <button data-a="export">Spielstand exportieren</button>
             <button data-a="import">Importieren…</button>
@@ -308,7 +319,9 @@
       if (a === 'empfehlung') trainingsEmpfehlung();
       if (a === 'nachbetrachtung') nachbetrachtungAuswahl();
       if (a === 'einfuehrung') einfuehrungAnbieten(true);
-      if (a === 'export') SHS.storage.exportieren(app.profil);
+      if (a === 'export') exportieren();
+      if (a === 'erfolge') erfolgeZeigen();
+      if (a === 'statistik') leistungsnachweis();
       if (a === 'import') app.root.querySelector('#importDatei').click();
       if (a === 'start') start();
       if (z.dataset.pruefung) pruefungAnmeldung(s.ausschreibungen.find((x) => x.id === z.dataset.pruefung));
@@ -385,6 +398,12 @@
       career.wocheBeendenProfil(app.profil);
       speichern();
       hof();
+      const seitExport = app.stand.woche - (app.profil.letzterExport || 1);
+      if (seitExport >= 8 && seitExport % 4 === 0) {
+        dialog('<h3>Spielstand sichern?</h3><p>Dein Spielstand liegt nur in diesem Browser. Wird der Browserverlauf gelöscht, ist er weg. Eine Sicherungsdatei schützt davor (und nimmt den Spielstand auf andere Geräte mit).</p>', [
+          { text: 'Später' }, { text: 'Jetzt exportieren', primaer: true, aktion: () => exportieren() },
+        ]);
+      }
       const neu15 = teams.filter((t) => t.hund.alterMonate >= po.MINDESTALTER_MONATE && t.hund.alterMonate - 7 / 30.44 < po.MINDESTALTER_MONATE);
       if (neu15.length) {
         dialog(`<h3>${neu15.map((t) => esc(t.hund.name)).join(' und ')} ${neu15.length > 1 ? 'sind' : 'ist'} jetzt 15 Monate alt</h3><p>Ab sofort sind Prüfungen möglich.</p>`);
@@ -426,7 +445,7 @@
             auto: q('#uauto').checked, hfErfahrung: career.hfErfahrungProfil(app.profil),
           }, (erg, szene) => {
             if (erg) {
-              career.protokolliereSuche(s, { art: 'uebung', disziplin: q('#ud').value, lk: +q('#ul').value, ergebnis: erg });
+              career.protokolliereSuche(s, { art: 'uebung', disziplin: q('#ud').value, lk: +q('#ul').value, ergebnis: erg, regen: !!(szene && szene.s.wetter && szene.s.wetter.regen) });
               SHS.nachbetrachtung.archivieren(s, szene && szene.s, { art: 'Übungssuche', datum: career.datumText(s.woche) });
               const d = career.uebungssucheVerbuchen(s, erg, q('#ug').value);
               speichern();
@@ -530,7 +549,7 @@
       modus: 'pruefung', titel, auto: p.vorfuehrung === 'auto', hfErfahrung: career.hfErfahrungProfil(app.profil),
     };
     const verbuchen = (erg, szene) => {
-      career.protokolliereSuche(s, { art: 'pruefung', disziplin: schritt.disziplin, lk: p.lk, ergebnis: erg });
+      career.protokolliereSuche(s, { art: 'pruefung', disziplin: schritt.disziplin, lk: p.lk, ergebnis: erg, regen: !!(szene && szene.s.wetter && szene.s.wetter.regen) });
       SHS.nachbetrachtung.archivieren(s, (szene && szene.s) || erg.suchlage, { art: `Prüfung ${p.ausschreibung.verein}`, datum: career.datumText(p.ausschreibung.woche) });
       p.details[schritt.disziplin] = erg;
       if (erg.status === 'disq') p.status = 'disq';
@@ -578,6 +597,7 @@
         pruefungId: a.id, woche: a.woche, datum: career.datumText(a.woche), verein: a.verein, art: a.art,
         lk: p.lk, einzelwerte: p.einzelwerte, punkte: eigenes.punkte, note: eigenes.text, abk: eigenes.abk,
         status: p.status, platz: ich.platz, teilnehmer: teilnehmer.length, meisterschaft: a.meisterschaft || null,
+        details: Object.fromEntries(Object.entries(p.details).map(([d, r]) => [d, r ? { such: r.such, anzeige: r.anzeige, begruendung: r.begruendung } : null])),
       };
       const { aufstieg } = career.eintragen(s, eintrag);
       speichern();
@@ -594,9 +614,10 @@
           ${aufstieg ? `<div class="erfolg">🎉 Klassenaufstieg! ${esc(s.hund.name)} startet ab jetzt in LK ${s.lk}.</div>` : ''}
           <table class="rangliste"><tr><th>Platz</th><th>Team</th>${disz.map((d) => `<th>${diszName(d)}</th>`).join('')}<th>Gesamt</th><th>Wertnote</th></tr>${zeilen}</table>
           <p class="hinweis">Gleiche Punktzahl = gleicher Platz, der folgende Platz entfällt. Nicht bestandene Teams werden nicht platziert.</p>
-          <div class="knopfreihe">${zweiterHundKnopf(a)}<button class="primaer" data-a="hof">Eingetragen – zurück zum Training</button></div>
+          <div class="knopfreihe"><button data-a="urkunde">🖨 Urkunde</button>${zweiterHundKnopf(a)}<button class="primaer" data-a="hof">Eingetragen – zurück zum Training</button></div>
         </div>`);
       app.root.querySelector('[data-a=hof]').addEventListener('click', hof);
+      app.root.querySelector('[data-a=urkunde]').addEventListener('click', () => urkundeDrucken(s, eintrag));
       const zweiter = app.root.querySelector('[data-zweiter]');
       if (zweiter) {
         zweiter.addEventListener('click', () => {
@@ -620,8 +641,9 @@
   function eintragZeile(e) {
     const werte = Object.entries(e.einzelwerte).map(([d, v]) => `${diszName(d).replace('suche', '').replace('strecke', '')}: ${v === null ? '–' : v}`).join(', ');
     const note = e.status === 'disq' ? 'Disqualifikation' : `${e.punkte} P. – ${e.note}`;
-    return `<tr><td>${e.datum}</td><td>${esc(e.verein)}<br><span class="klein">${e.art === 'DK' ? 'Dreikampf' : 'Einzeldisziplin'} LK ${e.lk}</span></td>
-      <td class="klein">${werte}</td><td><b>${note}</b>${e.platz ? `<br><span class="klein">Platz ${e.platz}/${e.teilnehmer}</span>` : ''}</td></tr>`;
+    return `<tr><td>${e.datum}</td><td>${e.meisterschaft ? '🏆 ' : ''}${esc(e.verein)}<br><span class="klein">${e.art === 'DK' ? 'Dreikampf' : 'Einzeldisziplin'} LK ${e.lk}</span></td>
+      <td class="klein">${werte}</td><td><b>${note}</b>${e.platz ? `<br><span class="klein">Platz ${e.platz}/${e.teilnehmer}</span>` : ''}</td>
+      <td><button class="klein-knopf" data-urkunde="${esc(e.pruefungId)}" title="Urkunde und Bewertungsbogen drucken">🖨</button></td></tr>`;
   }
 
   function leistungsnachweis() {
@@ -637,9 +659,89 @@
         <table class="ln">${zeilen}</table>
         <h3>Bestwerte je Leistungsklasse (Aufstieg bei ≥ 70 in jeder Disziplin)</h3>
         <table class="ln"><tr><th></th>${po.DISZIPLIN_REIHENFOLGE.map((d) => `<th>${diszName(d)}</th>`).join('')}</tr>${best}</table>
+        ${statistikHtml(s)}
         <div class="knopfreihe"><button class="primaer" data-a="hof">Zurück</button></div>
       </div>`);
     app.root.querySelector('[data-a=hof]').addEventListener('click', hof);
+    app.root.querySelector('.ln').addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-urkunde]');
+      if (b) urkundeDrucken(s, s.leistungsnachweis.find((x) => x.pruefungId === b.dataset.urkunde));
+    });
+  }
+
+  // Statistik je Hund aus Leistungsnachweis und Suchprotokoll
+  function statistikHtml(s) {
+    const ln = s.leistungsnachweis;
+    const best = ln.filter((e) => e.status !== 'disq' && !['nB', 'ABBR'].includes(e.abk));
+    const prot = s.suchprotokoll || [];
+    const uebungen = prot.filter((e) => e.art === 'uebung');
+    const fundquote = prot.length ? Math.round((prot.filter((e) => e.gefunden).length / prot.length) * 100) : null;
+    const schnitt = (liste) => (liste.length ? Math.round(liste.reduce((a, e) => a + (e.punkte || 0), 0) / liste.length) : null);
+    const fehler = {};
+    for (const e of prot) for (const [k, n] of Object.entries(e.fehler || {})) fehler[k] = (fehler[k] || 0) + n;
+    const haeufig = Object.entries(fehler).sort((a, b) => b[1] - a[1]).slice(0, 3)
+      .map(([k, n]) => `${esc(po.ABZUEGE[k] ? po.ABZUEGE[k].text : k)} (${n}×)`).join(', ') || '–';
+    const kachel = (wert, text) => `<div class="stat-kachel"><b>${wert}</b><span>${text}</span></div>`;
+    return `<h3>Statistik</h3><div class="stat-raster">
+      ${kachel(ln.length, 'Prüfungen')}
+      ${kachel(ln.length ? Math.round((best.length / ln.length) * 100) + ' %' : '–', 'bestanden')}
+      ${kachel(ln.length ? Math.max(...ln.map((e) => e.punkte || 0)) : '–', 'beste Punktzahl')}
+      ${kachel(uebungen.length, 'Übungssuchen (zuletzt)')}
+      ${kachel(fundquote === null ? '–' : fundquote + ' %', 'Fundquote')}
+      ${kachel(schnitt(prot) ?? '–', 'Ø Punkte je Suche')}
+      ${kachel((s.titel || []).length, 'Titel')}
+      ${kachel(s.verlauf.length, 'Trainingseinheiten')}
+    </div><p class="klein">Häufigste Fehler: ${haeufig}${(s.titel || []).length ? ` · Titel: ${s.titel.map(esc).join(', ')}` : ''}</p>`;
+  }
+
+  // Urkunde mit Bewertungsbogen in einem eigenen Fenster zum Drucken
+  function urkundeDrucken(s, e) {
+    if (!e) return;
+    const disz = Object.keys(e.einzelwerte);
+    const zeilen = disz.map((d) => {
+      const det = (e.details || {})[d] || {};
+      return `<tr><td>${diszName(d)}</td><td>${det.such ?? '–'}</td><td>${det.anzeige ?? '–'}</td><td>${e.einzelwerte[d] === null ? '–' : e.einzelwerte[d]}</td></tr>
+        ${det.begruendung ? `<tr class="b"><td colspan="4">${det.begruendung.filter(Boolean).map(esc).join('<br>')}</td></tr>` : ''}`;
+    }).join('');
+    const h = s.hund;
+    const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Urkunde ${esc(h.name)} ${esc(e.datum)}</title>
+      <style>
+        body { font-family: Georgia, 'Times New Roman', serif; margin: 2cm; color: #222; }
+        .rahmen { border: 6px double #3d7a2a; padding: 1.2cm 1.5cm; }
+        h1 { text-align: center; font-size: 30pt; margin: 0 0 .2em; color: #3d7a2a; letter-spacing: .05em; }
+        h2 { text-align: center; font-weight: normal; margin: 0 0 1em; }
+        .gross { text-align: center; font-size: 18pt; margin: .6em 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1em; font-family: system-ui, sans-serif; font-size: 10.5pt; }
+        th, td { border-bottom: 1px solid #bbb; padding: 4px 6px; text-align: left; }
+        tr.b td { color: #555; font-size: 9pt; border-bottom: 1px solid #ddd; }
+        .fuss { display: flex; justify-content: space-between; margin-top: 2cm; font-family: system-ui, sans-serif; font-size: 10pt; }
+        .fuss div { border-top: 1px solid #555; width: 40%; padding-top: 4px; text-align: center; }
+        .knopf { text-align: center; margin: 1em; } @media print { .knopf { display: none; } body { margin: 0; } }
+      </style></head><body>
+      <div class="knopf"><button onclick="window.print()">Drucken</button></div>
+      <div class="rahmen">
+        <h1>Urkunde</h1>
+        <h2>Spürhundesport – ${e.art === 'DK' ? 'SHS-Dreikampf' : 'SHS-Einzeldisziplin'} · Leistungsklasse ${e.lk}</h2>
+        <p class="gross"><b>${esc(h.name)}</b> (${esc(h.rasse)}, ${esc(h.geschlecht || 'Rüde')})<br>geführt von <b>${esc(s.hf.name)}</b></p>
+        <p class="gross">${e.status === 'disq' ? 'Disqualifikation' : `${e.punkte} Punkte – <b>${esc(e.note)}</b>`}${e.platz ? ` · Platz ${e.platz} von ${e.teilnehmer}` : ''}</p>
+        <p style="text-align:center">${esc(e.verein)} · ${esc(e.datum)}</p>
+        <table><tr><th>Disziplin</th><th>Suchleistung (60)</th><th>Anzeigeleistung (40)</th><th>Punkte</th></tr>${zeilen}</table>
+        <div class="fuss"><div>Prüfungsleiter</div><div>SHS-Wertungsrichter</div></div>
+      </div>
+      <p style="font-family:system-ui;font-size:8pt;color:#888;text-align:center">Erstellt mit SHS-Game ${esc(SHS.VERSION)} – Spielergebnis, kein offizieller Leistungsnachweis.</p>
+      </body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) { hinweis('Bitte Pop-ups für dieses Spiel erlauben, um die Urkunde zu öffnen.'); return; }
+    w.document.write(html);
+    w.document.close();
+  }
+
+  function erfolgeZeigen() {
+    const p = app.profil;
+    const erreicht = p.erfolge || {};
+    const liste = SHS.erfolge.ERFOLGE.map((e) => `<li class="${erreicht[e.id] ? 'ok' : ''}"><span class="erfolg-symbol">${erreicht[e.id] ? e.symbol : '🔒'}</span>
+      <div><b>${esc(e.name)}</b><br><span class="klein">${esc(e.text)}${erreicht[e.id] ? ` · Woche ${erreicht[e.id]}` : ''}</span></div></li>`).join('');
+    dialog(`<h3>Erfolge von ${esc(p.hfName)} <small class="klein">${Object.keys(erreicht).length}/${SHS.erfolge.ERFOLGE.length}</small></h3><ul class="erfolge-liste">${liste}</ul>`);
   }
 
   // ------------------------------------------------------------------ Einführung

@@ -61,3 +61,12 @@ test('Speicher: mehrere Benutzer, alter Einzel-Spielstand wird übernommen', () 
   assert.equal(SHS.storage.profile().length, 1);
   assert.ok(m.has('shs-game-spielstand'), 'alter Spielstand bleibt als Sicherung erhalten');
 });
+
+test('Erfolge werden einmalig vergeben', () => {
+  const p = SHS.career.neuesProfil('A', 'Aiko', 'Mischling', null, 4);
+  assert.deepEqual(SHS.erfolge.pruefen(p).map((e) => e.id), []);
+  SHS.career.protokolliereSuche(p.teams[0], { art: 'uebung', disziplin: 'truemmer', lk: 1, ergebnis: { status: 'ok', punkte: 100, gefunden: true, fehler: {} } });
+  const neu = SHS.erfolge.pruefen(p).map((e) => e.id);
+  assert.ok(neu.includes('erste_suche') && neu.includes('fund') && neu.includes('fehlerfrei'));
+  assert.deepEqual(SHS.erfolge.pruefen(p), [], 'nicht doppelt');
+});

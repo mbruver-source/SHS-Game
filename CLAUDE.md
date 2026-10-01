@@ -8,7 +8,7 @@ Zuerst `docs/Konzept.md` lesen (Aufbau, Spielannahmen, Dateien).
   keine Web-Fonts, kein Build-Schritt. Jede JS-Datei hängt sich per
   `(function (SHS) { ... })(globalThis.SHS = globalThis.SHS || {})` an den Namensraum `SHS`.
   Neue Dateien in `index.html` (Reihenfolge beachten) und ggf. `tests/helfer.js` eintragen.
-- Logik (po, scent, layouts, judge, rassen, dog, wetter, suchlage, career, empfehlung, competition) bleibt DOM-frei, damit sie
+- Logik (po, scent, layouts, judge, rassen, dog, wetter, suchlage, career, empfehlung, erfolge, competition) bleibt DOM-frei, damit sie
   in Node testbar ist. DOM/Canvas/Audio nur in `ton.js`, `grafik.js`, `search.js`, `nachbetrachtung.js` (Wiedergabeteil), `einfuehrung.js` (Hof-Rundgang), `ui.js`, `storage.js`, `main.js`.
 - PO-Werte gehören nach `js/po.js`. Wo die PO keine Zahl nennt: als ANNAHME markieren und in
   `docs/Konzept.md` dokumentieren.
