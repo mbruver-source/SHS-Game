@@ -21,3 +21,8 @@ Zuerst `docs/Konzept.md` lesen (Aufbau, Spielannahmen, Dateien).
 - Tests: `node --test "tests/*.test.js"` (bzw. `npm test`)
 - Dev-Server: `node tools/server.js 8123`
 - Download-Paket: `powershell -ExecutionPolicy Bypass -File tools\paket.ps1` → `dist\SHS-Game-v<version>.zip`
+
+## Git / GitHub
+- Remote: https://github.com/mbruver-source/SHS-Game (privat), Branch `main`.
+- Pro fertiger Version: Version in `js/version.js` + `package.json` erhöhen, Tests grün, Paket bauen,
+  committen, Tag `vX.Y.Z` setzen und `git push origin main --tags` (mit Marco am 01.10.2026 so abgestimmt).
