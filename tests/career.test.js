@@ -48,3 +48,14 @@ test('Es gibt immer kommende Ausschreibungen und eine Prüfung hat mindestens 8 
   const r = SHS.competition.simuliereTeam(teams[0], { ...s.ausschreibungen[0], art: 'DK' }, 1, 1);
   assert.deepEqual(Object.keys(r.einzelwerte).sort(), ['behaeltnis', 'flaeche', 'truemmer']);
 });
+
+test('HF-Erfahrung wächst mit Training, Übungssuchen und Prüfungen', () => {
+  const s = career.neuerSpielstand('HF', 'Hund', 'Mischling', 6);
+  const start = career.hfErfahrung(s);
+  career.trainieren(s, 'anzeige');
+  const nachTraining = career.hfErfahrung(s);
+  career.uebungssucheVerbuchen(s, { gefunden: true }, 'korken');
+  const nachUebung = career.hfErfahrung(s);
+  career.eintragen(s, { pruefungId: 'x', lk: 1, art: 'ED', einzelwerte: { truemmer: 80 }, status: 'ok' });
+  assert.ok(start < nachTraining && nachTraining < nachUebung && nachUebung < career.hfErfahrung(s));
+});

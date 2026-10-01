@@ -15,10 +15,14 @@
   };
 
   class SuchSzene {
-    // opts wie SuchLage + { modus: 'uebung'|'pruefung', titel, onEnde(ergebnis, szene) }
+    // opts wie SuchLage + { modus: 'uebung'|'pruefung', titel, onEnde(ergebnis, szene),
+    //   auto: HF wird automatisch geführt, hfErfahrung (0..1) }
     constructor(container, opts) {
       this.opts = opts;
       this.s = new SHS.SuchLage(opts);
+      this.auto = !!opts.auto;
+      this.bot = this.auto ? new SHS.HFBot(this.s, opts.hfErfahrung ?? 0.5, SHS.rng((opts.seed * 7 + 13) >>> 0)) : null;
+      this.zeitraffer = 1;
       this.lage = this.s.lage;
       this.rot = false; // wird in groesseAnpassen() passend zur Bildschirmform gesetzt
       this.uebung = opts.modus === 'uebung';
@@ -52,6 +56,7 @@
           </div>
           <div class="hud-knoepfe">
             ${this.uebung ? '<button data-a="geruch" title="Geruchsansicht (G)">Geruchsansicht</button>' : ''}
+            ${this.auto ? '<button data-a="tempo" title="Zeitraffer (T)">Tempo 1×</button>' : ''}
             <button data-a="pause" title="Pause (P)">Pause</button>
             <button data-a="hilfe">Steuerung</button>
             ${this.uebung ? '<button data-a="abbrechen">Abbrechen</button>' : ''}
@@ -101,6 +106,7 @@
         if (a === 'pause') this.togglePause();
         if (a === 'hilfe') this.el.steuerung.classList.toggle('versteckt');
         if (a === 'abbrechen') this.beenden(true);
+        if (a === 'tempo') this.toggleTempo();
         e.target.blur();
       });
       this.groesseAnpassen();
@@ -157,13 +163,14 @@
         if (e.repeat) { this.tasten.add(k); return; }
         this.tasten.add(k);
         if (this.pause && k !== 'p') return;
+        if (k === 'p') this.togglePause();
+        if (k === 'n') this.nahAn = !this.nahAn;
+        if (k === 'g' && this.uebung) this.toggleGeruch();
+        if (this.auto) { if (k === 't') this.toggleTempo(); return; } // automatische Vorführung: keine Befehle
         if (k === 'h') this.s.armHeben();
         if (k === ' ') this.s.befehlSuch();
         if (k === 'r') this.s.befehlHier();
         if (k === 'b') this.s.befehlBleib();
-        if (k === 'g' && this.uebung) this.toggleGeruch();
-        if (k === 'p') this.togglePause();
-        if (k === 'n') this.nahAn = !this.nahAn;
       };
       this.onKeyUp = (e) => {
         const k = e.key.toLowerCase();
@@ -171,7 +178,7 @@
         if (k === 'e') this.s.anfassenEnde();
       };
       this.onClick = (e) => {
-        if (!this.laeuft || this.pause) return;
+        if (!this.laeuft || this.pause || this.auto) return;
         const r = this.canvas.getBoundingClientRect();
         const [x, y] = this.s2w(e.clientX - r.left, e.clientY - r.top);
         this.s.richtungsZeichen(x, y);
@@ -193,6 +200,11 @@
 
     toggleGeruch() { this.geruchsAnsicht = !this.geruchsAnsicht; }
     togglePause() { this.pause = !this.pause; }
+    toggleTempo() {
+      this.zeitraffer = this.zeitraffer === 1 ? 2 : this.zeitraffer === 2 ? 4 : 1;
+      const b = this.root.querySelector('[data-a=tempo]');
+      if (b) b.textContent = `Tempo ${this.zeitraffer}×`;
+    }
 
     eingabe(dt) {
       let sx = 0; let sy = 0;
@@ -213,8 +225,12 @@
       const dt = Math.min(0.05, (jetzt - this.letzteZeit) / 1000);
       this.letzteZeit = jetzt;
       if (!this.pause && this.s.phase !== 'ende') {
-        this.eingabe(dt);
-        this.s.update(dt);
+        if (this.auto) {
+          for (let i = 0; i < this.zeitraffer && this.s.phase !== 'ende'; i++) { this.bot.update(dt); this.s.update(dt); }
+        } else {
+          this.eingabe(dt);
+          this.s.update(dt);
+        }
       }
       if (this.wrArm > 0) this.wrArm -= dt;
       this.zeichne();
@@ -233,18 +249,21 @@
       const ws = this.lage.wind.staerke;
       this.el.wind.textContent = `Wind ${ws < 0.3 ? 'schwach' : ws < 0.6 ? 'mäßig' : 'frisch'}`;
       let phase;
+      const mittelwegHinweis = this.lage.mittelweg ? ' Hinweis: Der Hundeführer darf sich nur auf dem Mittelweg bewegen.' : '';
       if (this.pause) phase = 'Pause – P zum Fortsetzen';
+      else if (this.auto && s.phase !== 'ende') phase = `Automatische Vorführung (HF-Erfahrung ${Math.round(this.bot.erfahrung * 100)} %) – Tempo mit T, Pause mit P.${mittelwegHinweis}`;
       else if (s.phase === 'vorbereitung') {
         phase = s.eigengeruchNoetig && !s.eigengeruchErledigt
           ? 'Vorbereitung: Eigengeruch am markierten Versteck anbringen (E 3 s halten), dann zurück zum Hund und H drücken.'
           : 'Vorbereitung: Zum Hund am Ansatz gehen und mit H die Bereitschaft melden. Antäuschen mit E ist erlaubt.';
         if (s.hf.anfassen > 0) phase += ` (Anfassen ${s.hf.anfassen.toFixed(1)} s)`;
       } else if (s.phase === 'suche') {
-        if (s.warteZweitesZeichen) phase = 'LK 3: Neben den Hund gehen und erneut H drücken.';
+        if (s.warteZweitesZeichen) phase = this.lage.mittelweg ? 'LK 3: Auf dem Mittelweg auf Höhe des Hundes gehen und erneut H drücken.' : 'LK 3: Neben den Hund gehen und erneut H drücken.';
         else if (s.meldung) phase = `Anzeige gemeldet – der WR beobachtet (${Math.max(0, s.meldung.rest).toFixed(1)} s)`;
         else if (s.hund.zustand === 'sitzt' || s.hund.zustand === 'beiHF') phase = 'Hund mit „Such!“ (Leertaste) schicken.';
-        else phase = 'Suche läuft – lies deinen Hund. Bei Anzeige: H.';
+        else phase = 'Suche läuft – lies deinen Hund. Bei Anzeige: H.' + mittelwegHinweis;
       } else phase = 'Suchlage beendet.';
+      if (!this.auto && s.phase === 'vorbereitung') phase += mittelwegHinweis;
       this.el.phase.textContent = phase;
 
       while (this.nachrichtenGezeigt < s.nachrichten.length) {
@@ -300,6 +319,14 @@
       if (this.lage.mittelweg) {
         const m = this.lage.mittelweg;
         this.rechteck(m.x, m.y, m.w, m.h, FARBEN.mittelweg);
+        // Markierung (Sägemehl/Kreide) – der HF darf den Mittelweg nicht verlassen
+        const g2 = this.g;
+        g2.save(); g2.setLineDash([6, 4]); g2.strokeStyle = 'rgba(255,255,255,0.9)'; g2.lineWidth = 2;
+        for (const x of [m.x, m.x + m.w]) {
+          const [ax, ay] = this.w2s(x, m.y); const [bx, by] = this.w2s(x, m.y + m.h);
+          g2.beginPath(); g2.moveTo(ax, ay); g2.lineTo(bx, by); g2.stroke();
+        }
+        g2.restore();
       }
       this.rahmen(b.x, b.y, b.w, b.h, FARBEN.band, 2);
       if (this.geruchsAnsicht) this.zeichneGeruch();

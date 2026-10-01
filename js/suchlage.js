@@ -25,7 +25,8 @@
       this.hund.setzePosition(this.ansatz.x, this.ansatz.y);
       this.hund.richtung = Math.atan2(this.lage.bereich.y + this.lage.bereich.h / 2 - this.ansatz.y,
         this.lage.bereich.x + this.lage.bereich.w / 2 - this.ansatz.x);
-      this.hf = { x: this.ansatz.x - 0.6, y: this.ansatz.y, arm: false, stillSeit: 0, anfassen: 0, richtung: 0 };
+      const hfStart = this.platzNebenHund();
+      this.hf = { x: hfStart.x, y: hfStart.y, arm: false, stillSeit: 0, anfassen: 0, richtung: 0 };
       this.t = 0;
       this.phase = 'vorbereitung'; // vorbereitung | suche | ende
       this.zeit = 0; // gemessene Suchzeit
@@ -167,6 +168,26 @@
       return best;
     }
 
+    // Standplatz des HF beim Hund. In der Fläche immer auf dem Mittelweg (PO: HF nur auf dem Mittelweg).
+    platzNebenHund() {
+      const m = this.lage.mittelweg;
+      const h = this.hund;
+      if (m) {
+        const mitte = m.x + m.w / 2;
+        // am Ansatz hinter dem Hund (außerhalb der Fläche), sonst auf Höhe des Hundes
+        const ansatzOben = this.ansatz.y < m.y;
+        const draussen = h.y < m.y || h.y > m.y + m.h;
+        return { x: mitte, y: draussen ? h.y + (ansatzOben ? -0.5 : 0.5) : Math.max(m.y + 0.2, Math.min(m.y + m.h - 0.2, h.y)) };
+      }
+      return { x: h.x - 0.5, y: h.y };
+    }
+
+    // LK 3 zweites Handzeichen: neben dem Hund – in der Fläche auf dem Mittelweg auf Höhe des Hundes.
+    hfNebenHund() {
+      if (this.lage.mittelweg) return this.hfAufMittelweg() && Math.abs(this.hf.y - this.hund.y) < 1.0;
+      return Math.hypot(this.hf.x - this.hund.x, this.hf.y - this.hund.y) <= 1.0;
+    }
+
     hfAufMittelweg() {
       const m = this.lage.mittelweg;
       if (!m) return true;
@@ -197,8 +218,10 @@
 
       if (this.meldung) {
         if (this.warteZweitesZeichen) {
-          const d = Math.hypot(this.hf.x - this.hund.x, this.hf.y - this.hund.y);
-          if (d > 1.0) { this.meldeWR('Erst neben den Hund begeben.'); return; }
+          if (!this.hfNebenHund()) {
+            this.meldeWR(this.lage.mittelweg ? 'Auf dem Mittelweg auf Höhe des Hundes begeben.' : 'Erst neben den Hund begeben.');
+            return;
+          }
           this.warteZweitesZeichen = false;
           this.meldung.phase = 1;
           this.meldung.rest = this.meldung.phasen[1];
@@ -338,8 +361,6 @@
 
     pruefeMittelweg() {
       if (!this.lage.mittelweg) return;
-      // LK3: Für das zweite Handzeichen muss der HF neben den Hund – das ist kein Übertreten.
-      if (this.meldung) { this.aufMittelweg = this.hfAufMittelweg(); return; }
       const auf = this.hfAufMittelweg();
       if (!auf && this.aufMittelweg) {
         this.richter.fehler('mittelweg');
@@ -418,7 +439,7 @@
           if (this.gehe({ x: v.x - 0.5, y: v.y }, dt)) s.anfassen(dt);
           return;
         }
-        if (this.gehe({ x: s.hund.x - 0.5, y: s.hund.y }, dt)) s.armHeben();
+        if (this.gehe(s.platzNebenHund(), dt)) s.armHeben();
         return;
       }
       // Suche
@@ -426,7 +447,7 @@
       if (!this.gesendet) { s.befehlSuch(); this.gesendet = true; return; }
       if (s.meldung) {
         if (s.warteZweitesZeichen) {
-          if (this.gehe({ x: h.x - 0.5, y: h.y }, dt)) s.armHeben();
+          if (this.gehe(s.platzNebenHund(), dt)) s.armHeben();
         }
         return;
       }

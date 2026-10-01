@@ -108,3 +108,34 @@ test('LK 3: Anzeige braucht zwei Handzeichen, dazwischen geht der HF zum Hund', 
   assert.equal(s.phase, 'ende');
   assert.equal(s.ergebnis.gefunden, true);
 });
+
+test('Fläche: der automatische HF bleibt in allen Leistungsklassen auf dem Mittelweg', () => {
+  for (const lk of [1, 2, 3]) {
+    for (let i = 0; i < 5; i++) {
+      const s = new SHS.SuchLage({ disziplin: 'flaeche', lk, seed: 600 + i, hund: testHund(70), gegenstand: 'korken', leine: false });
+      const bot = new SHS.HFBot(s, 0.8, SHS.rng(i + 1));
+      for (let n = 0; n < 6000 && s.phase !== 'ende'; n++) { bot.update(0.1); s.update(0.1); }
+      assert.equal(s.richter.fehlerListe.mittelweg || 0, 0, `LK ${lk}, Seed ${600 + i}`);
+    }
+  }
+});
+
+test('LK 3 Fläche: zweites Handzeichen auf dem Mittelweg auf Höhe des Hundes', () => {
+  const s = new SHS.SuchLage({ disziplin: 'flaeche', lk: 3, seed: 3, hund: testHund(90), gegenstand: 'korken', aussenreize: false });
+  s.armHeben();
+  const ziel = s.quellen.find((q) => q.typ === 'ziel');
+  s.hund.setzePosition(ziel.x + 0.1, ziel.y);
+  s.hund.starteAnzeige(ziel, true, s.ctx);
+  s.hund.anzeige.aktiv = false; s.hund.anzeige.ungenau = false; s.hund.w.anzeige = 1;
+  for (let i = 0; i < 25; i++) s.update(0.1);
+  s.armHeben();
+  for (let i = 0; i < 35; i++) s.update(0.1);
+  assert.equal(s.warteZweitesZeichen, true);
+  const m = s.lage.mittelweg;
+  s.hf.x = s.hund.x; s.hf.y = s.hund.y; // neben dem Hund, aber außerhalb des Mittelwegs
+  s.armHeben();
+  assert.equal(s.warteZweitesZeichen, true, 'Außerhalb des Mittelwegs wird das Zeichen nicht angenommen');
+  s.hf.x = m.x + m.w / 2; s.hf.y = s.hund.y;
+  s.armHeben();
+  assert.equal(s.warteZweitesZeichen, false);
+});

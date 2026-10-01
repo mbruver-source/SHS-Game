@@ -54,7 +54,7 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 ### Weitere Auslegungen
 - **Handzeichen ohne Anzeige:** Hebt der HF den Arm, ohne dass der Hund anzeigt, zählt das als Fehlanzeige.
 - **Fehlanzeige:** Der WR löst sie nach der ersten Anzeigephase auf. Danach wird der Hund neu angesetzt; das erste „Such!“ danach ist frei.
-- **LK 3, Fläche:** Für das zweite Handzeichen darf der HF den Mittelweg verlassen und neben den Hund gehen.
+- **LK 3, Fläche:** Das zweite Handzeichen gibt der HF auf dem Mittelweg auf Höhe des Hundes (er darf den Mittelweg nicht verlassen).
 - **Klassenaufstieg:** Die Bestwerte je Disziplin innerhalb einer LK werden über DK und ED gesammelt. Sind alle drei mindestens 70, steigt der Hund in die nächste LK auf.
 - **Gegenstände im DK:** In LK 1 wird in allen drei Disziplinen derselbe Gegenstand gesucht. In LK 2 werden genau 2, in LK 3 genau 3 verschiedene Gegenstände auf die Disziplinen verteilt.
 
@@ -133,3 +133,13 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
   - Am Wochenende erholt er sich um 60 %, ausgelassene Einheiten bringen zusätzliche Ruhe.
   - Ausgeruht (Energie ab 75 %) lernt der Hund 10 % mehr, müde (unter 35 %) nur 45 %.
   - Die Energie bestimmt auch die anfängliche Suchmotivation in Übung und Prüfung. Wer am Freitag vor einer Samstagsprüfung hart trainiert, startet mit einem weniger frischen Hund.
+
+## Automatische Vorführung (v0.5)
+- **Drei Arten der Vorführung:** Bei der Prüfungsanmeldung wählst du für alle Disziplinen gemeinsam:
+  - selbst führen
+  - automatisch und zuschauen (Zeitraffer 1×/2×/4× mit T, Pause mit P)
+  - automatisch und sofort auswerten
+- **Übungssuche:** Auch hier lässt sich die Suche automatisch vorführen.
+- **Ergebnis:** Es hängt vom Trainingsstand ab. Die Werte des Hundes steuern die Hunde-KI, die HF-Erfahrung den automatischen Hundeführer (`HFBot`): wie schnell und sicher er eine Anzeige erkennt und wie oft er unnötig hilft.
+- **HF-Erfahrung** (`career.hfErfahrung`): 25 % + 0,8 % je Training + 2 % je Übungssuche + 4 % je Prüfung, höchstens 95 %.
+- **Fläche:** Der Hundeführer bewegt sich nur auf dem Mittelweg. Das gilt für Start und Vorbereitung, für das Mitgehen während der Suche und für das zweite Handzeichen in LK 3, das auf dem Mittelweg auf Höhe des Hundes gegeben wird. Ein Handzeichen neben dem Mittelweg wird nicht angenommen; jedes Verlassen kostet Punkte. Der Mittelweg ist im Spiel gestrichelt markiert.

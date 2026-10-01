@@ -163,8 +163,8 @@
       quellen.push({ typ: 'differenzierung', name: 'Baugleicher Gegenstand', x: p.x, y: p.y, hoehe: 0, versteckId: null, staerke: 1.0, reichweite: 1.4 });
     }
     const ansatzOptionen = [
-      { x: mitte, y: bereich.y - 0.4, name: 'Ansatz A (linkes Ende des Mittelwegs)' },
-      { x: mitte, y: bereich.y + bereich.h + 0.4, name: 'Ansatz B (rechtes Ende des Mittelwegs)' },
+      { x: mitte, y: bereich.y - 0.4, name: 'Ansatz A (Anfang des Mittelwegs)' },
+      { x: mitte, y: bereich.y + bereich.h + 0.4, name: 'Ansatz B (Ende des Mittelwegs)' },
     ];
     return { welt, bereich, verstecke: [], quellen, eigengeruchVersteck: null, ansatzOptionen, mittelweg };
   }

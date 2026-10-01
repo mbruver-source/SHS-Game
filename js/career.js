@@ -149,7 +149,17 @@
       h.vertrautheit[gegenstandId] = clamp(alt + 0.06 * (1 - alt), 0, 1);
     }
     einheitBeenden(stand, BELASTUNG * 0.9);
+    stand.verlauf.push({ woche: stand.woche, text: 'Übungssuche', typ: 'uebung' });
     return d;
+  }
+
+  // Erfahrung des Hundeführers (0..1): wächst mit Trainings, Übungssuchen und Prüfungen.
+  // Bestimmt bei automatischer Vorführung, wie gut der HF seinen Hund liest und führt.
+  function hfErfahrung(stand) {
+    const uebungen = stand.verlauf.filter((v) => v.typ === 'uebung').length;
+    const trainings = stand.verlauf.length - uebungen;
+    const pruefungen = stand.leistungsnachweis.length;
+    return clamp(0.25 + trainings * 0.008 + uebungen * 0.02 + pruefungen * 0.04, 0, 0.95);
   }
 
   function wocheBeenden(stand) {
@@ -212,7 +222,7 @@
   }
 
   SHS.career = {
-    TRAININGS, TRAININGS_JE_WOCHE, TRAININGSTAGE, naechsterTrainingstag,
+    TRAININGS, TRAININGS_JE_WOCHE, TRAININGSTAGE, naechsterTrainingstag, hfErfahrung,
     neuerSpielstand, trainieren, uebungssucheVerbuchen, wocheBeenden, eintragen, klasseBestanden,
     darfPruefen, datumText, alterText, aktualisiereAusschreibungen,
   };

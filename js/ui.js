@@ -203,7 +203,7 @@
         <header class="hof-kopf">
           <canvas class="hund-portrait" title="Fellfarbe ändern"></canvas>
           <div class="hof-name"><h1>${esc(h.name)} <small>${esc(h.rasse)}</small></h1>
-            <div class="klein">HF ${esc(s.hf.name)} · ${career.alterText(h.alterMonate)} · Leistungsklasse <b>LK ${s.lk}</b></div></div>
+            <div class="klein">HF ${esc(s.hf.name)} (Erfahrung ${Math.round(career.hfErfahrung(s) * 100)} %) · ${career.alterText(h.alterMonate)} · Leistungsklasse <b>LK ${s.lk}</b></div></div>
           <div class="woche"><div>Woche ${s.woche}</div><div class="klein">bis Sa., ${career.datumText(s.woche)}</div></div>
         </header>
         <div class="spalten">
@@ -333,6 +333,7 @@
       <label>Ansatz<select id="ua"></select></label>
       <label class="check"><input type="checkbox" id="uleine" checked> mit Leine (wo erlaubt)</label>
       <label class="check"><input type="checkbox" id="ureize" checked> Außenreize</label>
+      <label class="check"><input type="checkbox" id="uauto"> Automatisch vorführen (zuschauen)</label>
       <p class="hinweis">In der Übung kannst du mit G die Geruchsfahne einblenden.</p>`, [
       { text: 'Abbrechen' },
       {
@@ -342,6 +343,7 @@
             disziplin: q('#ud').value, lk: +q('#ul').value, seed: SHS.neuerSeed(), hund: s.hund,
             gegenstand: q('#ug').value, ansatzIndex: +q('#ua').value, leine: q('#uleine').checked,
             aussenreize: q('#ureize').checked, modus: 'uebung',
+            auto: q('#uauto').checked, hfErfahrung: career.hfErfahrung(s),
           }, (erg) => {
             if (erg) {
               const d = career.uebungssucheVerbuchen(s, erg, q('#ug').value);
@@ -357,7 +359,7 @@
     const ansatzFuellen = () => {
       const d = bg.querySelector('#ud').value;
       const ops = d === 'truemmer' ? ['Nordseite', 'Ostseite', 'Südseite', 'Westseite']
-        : d === 'flaeche' ? ['Ansatz A (links)', 'Ansatz B (rechts)'] : ['bestimmt der WR'];
+        : d === 'flaeche' ? ['Ansatz A (Anfang des Mittelwegs)', 'Ansatz B (Ende des Mittelwegs)'] : ['bestimmt der WR'];
       bg.querySelector('#ua').innerHTML = ops.map((o, i) => `<option value="${i}">${o}</option>`).join('');
     };
     bg.querySelector('#ud').addEventListener('change', ansatzFuellen);
@@ -384,7 +386,7 @@
       const vorwahl = nachVertrautheit[i % benoetigt];
       const gopts = po.GEGENSTAENDE.map((g) => `<option value="${g.id}" ${g.id === vorwahl ? 'selected' : ''}>${g.name} (${Math.round(s.hund.vertrautheit[g.id] * 100)})</option>`).join('');
       const ansatz = d === 'truemmer' ? ['Nordseite', 'Ostseite', 'Südseite', 'Westseite']
-        : d === 'flaeche' ? ['Ansatz A (links)', 'Ansatz B (rechts)'] : null;
+        : d === 'flaeche' ? ['Ansatz A (Anfang des Mittelwegs)', 'Ansatz B (Ende des Mittelwegs)'] : null;
       const leine = po.leineErlaubt(lk, d);
       return `<tr data-d="${d}"><td><b>${diszName(d)}</b><br><span class="klein">${po.suchzeit(lk, d) / 60} min Suchzeit</span></td>
         <td><select class="g">${gopts}</select></td>
@@ -403,7 +405,16 @@
           ${a.art === 'DK' && benoetigt === 1 ? '<br>In LK 1 wird in allen Disziplinen derselbe Gegenstand gesucht.' : ''}
         </div>
         <table class="anmeldung"><tr><th>Disziplin</th><th>Gegenstand</th><th>Ansatz</th><th>Leine</th></tr>${zeilen}</table>
-        <p class="hinweis">Die Zahl hinter dem Gegenstand zeigt, wie gut ${esc(s.hund.name)} dessen Geruchsbild kennt.</p>
+        <p class="hinweis">Die Zahl hinter dem Gegenstand zeigt, wie gut ${esc(s.hund.name)} dessen Geruchsbild kennt.
+        ${disz.includes('flaeche') ? '<br><b>Fläche:</b> Der Hundeführer darf sich nur auf dem Mittelweg bewegen.' : ''}</p>
+        <label>Vorführung<select id="vorfuehrung">
+          <option value="selbst">Selbst führen</option>
+          <option value="auto">Automatisch nach Trainingsstand – zuschauen</option>
+          <option value="sofort">Automatisch nach Trainingsstand – sofort auswerten</option>
+        </select></label>
+        <p class="hinweis">Automatisch: Das Ergebnis ergibt sich aus den Werten von ${esc(s.hund.name)} und deiner HF-Erfahrung
+        (${Math.round(career.hfErfahrung(s) * 100)} %, wächst mit Training, Übungssuchen und Prüfungen).
+        Energie von ${esc(s.hund.name)}: ${Math.round(s.hund.energie * 100)} %.</p>
         <div class="knopfreihe"><button data-a="zurueck">Zurück</button><button class="primaer" data-a="melden">Anmelden und starten</button></div>
       </div>`);
     app.root.querySelector('.knopfreihe').addEventListener('click', (e) => {
@@ -420,7 +431,8 @@
         hinweis(`In LK ${lk} müssen genau ${benoetigt} verschiedene Gegenstände eingesetzt werden (gewählt: ${verschieden}).`);
         return;
       }
-      pruefungsAblauf({ ausschreibung: a, lk, plan, idx: 0, einzelwerte: {}, details: {}, status: 'ok', startNr: 1 + (a.seed % po.MINDEST_TEILNEHMER) });
+      const vorfuehrung = app.root.querySelector('#vorfuehrung').value;
+      pruefungsAblauf({ ausschreibung: a, lk, plan, vorfuehrung, idx: 0, einzelwerte: {}, details: {}, status: 'ok', startNr: 1 + (a.seed % po.MINDEST_TEILNEHMER) });
     });
   }
 
@@ -429,21 +441,24 @@
     if (p.idx >= p.plan.length || p.status === 'disq') { pruefungAbschluss(p); return; }
     const schritt = p.plan[p.idx];
     const titel = `${p.ausschreibung.verein} · ${diszName(schritt.disziplin)} · LK ${p.lk} · Start-Nr. ${p.startNr}`;
+    const suchOpts = {
+      disziplin: schritt.disziplin, lk: p.lk, seed: (p.ausschreibung.seed + p.idx * 7919 + 17) >>> 0,
+      hund: s.hund, gegenstand: schritt.gegenstand, ansatzIndex: schritt.ansatzIndex, leine: schritt.leine,
+      modus: 'pruefung', titel, auto: p.vorfuehrung === 'auto', hfErfahrung: career.hfErfahrung(s),
+    };
+    const verbuchen = (erg) => {
+      p.details[schritt.disziplin] = erg;
+      if (erg.status === 'disq') p.status = 'disq';
+      p.einzelwerte[schritt.disziplin] = erg.status === 'ok' ? erg.punkte : null;
+      p.idx += 1;
+      pruefungsAblauf(p);
+    };
+    if (p.vorfuehrung === 'sofort') { verbuchen(SHS.simuliereSuche(suchOpts, suchOpts.hfErfahrung)); return; }
     dialog(`<h3>${diszName(schritt.disziplin)}</h3>
       <p>Anmeldung beim WR in Grundstellung: „${esc(s.hf.name)}, ${esc(s.hund.name)}, Start-Nr. ${p.startNr}, Gegenstand ${gegName(schritt.gegenstand)}, LK ${p.lk}.“</p>
       <p>Du gehst mit deinem Hund außer Sicht – der WR versteckt den Gegenstand.</p>`, [{
       text: 'Zum Suchbereich', primaer: true, aktion: () => {
-        suchlageStarten({
-          disziplin: schritt.disziplin, lk: p.lk, seed: (p.ausschreibung.seed + p.idx * 7919 + 17) >>> 0,
-          hund: s.hund, gegenstand: schritt.gegenstand, ansatzIndex: schritt.ansatzIndex, leine: schritt.leine,
-          modus: 'pruefung', titel,
-        }, (erg) => {
-          p.details[schritt.disziplin] = erg;
-          if (erg.status === 'disq') p.status = 'disq';
-          p.einzelwerte[schritt.disziplin] = erg.status === 'ok' ? erg.punkte : null;
-          p.idx += 1;
-          pruefungsAblauf(p);
-        });
+        suchlageStarten(suchOpts, verbuchen);
       },
     }]);
   }
