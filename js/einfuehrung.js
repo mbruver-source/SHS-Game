@@ -28,19 +28,19 @@
           if (Math.hypot(s.hf.x - t.start.x, s.hf.y - t.start.y) > 1) weiter('bereit');
           return {
             titel: '1 · Du bist der Hundeführer',
-            text: 'Du bist die blaue Figur, dein Hund sitzt am Ansatz neben dir. Beweg dich mit <b>W A S D</b> oder den <b>Pfeiltasten</b> ein Stück.<br>Rot unten links steht der Wertungsrichter (WR). Er hat den Gegenstand in einem der sechs Eimer versteckt.',
+            text: 'Du bist die blaue Figur, dein Hund sitzt am Ansatz neben dir. Beweg dich mit <b>W A S D</b>, den <b>Pfeiltasten</b> oder dem Steuerkreis links unten (Touch) ein Stück.<br>Rot unten links steht der Wertungsrichter (WR). Er hat den Gegenstand in einem der sechs Eimer versteckt.',
           };
         case 'bereit':
           if (s.phase === 'suche') weiter('schicken');
           return {
             titel: '2 · Bereitschaft melden',
-            text: 'Geh zurück zu deinem Hund am Ansatz und heb den Arm: Taste <b>H</b> (Handzeichen).<br>Der WR erwidert, ab dann läuft die Suchzeit von 5 Minuten.',
+            text: 'Geh zurück zu deinem Hund am Ansatz und heb den Arm: Taste <b>H</b> bzw. <b>✋ Arm</b> (Handzeichen).<br>Der WR erwidert, ab dann läuft die Suchzeit von 5 Minuten.',
           };
         case 'schicken':
           if (h.zustand !== 'sitzt') weiter('lesen');
           return {
             titel: '3 · „Such!“',
-            text: 'Schick deinen Hund mit der <b>Leertaste</b> los. Das erste „Such!“ ist frei.<br>Jedes weitere Hörzeichen zählt als Hilfe und kostet Punkte.',
+            text: 'Schick deinen Hund mit der <b>Leertaste</b> bzw. <b>Such!</b> los. Das erste „Such!“ ist frei.<br>Jedes weitere Hörzeichen zählt als Hilfe und kostet Punkte.',
           };
         case 'lesen':
           if (h.zustand === 'geruch') weiter('geruch');

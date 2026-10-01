@@ -59,6 +59,7 @@
             ${this.auto ? '<button data-a="tempo" title="Zeitraffer (T)">Tempo 1×</button>' : ''}
             <button data-a="pause" title="Pause (P)">Pause</button>
             <button data-a="hilfe">Steuerung</button>
+            <button data-a="touch" title="Bildschirm-Steuerung für Tablet/Handy ein/aus">Touch</button>
             ${this.uebung ? '<button data-a="abbrechen">Abbrechen</button>' : ''}
           </div>
         </div>
@@ -67,6 +68,17 @@
           <div class="nahaufnahme versteckt"><div class="nah-titel">Nahaufnahme – Anzeige</div><canvas></canvas></div>
           <div class="szene-overlay versteckt"></div>
           <div class="coach coach-suche versteckt"><div class="coach-titel"></div><div class="coach-text"></div></div>
+          <div class="touch versteckt">
+            <div class="touch-stick"><div class="touch-knopf"></div></div>
+            <div class="touch-tasten">
+              <button data-t="such">Such!</button>
+              <button data-t="arm" class="touch-gross">✋ Arm</button>
+              <button data-t="hier">Hier!</button>
+              <button data-t="bleib">Bleib!</button>
+              <button data-t="anfassen">Anfassen</button>
+              <button data-t="nah">Nah</button>
+            </div>
+          </div>
         </div>
         <div class="hud-unten">
           <div class="hud-phase"></div>
@@ -109,9 +121,11 @@
         if (a === 'hilfe') this.el.steuerung.classList.toggle('versteckt');
         if (a === 'abbrechen') this.beenden(true);
         if (a === 'tempo') this.toggleTempo();
+        if (a === 'touch') this.setzeTouch(!this.touchAn);
         e.target.blur();
       });
       this.groesseAnpassen();
+      this.touchEinrichten();
       this.resizeObs = new ResizeObserver(() => this.groesseAnpassen());
       this.resizeObs.observe(root.querySelector('.szene-mitte'));
     }
@@ -201,6 +215,67 @@
       if (this.resizeObs) this.resizeObs.disconnect();
     }
 
+    // ---------------------------------------------------------------- Touch-Steuerung
+    // Steuerkreis links (HF bewegen), Tasten rechts. Automatisch auf Touch-Geräten, sonst über „Touch“.
+    touchEinrichten() {
+      const box = this.root.querySelector('.touch');
+      this.el.touch = box;
+      let gespeichert = null;
+      try { gespeichert = localStorage.getItem('shs-game-touch'); } catch (e) { /* ignorieren */ }
+      const grob = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      this.setzeTouch(gespeichert === null ? grob : gespeichert === '1', true);
+      const stick = box.querySelector('.touch-stick');
+      const knopf = box.querySelector('.touch-knopf');
+      const bewegen = (ev) => {
+        const r = stick.getBoundingClientRect();
+        const max = r.width / 2;
+        let dx = ev.clientX - (r.left + max); let dy = ev.clientY - (r.top + max);
+        const d = Math.hypot(dx, dy);
+        if (d > max) { dx = (dx / d) * max; dy = (dy / d) * max; }
+        knopf.style.transform = `translate(${dx}px, ${dy}px)`;
+        const st = Math.hypot(dx, dy) / max;
+        this.joy = st < 0.15 ? null : { x: dx / max, y: dy / max };
+      };
+      let gefasst = false;
+      const loslassen = () => { gefasst = false; this.joy = null; knopf.style.transform = ''; };
+      stick.addEventListener('pointerdown', (ev) => {
+        gefasst = true;
+        try { stick.setPointerCapture(ev.pointerId); } catch (e) { /* ältere Browser */ }
+        bewegen(ev); ev.preventDefault();
+      });
+      stick.addEventListener('pointermove', (ev) => { if (gefasst) bewegen(ev); });
+      stick.addEventListener('pointerup', loslassen);
+      stick.addEventListener('pointercancel', loslassen);
+      const tasten = box.querySelector('.touch-tasten');
+      tasten.addEventListener('pointerdown', (ev) => {
+        const t = ev.target.closest('[data-t]');
+        if (!t || !this.laeuft) return;
+        ev.preventDefault();
+        if (t.dataset.t === 'nah') { this.nahAn = !this.nahAn; return; }
+        if (this.auto || this.pause) return;
+        if (t.dataset.t === 'such') this.s.befehlSuch();
+        if (t.dataset.t === 'arm') this.s.armHeben();
+        if (t.dataset.t === 'hier') this.s.befehlHier();
+        if (t.dataset.t === 'bleib') this.s.befehlBleib();
+        if (t.dataset.t === 'anfassen') { this.tasten.add('e'); t.classList.add('gedrueckt'); }
+      });
+      const ende = (ev) => {
+        const t = ev.target.closest('[data-t=anfassen]');
+        if (t) { this.tasten.delete('e'); this.s.anfassenEnde(); t.classList.remove('gedrueckt'); }
+      };
+      tasten.addEventListener('pointerup', ende);
+      tasten.addEventListener('pointercancel', ende);
+      tasten.addEventListener('pointerleave', ende);
+    }
+
+    setzeTouch(an, ohneSpeichern) {
+      this.touchAn = !!an;
+      if (this.el.touch) this.el.touch.classList.toggle('versteckt', !this.touchAn);
+      this.root.classList.toggle('mit-touch', this.touchAn);
+      if (this.auto && this.el.touch) this.el.touch.classList.add('nur-ansicht');
+      if (!ohneSpeichern) { try { localStorage.setItem('shs-game-touch', this.touchAn ? '1' : '0'); } catch (e) { /* ignorieren */ } }
+    }
+
     toggleGeruch() { this.geruchsAnsicht = !this.geruchsAnsicht; }
     togglePause() { this.pause = !this.pause; }
     toggleTempo() {
@@ -211,6 +286,7 @@
 
     eingabe(dt) {
       let sx = 0; let sy = 0;
+      if (this.joy) { sx = this.joy.x; sy = this.joy.y; }
       const t = this.tasten;
       if (t.has('w') || t.has('arrowup')) sy -= 1;
       if (t.has('s') || t.has('arrowdown')) sy += 1;
@@ -391,6 +467,16 @@
       g.save();
       g.fillStyle = wt.regen === 2 ? 'rgba(40,50,70,0.18)' : 'rgba(60,70,90,0.08)';
       g.fillRect(0, 0, W, H);
+      if (wt.schnee) {
+        g.fillStyle = 'rgba(255,255,255,0.85)';
+        for (let i = 0; i < n; i++) {
+          const x = ((i * 137.5 + t * 25 * (1 + wx * wind.staerke) + Math.sin(t + i) * 8) % (W + 20)) - 10;
+          const y = ((i * 89.3 + t * 45) % (H + 20)) - 10;
+          g.beginPath(); g.arc(x, y, 1.6 + (i % 3) * 0.6, 0, Math.PI * 2); g.fill();
+        }
+        g.restore();
+        return;
+      }
       g.strokeStyle = 'rgba(210,225,255,0.45)'; g.lineWidth = 1;
       g.beginPath();
       for (let i = 0; i < n; i++) {

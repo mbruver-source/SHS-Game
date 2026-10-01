@@ -28,6 +28,7 @@ nimmst du ihn auf einen anderen Rechner oder in einen anderen Browser mit.
 | E halten | Versteck anfassen (Eigengeruch 3 s) / Antäuschen |
 | G | Geruchsansicht (nur Übungssuche) |
 | N | Nahaufnahme der Anzeige ein/aus |
+| T | Zeitraffer (automatische Vorführung) |
 | P | Pause |
 
 ## Entwicklung
@@ -36,3 +37,8 @@ nimmst du ihn auf einen anderen Rechner oder in einen anderen Browser mit.
 - Tests: `npm test` (Node ≥ 20, nutzt `node:test`)
 - Dev-Server (optional, nur zum Testen): `npm start` → http://localhost:8123
 - Aufbau und Spielannahmen: [docs/Konzept.md](docs/Konzept.md)
+
+### Tablet und Handy
+Auf Touch-Geräten erscheint in der Suchlage automatisch ein Steuerkreis (links unten, Hundeführer bewegen)
+und Tasten für Such!, ✋ Arm, Hier!, Bleib!, Anfassen (halten) und Nahaufnahme. Mit „Touch“ im HUD lässt
+sich die Bildschirm-Steuerung auch am PC ein- oder ausschalten. Ein Tipp aufs Spielfeld gibt ein Richtungszeichen.

@@ -27,15 +27,17 @@
     if (temp > 25) { staerke *= 0.85 - (temp - 25) * 0.02; reichweite *= 0.85; }
     if (regen === 1) { staerke *= 1.1; reichweite *= 0.9; }
     if (regen === 2) staerke *= 0.8;
+    const schnee = regen > 0 && temp <= 0;
+    if (schnee) staerke = Math.min(staerke, 0.8) * (regen === 2 ? 0.9 : 1); // Schnee deckt Geruch ab
     const ermuedung = 1 + Math.max(0, temp - 20) * 0.06;
 
-    const symbol = regen === 2 ? '🌧' : regen === 1 ? '🌦' : temp > 25 ? '☀' : bewoelkt ? '☁' : '🌤';
-    const regenText = regen === 2 ? 'Regen' : regen === 1 ? 'Nieselregen' : bewoelkt ? 'bewölkt' : 'sonnig';
+    const symbol = schnee ? '❄' : regen === 2 ? '🌧' : regen === 1 ? '🌦' : temp > 25 ? '☀' : bewoelkt ? '☁' : '🌤';
+    const regenText = schnee ? (regen === 2 ? 'Schneefall' : 'leichter Schneefall') : regen === 2 ? 'Regen' : regen === 1 ? 'Nieselregen' : bewoelkt ? 'bewölkt' : 'sonnig';
     return {
-      monat: m, temp, regen, bewoelkt, wind, drift,
+      monat: m, temp, regen, schnee, bewoelkt, wind, drift,
       staerkeFaktor: Math.max(0.5, staerke), reichweiteFaktor: reichweite, ermuedung,
       symbol, text: `${regenText}, ${temp} °C`,
-      hinweis: hinweisText(temp, regen, wind, drift),
+      hinweis: (schnee ? 'Schnee deckt den Geruch teilweise ab. ' : '') + hinweisText(temp, schnee ? 0 : regen, wind, drift),
     };
   }
 

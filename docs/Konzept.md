@@ -236,3 +236,9 @@ ANNAHME (Spiel): Landesmeisterschaft alle 20 Wochen (16 Teams), Bundesmeistersch
 - **Qualifikation BM:** bei einer LM Platz 1–3 oder mindestens 270 Punkte.
 
 Die Meisterschaften stehen mit 🏆 und Qualifikationsstand in den Ausschreibungen. Ein Sieg bringt einen Titel (z. B. „Landesmeister 2027“), der im Hof neben dem Hundenamen erscheint.
+
+## Touch-Bedienung (v0.12)
+- **Bildschirm-Steuerung in der Suchlage:** Steuerkreis zum Bewegen des HF sowie Tasten für Such!, Arm, Hier!, Bleib!, Anfassen (gedrückt halten) und Nahaufnahme.
+- **Ein- und Ausschalten:** Auf Touch-Geräten (`pointer: coarse`) ist sie automatisch aktiv, sonst über „Touch“ im HUD. Die Einstellung wird gespeichert.
+- **Automatische Vorführung:** Hier ist nur die Taste für die Nahaufnahme zu sehen.
+- **Wetter:** Bei 0 °C oder kälter fällt Schnee statt Regen; er deckt den Geruch teilweise ab.
