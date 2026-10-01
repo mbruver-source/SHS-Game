@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "shs-game", "runtimeExecutable": "node", "runtimeArgs": ["tools/server.js", "8123"], "port": 8123 }
+  ]
+}

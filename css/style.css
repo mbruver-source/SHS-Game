@@ -1,0 +1,137 @@
+:root {
+  --bg: #eef1ea;
+  --karte: #ffffff;
+  --text: #1f2a1c;
+  --leise: #5d6b58;
+  --linie: #d5dccf;
+  --gruen: #3d7a2a;
+  --gruen-hell: #e3f0dc;
+  --akzent: #2f5d8c;
+  --warn: #b5432a;
+  --balken: #4f9a3a;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161b15;
+    --karte: #20271e;
+    --text: #e6ecdf;
+    --leise: #9fac98;
+    --linie: #36412f;
+    --gruen: #6fbf55;
+    --gruen-hell: #2a3a24;
+    --akzent: #7fb0e6;
+    --warn: #ef7d61;
+    --balken: #6fbf55;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+#app { max-width: 1200px; margin: 0 auto; padding: 16px; min-height: 100%; }
+h1, h2, h3 { margin: 0 0 .5em; line-height: 1.2; }
+h2 small, h1 small { font-weight: normal; color: var(--leise); font-size: .7em; margin-left: .4em; }
+.klein { font-size: .85em; color: var(--leise); }
+.warn { color: var(--warn); }
+.hinweis { color: var(--leise); font-size: .9em; }
+.versteckt { display: none !important; }
+a { color: var(--akzent); }
+
+button {
+  font: inherit; cursor: pointer;
+  border: 1px solid var(--linie); background: var(--karte); color: var(--text);
+  border-radius: 8px; padding: .5em 1em;
+}
+button:hover:not(:disabled) { border-color: var(--gruen); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primaer { background: var(--gruen); border-color: var(--gruen); color: #fff; font-weight: 600; }
+button.gross { font-size: 1.1em; padding: .8em 1.4em; }
+input, select {
+  font: inherit; color: var(--text); background: var(--karte);
+  border: 1px solid var(--linie); border-radius: 6px; padding: .4em .5em;
+}
+label { display: block; margin: .6em 0; }
+label > input:not([type=checkbox]), label > select { display: block; width: 100%; margin-top: .25em; }
+label.check { display: flex; gap: .5em; align-items: center; }
+
+.karte { background: var(--karte); border: 1px solid var(--linie); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+.karte.schmal { max-width: 460px; margin: 40px auto; }
+.knopfreihe { display: flex; gap: .6em; justify-content: flex-end; flex-wrap: wrap; margin-top: 1em; }
+.knopfreihe.links { justify-content: flex-start; }
+
+/* Start */
+.startseite { text-align: center; padding: 8vh 0; }
+.logo { font-size: 64px; }
+.logo span { font-weight: 800; letter-spacing: .05em; color: var(--gruen); }
+.startseite h1 { font-size: 2.4em; }
+.unter { color: var(--leise); }
+.start-knoepfe { display: flex; flex-direction: column; gap: .7em; align-items: center; margin: 2em 0; }
+.version { color: var(--leise); font-size: .85em; }
+.rassen-info { font-size: .9em; color: var(--gruen); min-height: 1.4em; }
+
+/* Hof */
+.hof-kopf { display: flex; justify-content: space-between; align-items: flex-end; gap: 1em; margin-bottom: 14px; flex-wrap: wrap; }
+.woche { text-align: right; font-size: 1.2em; font-weight: 600; }
+.spalten { display: grid; grid-template-columns: minmax(280px, 1fr) 2fr; gap: 16px; }
+@media (max-width: 820px) { .spalten { grid-template-columns: 1fr; } }
+table { border-collapse: collapse; width: 100%; }
+.werte td { padding: 3px 4px; }
+.werte td:first-child { width: 40%; }
+.zahl { text-align: right; font-variant-numeric: tabular-nums; }
+.balken { background: var(--gruen-hell); border-radius: 4px; height: 10px; overflow: hidden; min-width: 60px; }
+.balken div { background: var(--balken); height: 100%; }
+.energie { display: grid; grid-template-columns: auto 1fr; gap: .6em; align-items: center; margin-bottom: .8em; }
+.trainings { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.trainings button { text-align: left; display: flex; flex-direction: column; gap: .2em; padding: .7em; }
+.trainings button span { font-size: .82em; color: var(--leise); }
+.trainings button.uebung { border-color: var(--akzent); }
+.ausschreibungen { list-style: none; padding: 0; margin: 0; }
+.ausschreibungen li { display: flex; justify-content: space-between; align-items: center; gap: 1em; padding: .6em 0; border-bottom: 1px solid var(--linie); }
+.ausschreibungen li.diese { background: var(--gruen-hell); margin: 0 -8px; padding: .6em 8px; border-radius: 8px; }
+.ln td, .ln th, .rangliste td, .rangliste th, .anmeldung td, .anmeldung th { padding: 6px; border-bottom: 1px solid var(--linie); text-align: left; vertical-align: top; }
+.ln td.ok { color: var(--gruen); font-weight: 600; }
+.rangliste tr.ich { background: var(--gruen-hell); font-weight: 600; }
+.gross-ergebnis { font-size: 1.25em; }
+.erfolg { background: var(--gruen-hell); border: 1px solid var(--gruen); padding: .8em 1em; border-radius: 8px; margin: .8em 0; font-weight: 600; }
+.regel-box { background: var(--gruen-hell); padding: .8em 1em; border-radius: 8px; margin: .8em 0; font-size: .92em; }
+.anmeldung select { width: 100%; }
+
+/* Dialoge */
+.dialog-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+.dialog { background: var(--karte); border-radius: 12px; padding: 20px; max-width: 640px; width: 100%; max-height: 90vh; overflow: auto; box-shadow: 0 10px 40px rgba(0,0,0,.3); }
+.dialog-knoepfe { display: flex; gap: .6em; justify-content: flex-end; margin-top: 1em; }
+.regeln p { margin: .5em 0; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #222; color: #fff; padding: .7em 1.2em; border-radius: 8px; z-index: 60; max-width: 90vw; }
+
+/* Suchlage */
+.szene-host { height: calc(100vh - 32px); min-height: 480px; }
+.szene { display: flex; flex-direction: column; height: 100%; gap: 8px; position: relative; }
+.hud-oben { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.hud-titel { font-weight: 700; flex: 1; min-width: 200px; }
+.hud-werte { display: flex; gap: 12px; font-variant-numeric: tabular-nums; }
+.hud-werte span { background: var(--karte); border: 1px solid var(--linie); border-radius: 6px; padding: .2em .6em; }
+.hud-zeit { font-weight: 700; }
+.hud-zeit.knapp { color: var(--warn); border-color: var(--warn) !important; }
+.hud-knoepfe { display: flex; gap: 6px; flex-wrap: wrap; }
+.hud-knoepfe button { padding: .3em .7em; }
+.szene-mitte { flex: 1; position: relative; min-height: 300px; border-radius: 10px; overflow: hidden; background: #3d5f2a; }
+.spielfeld { display: block; cursor: crosshair; }
+.szene-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.25); }
+.ergebnis-karte { background: var(--karte); border-radius: 12px; padding: 20px 24px; max-width: 560px; width: 92%; max-height: 90%; overflow: auto; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+.ergebnis-karte h2 small { font-size: .55em; }
+.ergebnis-karte ul { padding-left: 1.2em; }
+.hud-unten { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.hud-phase { font-weight: 600; }
+.hud-log { list-style: none; margin: 0; padding: 0; font-size: .9em; max-height: 7.5em; overflow: hidden; }
+.hud-log li { padding: 1px 0; color: var(--leise); }
+.hud-log li:first-child { color: var(--text); }
+.hud-log li.wr { color: var(--akzent); }
+.steuerung { position: absolute; right: 8px; top: 48px; background: var(--karte); border: 1px solid var(--linie); border-radius: 10px; padding: 12px 14px; max-width: 420px; z-index: 5; box-shadow: 0 6px 24px rgba(0,0,0,.25); font-size: .9em; }
+.steuerung td { padding: 2px 6px; border-bottom: 1px solid var(--linie); }
+.steuerung td:first-child { white-space: nowrap; font-weight: 600; }
