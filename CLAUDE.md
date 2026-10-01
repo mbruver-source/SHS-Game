@@ -12,8 +12,7 @@ Zuerst `docs/Konzept.md` lesen (Aufbau, Spielannahmen, Dateien).
   in Node testbar ist. DOM/Canvas/Audio nur in `ton.js`, `grafik.js`, `search.js`, `nachbetrachtung.js` (Wiedergabeteil), `einfuehrung.js` (Hof-Rundgang), `ui.js`, `storage.js`, `main.js`.
 - PO-Werte gehören nach `js/po.js`. Wo die PO keine Zahl nennt: als ANNAHME markieren und in
   `docs/Konzept.md` dokumentieren.
-- Wertnoten müssen identisch zu `shs_core.py` im SHS-Prüfungsprogramm bleiben
-  (`C:\Users\mbruv\Documents\SHS-Pruefungsprogramm-Git`).
+- Wertnoten müssen identisch zu `shs_core.py` im (separaten) SHS-Prüfungsprogramm bleiben.
 - Version nur in `js/version.js` pflegen (und `package.json`).
 - Bei Unklarheiten erst nachfragen, sonst sinnvolle Annahme treffen und dokumentieren.
 
@@ -23,9 +22,9 @@ Zuerst `docs/Konzept.md` lesen (Aufbau, Spielannahmen, Dateien).
 - Download-Paket: `powershell -ExecutionPolicy Bypass -File tools\paket.ps1` → `dist\SHS-Game-v<version>.zip`
 
 ## Git / GitHub
-- Remote: https://github.com/mbruver-source/SHS-Game (privat), Branch `main`.
+- Remote: https://github.com/mbruver-source/SHS-Game, Branch `main`. Online spielbar über GitHub Pages: https://mbruver-source.github.io/SHS-Game/
 - Pro fertiger Version: Version in `js/version.js` + `package.json` erhöhen, Tests grün, Paket bauen,
-  committen, Tag `vX.Y.Z` setzen und `git push origin main --tags` (mit Marco am 01.10.2026 so abgestimmt).
+  committen, Tag `vX.Y.Z` setzen und `git push origin main --tags` (so abgestimmt am 01.10.2026).
 
 ## Online-Version (Handy)
 - Privates Claude-Artifact: https://claude.ai/artifact/NDUGkSveHWAy8mizMk4f9p

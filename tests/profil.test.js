@@ -46,11 +46,11 @@ test('Prüfung: höchstens 2 eigene Hunde je Ausschreibung werden vermerkt', () 
 
 test('Speicher: mehrere Benutzer, alter Einzel-Spielstand wird übernommen', () => {
   const m = speicherAttrappe();
-  const alt = career.neuerSpielstand('Marco', 'Aiko', 'Labrador Retriever', 9);
+  const alt = career.neuerSpielstand('Alex', 'Aiko', 'Labrador Retriever', 9);
   m.set('shs-game-spielstand', JSON.stringify(alt));
   const liste = SHS.storage.profile();
   assert.equal(liste.length, 1);
-  assert.equal(liste[0].name, 'Marco');
+  assert.equal(liste[0].name, 'Alex');
   assert.deepEqual(liste[0].hunde, ['Aiko']);
   const neu = career.neuesProfil('Kim', 'Bello', 'Pudel', 'schwarz', 10);
   assert.equal(SHS.storage.speichernProfil(neu), true);
