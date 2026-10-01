@@ -150,6 +150,9 @@
       this.hf.y = Math.max(0.2, Math.min(w.h - 0.2, ny));
       this.hf.richtung = Math.atan2(dy, dx);
       this.hf.stillSeit = 0;
+      // Schrittzyklus für die Darstellung
+      this.hf.gang = (this.hf.gang || 0) + ((HF_TEMPO * dt) / 0.7) * Math.PI * 2;
+      this.hf.tempo = 1;
       this.hf.bewegt = true;
     }
 
@@ -371,7 +374,7 @@
     update(dt) {
       if (this.phase === 'ende') return;
       this.t += dt;
-      if (!this.hf.bewegt) this.hf.stillSeit += dt;
+      if (!this.hf.bewegt) { this.hf.stillSeit += dt; this.hf.tempo = Math.max(0, (this.hf.tempo || 0) - dt * 4); }
       this.hf.bewegt = false;
       if (this.armTimer > 0) { this.armTimer -= dt; if (this.armTimer <= 0 && !this.meldung) this.hf.arm = false; }
       if (this.meldung) this.hf.arm = true;

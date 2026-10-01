@@ -60,6 +60,7 @@
             <button data-a="pause" title="Pause (P)">Pause</button>
             <button data-a="hilfe">Steuerung</button>
             <button data-a="touch" title="Bildschirm-Steuerung für Tablet/Handy ein/aus">Touch</button>
+            <button data-a="ton" title="Töne ein/aus (M)">${SHS.ton.istAn() ? '🔊' : '🔇'}</button>
             ${this.uebung ? '<button data-a="abbrechen">Abbrechen</button>' : ''}
           </div>
         </div>
@@ -96,6 +97,7 @@
             <tr><td>E halten</td><td>Versteck anfassen (Eigengeruch, 3 s) / Antäuschen</td></tr>
             ${this.uebung ? '<tr><td>G</td><td>Geruchsansicht ein/aus (nur Übung)</td></tr>' : ''}
             <tr><td>N</td><td>Nahaufnahme der Anzeige ein/aus</td></tr>
+            <tr><td>M</td><td>Töne ein/aus</td></tr>
             <tr><td>P</td><td>Pause</td></tr>
           </table>
           <p><b>Den Hund lesen:</b> Schnelle, hohe Rute und kurze Kopfdrehungen = Hund ist im Geruch.
@@ -122,6 +124,8 @@
         if (a === 'abbrechen') this.beenden(true);
         if (a === 'tempo') this.toggleTempo();
         if (a === 'touch') this.setzeTouch(!this.touchAn);
+        if (a === 'ton') this.toggleTon();
+        SHS.ton.bereit();
         e.target.blur();
       });
       this.groesseAnpassen();
@@ -178,6 +182,8 @@
         if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
         if (e.repeat) { this.tasten.add(k); return; }
         this.tasten.add(k);
+        SHS.ton.bereit(); // Audio darf erst nach einer Nutzeraktion starten
+        if (k === 'm') this.toggleTon();
         if (this.pause && k !== 'p') return;
         if (k === 'p') this.togglePause();
         if (k === 'n') this.nahAn = !this.nahAn;
@@ -207,6 +213,7 @@
     }
 
     aufraeumen() {
+      if (SHS.ton.istAn()) SHS.ton.stilleDauer();
       if (this.nachbetrachtungsSzene) this.nachbetrachtungsSzene.aufraeumen();
       this.laeuft = false;
       window.removeEventListener('keydown', this.onKeyDown);
@@ -250,6 +257,7 @@
       tasten.addEventListener('pointerdown', (ev) => {
         const t = ev.target.closest('[data-t]');
         if (!t || !this.laeuft) return;
+        SHS.ton.bereit();
         ev.preventDefault();
         if (t.dataset.t === 'nah') { this.nahAn = !this.nahAn; return; }
         if (this.auto || this.pause) return;
@@ -274,6 +282,43 @@
       this.root.classList.toggle('mit-touch', this.touchAn);
       if (this.auto && this.el.touch) this.el.touch.classList.add('nur-ansicht');
       if (!ohneSpeichern) { try { localStorage.setItem('shs-game-touch', this.touchAn ? '1' : '0'); } catch (e) { /* ignorieren */ } }
+    }
+
+    toggleTon() {
+      SHS.ton.setzeAn(!SHS.ton.istAn());
+      const b = this.root.querySelector('[data-a=ton]');
+      if (b) b.textContent = SHS.ton.istAn() ? '🔊' : '🔇';
+    }
+
+    // Klang zu einer Meldung der Suchlage
+    tonZuMeldung(n) {
+      const t = n.text;
+      let k = null;
+      if (/„Such!“/.test(t)) k = 'such';
+      else if (/„Hier!“/.test(t)) k = 'hier';
+      else if (/„Bleib!“/.test(t)) k = 'bleib';
+      else if (/meldet die Anzeige|Zweites Handzeichen/.test(t)) k = 'arm';
+      else if (/^Erwidert – Fund/.test(t)) k = 'fund';
+      else if (/^Erwidert/.test(t)) k = 'erwidert';
+      else if (/^Fehlanzeige|Abbruch|nicht verlassen|reagiert nicht/.test(t)) k = 'fehler';
+      else if (/^Außenreiz/.test(t)) {
+        k = /Vogel/.test(t) ? 'vogel' : /bellt/.test(t) ? 'fernbellen' : /Klingel/.test(t) ? 'klingel' : /klatscht/.test(t) ? 'klatschen' : 'knacken';
+      }
+      if (k) SHS.ton.spiele(k);
+    }
+
+    // Hecheln (je nach Tempo und Zustand), Wind und Bellen bei aktiver Anzeige
+    toene(dt) {
+      if (!SHS.ton.istAn() || this.pause || this.s.phase === 'ende') { SHS.ton.stilleDauer && this.tonLief && SHS.ton.stilleDauer(); this.tonLief = false; return; }
+      const h = this.s.hund;
+      let hecheln = 0;
+      if (['sucht', 'geruch', 'verleitung', 'entlaufen', 'hier'].includes(h.zustand)) hecheln = 0.35 + Math.min(1, h.v / 1.6) * 0.65;
+      else if (h.zustand === 'anzeige' || h.zustand === 'beiHF' || h.zustand === 'sitzt') hecheln = this.s.phase === 'suche' ? 0.25 : 0.1;
+      SHS.ton.dauerton('hecheln', hecheln);
+      SHS.ton.dauerton('wind', this.lage.wind.staerke);
+      this.tonLief = true;
+      this.bellTimer = (this.bellTimer || 0) - dt;
+      if (h.aktivAnim && h.zustand === 'anzeige' && this.bellTimer <= 0) { SHS.ton.spiele('bellen'); this.bellTimer = 1.4; }
     }
 
     toggleGeruch() { this.geruchsAnsicht = !this.geruchsAnsicht; }
@@ -313,6 +358,7 @@
       }
       if (this.wrArm > 0) this.wrArm -= dt;
       if (this.opts.tutor) this.coach(dt);
+      this.toene(dt);
       this.zeichne();
       this.hud();
       if (this.s.phase === 'ende' && !this.endeGezeigt) this.zeigeErgebnis();
@@ -363,6 +409,7 @@
       while (this.nachrichtenGezeigt < s.nachrichten.length) {
         const n = s.nachrichten[this.nachrichtenGezeigt++];
         if (n.von === 'WR' && /^Erwidert/.test(n.text)) this.wrArm = 1.5;
+        this.tonZuMeldung(n);
         const li = document.createElement('li');
         li.className = n.von === 'WR' ? 'wr' : 'info';
         li.textContent = (n.von === 'WR' ? 'WR: ' : '') + n.text;
@@ -666,13 +713,20 @@
 
     zeichneWR() {
       const x = 0.45; const y = this.lage.welt.h - 0.55;
-      this.kreis(x, y, 0.22, FARBEN.wr, '#fff');
+      const [px, py] = this.w2s(x, y);
+      const g = this.g;
+      // WR schaut zum Hund
+      const h = this.s.hund;
+      const blick = this.winkel(Math.atan2(h.y - y, h.x - x));
+      g.save();
+      g.translate(px, py); g.rotate(blick);
+      SHS.grafik.zeichneMensch(g, { sk: this.skala, arm: this.wrArm > 0, jacke: FARBEN.wr, hose: '#2b2b2b', haare: '#9a9a9a', muetze: '#2b2b2b', klemmbrett: true });
+      g.restore();
       this.text('WR', x, y + 0.5, '#fff', 10);
       if (this.wrArm > 0) {
-        const [px, py] = this.w2s(x, y);
-        this.g.strokeStyle = '#fff'; this.g.lineWidth = 3;
-        this.g.beginPath(); this.g.moveTo(px + 6, py); this.g.lineTo(px + 10, py - 0.6 * this.skala); this.g.stroke();
-        this.kreis(x + (this.rot ? -0.6 : 0.2), y + (this.rot ? 0.2 : -0.6), 0.07, '#ffd9b3');
+        g.fillStyle = 'rgba(255,255,255,0.9)';
+        g.font = `${Math.max(12, 0.28 * this.skala)}px system-ui, sans-serif`; g.textAlign = 'center';
+        g.fillText('✋', px, py - 0.35 * this.skala);
       }
     }
 
@@ -772,20 +826,14 @@
       const w = this.winkel(hf.richtung || 0);
       g.save();
       g.translate(px, py);
-      g.fillStyle = 'rgba(0,0,0,0.25)';
-      g.beginPath(); g.ellipse(3, 3, 0.25 * sk, 0.25 * sk, 0, 0, Math.PI * 2); g.fill();
       g.rotate(w);
-      g.fillStyle = FARBEN.hf;
-      g.beginPath(); g.ellipse(0, 0, 0.16 * sk, 0.27 * sk, 0, 0, Math.PI * 2); g.fill();
-      g.strokeStyle = '#1b3a5a'; g.lineWidth = 1; g.stroke();
-      g.fillStyle = '#f0c9a0';
-      g.beginPath(); g.arc(0.02 * sk, 0, 0.11 * sk, 0, Math.PI * 2); g.fill();
+      SHS.grafik.zeichneMensch(g, { sk, gang: hf.gang || 0, tempo: hf.tempo || 0, arm: hf.arm, jacke: FARBEN.hf, hose: '#30343d', haare: '#5a3b24' });
       g.restore();
       if (hf.arm) {
-        g.strokeStyle = '#f0c9a0'; g.lineWidth = 3;
-        g.beginPath(); g.moveTo(px + 0.12 * sk, py); g.lineTo(px + 0.2 * sk, py - 0.55 * sk); g.stroke();
-        g.fillStyle = '#f0c9a0';
-        g.beginPath(); g.arc(px + 0.2 * sk, py - 0.58 * sk, 0.06 * sk, 0, Math.PI * 2); g.fill();
+        // Handzeichen deutlich sichtbar: Hand über dem Kopf
+        g.fillStyle = 'rgba(255,255,255,0.9)';
+        g.font = `${Math.max(12, 0.28 * sk)}px system-ui, sans-serif`; g.textAlign = 'center';
+        g.fillText('✋', px, py - 0.35 * sk);
       }
       if (hf.anfassen > 0) {
         const a = Math.min(1, hf.anfassen / 3);

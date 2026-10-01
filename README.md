@@ -29,6 +29,7 @@ nimmst du ihn auf einen anderen Rechner oder in einen anderen Browser mit.
 | G | Geruchsansicht (nur Übungssuche) |
 | N | Nahaufnahme der Anzeige ein/aus |
 | T | Zeitraffer (automatische Vorführung) |
+| M | Töne ein/aus |
 | P | Pause |
 
 ## Entwicklung

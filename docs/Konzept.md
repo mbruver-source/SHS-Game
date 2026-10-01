@@ -97,6 +97,7 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 | `js/empfehlung.js` | Trainingsempfehlung: Schwächen, Geruchsbilder, Fehlerauswertung, Rangliste der Trainings |
 | `js/competition.js` | KI-Teams, Prüfungssimulation |
 | `js/storage.js` | localStorage, Export/Import |
+| `js/ton.js` | Töne per WebAudio (synthetisch): Hörzeichen, Glocke, Bellen, Außenreize, Hecheln, Wind |
 | `js/grafik.js` | Zeichenhilfen: Hund mit Fellzeichnung je Rasse und Farbvariante, Trümmerteile, Kiesboden, 3D-Nahaufnahme der Anzeige |
 | `js/search.js` | Canvas-Darstellung und Eingabe der Suchlage |
 | `js/nachbetrachtung.js` | Aufzeichnung exportieren/archivieren, Wiedergabe mit Laufweg, Ereignissen, Zeitleiste |
@@ -242,3 +243,13 @@ Die Meisterschaften stehen mit 🏆 und Qualifikationsstand in den Ausschreibung
 - **Ein- und Ausschalten:** Auf Touch-Geräten (`pointer: coarse`) ist sie automatisch aktiv, sonst über „Touch“ im HUD. Die Einstellung wird gespeichert.
 - **Automatische Vorführung:** Hier ist nur die Taste für die Nahaufnahme zu sehen.
 - **Wetter:** Bei 0 °C oder kälter fällt Schnee statt Regen; er deckt den Geruch teilweise ab.
+
+## Figuren und Töne (v0.13)
+- **Figuren:** HF und WR werden von oben als Personen gezeichnet: Jacke, Kopf mit Haaren, schwingende Arme und Schritte beim Gehen. Das Handzeichen ist als ✋ zu sehen. Der WR trägt Klemmbrett und Mütze und schaut zum Hund.
+- **Töne** (`ton.js`): Sie werden synthetisch per WebAudio erzeugt, ohne Dateien, also auch offline.
+  - Pfiffe für Such!, Hier! und Bleib!
+  - Glocke bei der Erwiderung des WR, kleine Fanfare beim Fund, Brummen bei Fehlern
+  - Bellen bei aktiver Anzeige
+  - Geräusche zu den Außenreizen (Vogel, Bellen, Klingel, Klatschen, Knacken)
+  - Hecheln abhängig vom Tempo des Hundes und Wind abhängig von der Windstärke
+- **Bedienung:** Taste M oder 🔊 im HUD schaltet die Töne ab; die Einstellung wird gespeichert. Der Ton startet erst nach der ersten Taste oder dem ersten Klick, weil Browser das so verlangen.

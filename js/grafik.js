@@ -230,6 +230,56 @@
     g.restore();
   }
 
+  // ------------------------------------------------------------------ Mensch (HF, WR) von oben
+  // Am Ursprung, Blickrichtung +x. z: { sk, gang (rad), tempo (0..1), arm (Handzeichen), jacke, hose, haare,
+  //   haut, klemmbrett (WR), hinweisArm (WR erwidert) }
+  function zeichneMensch(g, z) {
+    const k = z.sk;
+    const tempo = Math.min(1, z.tempo || 0);
+    const schwung = Math.sin(z.gang || 0) * 0.13 * tempo;
+    const haut = z.haut || '#e8bf98';
+    // Schatten
+    ellipse(g, 0.04 * k, 0.04 * k, 0.17 * k, 0.26 * k, 'rgba(0,0,0,0.25)');
+    // Beine/Schuhe: beim Gehen abwechselnd vor und zurück
+    for (const s of [-1, 1]) {
+      const x = s * schwung;
+      ellipse(g, x * k, s * 0.09 * k, 0.085 * k, 0.05 * k, z.hose || '#3b4250');
+      ellipse(g, (x + 0.06) * k, s * 0.09 * k, 0.045 * k, 0.04 * k, '#2a2522');
+    }
+    // Arme: schwingen gegengleich, der rechte ist beim Handzeichen gehoben
+    const armFarbe = ton(z.jacke, -0.1);
+    const arm = (s, gehoben) => {
+      g.strokeStyle = armFarbe; g.lineCap = 'round'; g.lineWidth = 0.075 * k;
+      g.beginPath(); g.moveTo(0, s * 0.19 * k);
+      let hx; let hy;
+      if (gehoben) { hx = 0.16; hy = s * 0.3; } else { hx = -s * schwung * 1.2 + 0.03; hy = s * 0.23; }
+      g.lineTo(hx * k, hy * k); g.stroke();
+      ellipse(g, hx * k, hy * k, (gehoben ? 0.05 : 0.04) * k, (gehoben ? 0.05 : 0.04) * k, haut);
+      return [hx, hy];
+    };
+    arm(-1, false);
+    const rechteHand = arm(1, !!z.arm);
+    // Oberkörper (Jacke) mit Schulterrundung
+    const jg = g.createLinearGradient(0, -0.2 * k, 0, 0.2 * k);
+    jg.addColorStop(0, ton(z.jacke, -0.2)); jg.addColorStop(0.5, ton(z.jacke, 0.12)); jg.addColorStop(1, ton(z.jacke, -0.25));
+    g.fillStyle = jg;
+    g.beginPath(); g.ellipse(0, 0, 0.12 * k, 0.215 * k, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1; g.stroke();
+    // Klemmbrett des WR
+    if (z.klemmbrett) {
+      g.fillStyle = '#f4f1e8'; g.fillRect(0.06 * k, -0.24 * k, 0.12 * k, 0.09 * k);
+      g.strokeStyle = '#7a5a3a'; g.strokeRect(0.06 * k, -0.24 * k, 0.12 * k, 0.09 * k);
+    }
+    // Kopf mit Haaren (von oben), Nase zeigt die Blickrichtung
+    ellipse(g, 0.07 * k, 0, 0.022 * k, 0.018 * k, haut);
+    const kg = g.createRadialGradient(-0.02 * k, -0.02 * k, 0.01 * k, 0, 0, 0.1 * k);
+    kg.addColorStop(0, ton(z.haare || '#5a3b24', 0.25)); kg.addColorStop(1, z.haare || '#5a3b24');
+    g.fillStyle = kg;
+    g.beginPath(); g.ellipse(0, 0, 0.085 * k, 0.078 * k, 0, 0, Math.PI * 2); g.fill();
+    if (z.muetze) { g.fillStyle = z.muetze; g.beginPath(); g.ellipse(0.01 * k, 0, 0.07 * k, 0.07 * k, 0, 0, Math.PI * 2); g.fill(); }
+    return rechteHand;
+  }
+
   // ------------------------------------------------------------------ Trümmerfeld
   function hash(s) { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; }
 
@@ -763,5 +813,5 @@
     }
   }
 
-  SHS.grafik = { fellVarianten, fellFuer, zeichneHund, zeichneTruemmer, kiesPunkte, zeichneAnzeigeSzene };
+  SHS.grafik = { zeichneMensch, fellVarianten, fellFuer, zeichneHund, zeichneTruemmer, kiesPunkte, zeichneAnzeigeSzene };
 })(globalThis.SHS = globalThis.SHS || {});
