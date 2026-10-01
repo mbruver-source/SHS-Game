@@ -229,3 +229,10 @@ Den eigenen Menüpunkt „Trainingsempfehlung“ erreichst du im Hof (💡 neben
 - **Rüde/Hündin:** Das Geschlecht wählst du bei der Anlage, ändern kannst du es per Klick aufs Hundebild.
   - Läufigkeit, ANNAHME: Hündinnen ab 8 Monaten zweimal im Jahr je 3 Wochen.
   - Eine läufige Hündin bekommt im Hof ein Abzeichen und in der Anmeldung einen Hinweis. Sie startet als Letzte (PO II.1.3).
+
+## Meisterschaften (v0.11)
+ANNAHME (Spiel): Landesmeisterschaft alle 20 Wochen (16 Teams), Bundesmeisterschaft alle 40 Wochen (20 Teams), immer SHS-Dreikampf LK 3 mit stärkerer KI-Konkurrenz.
+- **Qualifikation LM:** in LK 3 einen Dreikampf mit mindestens 240 Punkten bestanden.
+- **Qualifikation BM:** bei einer LM Platz 1–3 oder mindestens 270 Punkte.
+
+Die Meisterschaften stehen mit 🏆 und Qualifikationsstand in den Ausschreibungen. Ein Sieg bringt einen Titel (z. B. „Landesmeister 2027“), der im Hof neben dem Hundenamen erscheint.

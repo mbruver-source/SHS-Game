@@ -42,7 +42,7 @@ test('Disqualifikation zählt nicht für den Aufstieg', () => {
 
 test('Es gibt immer kommende Ausschreibungen und eine Prüfung hat mindestens 8 Teams', () => {
   const s = career.neuerSpielstand('HF', 'Hund', 'Mischling', 5);
-  assert.equal(s.ausschreibungen.length, 3);
+  assert.equal(s.ausschreibungen.filter((a) => !a.meisterschaft).length, 3);
   const teams = SHS.competition.kiTeams(s.ausschreibungen[0], 1, SHS.po.MINDEST_TEILNEHMER - 1);
   assert.equal(teams.length + 1, SHS.po.MINDEST_TEILNEHMER);
   const r = SHS.competition.simuliereTeam(teams[0], { ...s.ausschreibungen[0], art: 'DK' }, 1, 1);
@@ -58,4 +58,18 @@ test('HF-Erfahrung wächst mit Training, Übungssuchen und Prüfungen', () => {
   const nachUebung = career.hfErfahrung(s);
   career.eintragen(s, { pruefungId: 'x', lk: 1, art: 'ED', einzelwerte: { truemmer: 80 }, status: 'ok' });
   assert.ok(start < nachTraining && nachTraining < nachUebung && nachUebung < career.hfErfahrung(s));
+});
+
+test('Meisterschaften: ausgeschrieben, Qualifikation über LK-3-Dreikampf bzw. Landesmeisterschaft', () => {
+  const s = career.neuerSpielstand('HF', 'Hund', 'Mischling', 12);
+  const lm = s.ausschreibungen.find((a) => a.meisterschaft === 'LM');
+  assert.ok(lm, 'Landesmeisterschaft in den nächsten 12 Wochen');
+  assert.equal(career.meisterschaftsQualifikation(s, 'LM').ok, false);
+  s.lk = 3;
+  career.eintragen(s, { pruefungId: 'x', lk: 3, art: 'DK', einzelwerte: { truemmer: 85, flaeche: 80, behaeltnis: 85 }, punkte: 250, abk: 'G', status: 'ok', datum: '01.01.2027' });
+  assert.equal(career.meisterschaftsQualifikation(s, 'LM').ok, true);
+  assert.equal(career.meisterschaftsQualifikation(s, 'BM').ok, false);
+  career.eintragen(s, { pruefungId: lm.id, meisterschaft: 'LM', lk: 3, art: 'DK', einzelwerte: {}, punkte: 280, abk: 'SG', status: 'ok', platz: 1, datum: '13.03.2027' });
+  assert.equal(career.meisterschaftsQualifikation(s, 'BM').ok, true);
+  assert.deepEqual(s.titel, ['Landesmeister 2027']);
 });

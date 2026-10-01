@@ -217,16 +217,20 @@
       `<tr><td>${g.name}</td><td>${balken(h.vertrautheit[g.id] * 100)}</td><td class="zahl">${Math.round(h.vertrautheit[g.id] * 100)}</td></tr>`).join('');
     const ausschreibungen = s.ausschreibungen.map((a) => {
       const diese = a.woche === s.woche;
-      const art = a.art === 'DK' ? 'Dreikampf' : `Einzeldisziplin ${diszName(a.disziplin)}`;
+      const art = a.meisterschaft ? 'Dreikampf LK 3' : a.art === 'DK' ? `Dreikampf, LK ${s.lk}` : `Einzeldisziplin ${diszName(a.disziplin)}, LK ${s.lk}`;
+      const quali = a.meisterschaft ? career.meisterschaftsQualifikation(s, a.meisterschaft) : { ok: true };
       let aktion = `<span class="klein">in ${a.woche - s.woche} Woche(n)</span>`;
       if (diese) {
         const starts = career.eigeneStarts(app.profil, a.id);
         if (a.erledigt) aktion = '<span class="klein">gestartet ✔</span>';
         else if (!career.darfPruefen(s)) aktion = `<span class="klein warn">Hund zu jung (mind. ${po.MINDESTALTER_MONATE} Monate)</span>`;
         else if (starts.length >= career.MAX_HUNDE_JE_PRUEFUNG) aktion = `<span class="klein warn">Schon ${career.MAX_HUNDE_JE_PRUEFUNG} Hunde gemeldet (PO)</span>`;
+        else if (!quali.ok) aktion = `<span class="klein warn">${esc(quali.grund)}</span>`;
         else aktion = `<button class="primaer" data-pruefung="${a.id}">Starten</button>`;
+      } else if (a.meisterschaft) {
+        aktion = `<span class="klein ${quali.ok ? '' : 'warn'}">${quali.ok ? `qualifiziert ✔ · in ${a.woche - s.woche} Woche(n)` : esc(quali.grund)}</span>`;
       }
-      return `<li class="${diese ? 'diese' : ''}"><div><b>${esc(a.verein)}</b> – ${art}, LK ${s.lk}<br>
+      return `<li class="${diese ? 'diese' : ''} ${a.meisterschaft ? 'meisterschaft' : ''}"><div>${a.meisterschaft ? '🏆 ' : ''}<b>${esc(a.verein)}</b> – ${art}<br>
         <span class="klein">Sa., ${career.datumText(a.woche)}</span></div>${aktion}</li>`;
     }).join('');
     const letzte = s.leistungsnachweis.slice(-3).reverse().map(eintragZeile).join('') || '<tr><td colspan="4" class="klein">Noch keine Prüfungen.</td></tr>';
@@ -240,7 +244,8 @@
         <header class="hof-kopf">
           <canvas class="hund-portrait" title="Fellfarbe ändern"></canvas>
           <div class="hof-name"><h1>${esc(h.name)} <small>${esc(h.rasse)} · ${esc(h.geschlecht || 'Rüde')}</small>
-            ${career.istLaeufig(s) ? '<span class="abzeichen" title="PO II.1.3: Start am Ende des Prüfungstages">läufig</span>' : ''}</h1>
+            ${career.istLaeufig(s) ? '<span class="abzeichen" title="PO II.1.3: Start am Ende des Prüfungstages">läufig</span>' : ''}
+            ${(s.titel || []).map((t) => `<span class="abzeichen titel">🏆 ${esc(t)}</span>`).join('')}</h1>
             <div class="klein">HF ${esc(s.hf.name)} (Erfahrung ${Math.round(career.hfErfahrungProfil(app.profil) * 100)} %) · ${career.alterText(h.alterMonate)} · Leistungsklasse <b>LK ${s.lk}</b></div></div>
           <div class="woche"><div>Woche ${s.woche}</div><div class="klein">bis Sa., ${career.datumText(s.woche)}</div></div>
         </header>
@@ -475,7 +480,7 @@
       <div class="karte">
         <h2>Anmeldung: ${esc(a.verein)} – ${a.art === 'DK' ? 'SHS-Dreikampf' : 'SHS-Einzeldisziplin'}, LK ${lk}</h2>
         ${career.istLaeufig(s, a.woche) ? `<div class="regel-box"><b>${esc(s.hund.name)} ist läufig.</b> Die Läufigkeit wird der Prüfungsleitung gemeldet; ${esc(s.hund.name)} startet am Ende des Prüfungstages und wird bis dahin vom Gelände separiert (PO II.1.3).</div>` : ''}
-        <p>HF <b>${esc(s.hf.name)}</b> mit <b>${esc(s.hund.name)}</b> · Sa., ${career.datumText(a.woche)} · ${po.MINDEST_TEILNEHMER} Teams gemeldet</p>
+        <p>HF <b>${esc(s.hf.name)}</b> mit <b>${esc(s.hund.name)}</b> · Sa., ${career.datumText(a.woche)} · ${a.meisterschaft ? career.MEISTERSCHAFTEN[a.meisterschaft].teilnehmer : po.MINDEST_TEILNEHMER} Teams gemeldet</p>
         <div class="regel-box">
           <b>Anforderungen LK ${lk}:</b> ${anf.gegenstaende === 1 ? 'ein Suchgegenstand' : anf.gegenstaende + ' Suchgegenstände'}${lk === 1 ? ', keine Verleitungen' : lk === 2 ? ', Spielzeug- und Eigengeruchsverleitungen' : ', Spielzeug-, Futter- und Eigengeruchsverleitungen sowie Differenzierung'}.
           Anzeigedauer ${lk === 3 ? '3 s, dann neben den Hund und 5 s' : anf.anzeige.phasen[0] + ' s'}.
@@ -555,9 +560,12 @@
       // Eigene Hunde, die in derselben LK schon gestartet sind, stehen mit in der Rangliste.
       const eigeneFrueher = career.eigeneStarts(app.profil, a.id).filter((x) => x.lk === p.lk)
         .map((x) => Object.assign({}, x, { eigen: true }));
-      const ki = SHS.competition.kiTeams(a, p.lk, Math.max(1, po.MINDEST_TEILNEHMER - 1 - eigeneFrueher.length));
+      const m = a.meisterschaft ? career.MEISTERSCHAFTEN[a.meisterschaft] : null;
+      const feld = m ? m.teilnehmer : po.MINDEST_TEILNEHMER;
+      const ausschreibungKI = Object.assign({}, a, { niveau: m ? m.niveau : 0 });
+      const ki = SHS.competition.kiTeams(ausschreibungKI, p.lk, Math.max(1, feld - 1 - eigeneFrueher.length));
       const teilnehmer = ki.map((t, i) => {
-        const r = SHS.competition.simuliereTeam(t, a, p.lk, i + 1);
+        const r = SHS.competition.simuliereTeam(t, ausschreibungKI, p.lk, i + 1);
         return { hf: t.hf, hund: t.hund.name, rasse: t.hund.rasse, einzelwerte: r.einzelwerte, ergebnis: SHS.competition.auswerten(r.einzelwerte, a.art, r.status) };
       });
       teilnehmer.push(...eigeneFrueher);
@@ -569,7 +577,7 @@
       const eintrag = {
         pruefungId: a.id, woche: a.woche, datum: career.datumText(a.woche), verein: a.verein, art: a.art,
         lk: p.lk, einzelwerte: p.einzelwerte, punkte: eigenes.punkte, note: eigenes.text, abk: eigenes.abk,
-        status: p.status, platz: ich.platz, teilnehmer: teilnehmer.length,
+        status: p.status, platz: ich.platz, teilnehmer: teilnehmer.length, meisterschaft: a.meisterschaft || null,
       };
       const { aufstieg } = career.eintragen(s, eintrag);
       speichern();
@@ -581,6 +589,8 @@
         <div class="karte">
           <h2>Ergebnis: ${esc(a.verein)} – ${a.art === 'DK' ? 'Dreikampf' : 'Einzeldisziplin'} LK ${p.lk}</h2>
           <p class="gross-ergebnis">${esc(s.hund.name)}: <b>${eigenes.punkte}</b> Punkte – <b>${esc(eigenes.text)}</b>${ich.platz ? ` · Platz ${ich.platz} von ${teilnehmer.length}` : ''}</p>
+          ${m && ich.platz === 1 ? `<div class="erfolg">🏆 ${esc(s.hund.name)} ist ${esc(m.kurz)}!</div>` : ''}
+          ${m && ich.platz && ich.platz <= 3 && ich.platz > 1 ? `<div class="erfolg">🥈 Platz ${ich.platz} bei der ${esc(m.name)}!</div>` : ''}
           ${aufstieg ? `<div class="erfolg">🎉 Klassenaufstieg! ${esc(s.hund.name)} startet ab jetzt in LK ${s.lk}.</div>` : ''}
           <table class="rangliste"><tr><th>Platz</th><th>Team</th>${disz.map((d) => `<th>${diszName(d)}</th>`).join('')}<th>Gesamt</th><th>Wertnote</th></tr>${zeilen}</table>
           <p class="hinweis">Gleiche Punktzahl = gleicher Platz, der folgende Platz entfällt. Nicht bestandene Teams werden nicht platziert.</p>

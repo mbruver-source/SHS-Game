@@ -275,8 +275,9 @@
   // Hält immer die nächsten Ausschreibungen vor (ab Woche 2, alle 2–3 Wochen).
   function aktualisiereAusschreibungen(stand) {
     stand.ausschreibungen = stand.ausschreibungen.filter((a) => a.woche >= stand.woche && !a.erledigt);
-    let letzte = stand.ausschreibungen.reduce((m, a) => Math.max(m, a.woche), stand.woche);
-    while (stand.ausschreibungen.length < 3) {
+    const regulaer = () => stand.ausschreibungen.filter((a) => !a.meisterschaft);
+    let letzte = regulaer().reduce((m, a) => Math.max(m, a.woche), stand.woche);
+    while (regulaer().length < 3) {
       const r = SHS.rng((stand.seed + letzte * 92821) >>> 0);
       letzte += r.int(2, 3);
       const dk = r.chance(0.5);
@@ -289,12 +290,48 @@
         seed: (stand.seed + letzte * 15485863) >>> 0,
       });
     }
+    // Meisterschaften in den nächsten 12 Wochen
+    for (let w = stand.woche; w <= stand.woche + 12; w++) {
+      for (const [typ, m] of Object.entries(MEISTERSCHAFTEN)) {
+        if (w % m.abstand !== m.versatz) continue;
+        const id = `${typ.toLowerCase()}${w}`;
+        if (stand.ausschreibungen.some((a) => a.id === id) || (stand.erledigteMeisterschaften || []).includes(id)) continue;
+        stand.ausschreibungen.push({ id, woche: w, verein: m.name, art: 'DK', disziplin: null, meisterschaft: typ, seed: (stand.seed + w * 2654435761) >>> 0 });
+      }
+    }
     stand.ausschreibungen.sort((a, b) => a.woche - b.woche);
+  }
+
+  // ---------------------------------------------------------------- Meisterschaften
+  // ANNAHME (Spiel): Landesmeisterschaft alle 20 Wochen, Bundesmeisterschaft alle 40 Wochen.
+  // Immer SHS-Dreikampf LK 3. Qualifikation:
+  //  - LM: in LK 3 einen Dreikampf mit mindestens "Gut" (240 Punkte) bestanden
+  //  - BM: bei einer Landesmeisterschaft Platz 1–3 oder mindestens 270 Punkte
+  const MEISTERSCHAFTEN = {
+    LM: { name: 'Landesmeisterschaft Spürhundesport', kurz: 'Landesmeister', abstand: 20, versatz: 12, teilnehmer: 16, niveau: 3 },
+    BM: { name: 'Bundesmeisterschaft Spürhundesport', kurz: 'Bundessieger', abstand: 40, versatz: 32, teilnehmer: 20, niveau: 7 },
+  };
+
+  function meisterschaftsQualifikation(stand, typ) {
+    if (stand.lk < 3) return { ok: false, grund: 'Nur für Hunde in LK 3' };
+    const ln = stand.leistungsnachweis.filter((e) => e.status !== 'disq');
+    if (typ === 'LM') {
+      const q = ln.some((e) => e.lk === 3 && e.art === 'DK' && !e.meisterschaft && e.punkte >= 240 && e.abk !== 'nB' && e.abk !== 'ABBR');
+      return q ? { ok: true } : { ok: false, grund: 'Qualifikation: Dreikampf LK 3 mit mind. 240 Punkten' };
+    }
+    const q = ln.some((e) => e.meisterschaft === 'LM' && ((e.platz && e.platz <= 3) || e.punkte >= 270));
+    return q ? { ok: true } : { ok: false, grund: 'Qualifikation: Landesmeisterschaft Platz 1–3 oder mind. 270 Punkte' };
   }
 
   // Trägt ein Prüfungsergebnis ein und prüft den Klassenaufstieg (PO III.A.5).
   function eintragen(stand, eintrag) {
     stand.leistungsnachweis.push(eintrag);
+    if (eintrag.meisterschaft) {
+      stand.erledigteMeisterschaften = (stand.erledigteMeisterschaften || []).concat(eintrag.pruefungId);
+      if (eintrag.platz === 1) {
+        stand.titel = (stand.titel || []).concat(`${MEISTERSCHAFTEN[eintrag.meisterschaft].kurz} ${eintrag.datum.slice(-4)}`);
+      }
+    }
     const a = stand.ausschreibungen.find((x) => x.id === eintrag.pruefungId);
     if (a) a.erledigt = true;
     let aufstieg = false;
@@ -321,6 +358,6 @@
     MAX_HUNDE_JE_PRUEFUNG, neuesProfil, ausAltemStand, aktivesTeam, hundAufnehmen, wocheBeendenProfil,
     hfErfahrungProfil, eigeneStarts, startVermerken,
     neuerSpielstand, trainieren, uebungssucheVerbuchen, wocheBeenden, eintragen, klasseBestanden,
-    darfPruefen, istLaeufig, pronomen, datumText, monatDerWoche, alterText, aktualisiereAusschreibungen,
+    MEISTERSCHAFTEN, meisterschaftsQualifikation, darfPruefen, istLaeufig, pronomen, datumText, monatDerWoche, alterText, aktualisiereAusschreibungen,
   };
 })(globalThis.SHS = globalThis.SHS || {});

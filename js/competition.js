@@ -16,7 +16,7 @@
     const teams = [];
     for (let i = 0; i < anzahl; i++) {
       const hund = SHS.dog.neuerHund(hunde[i % hunde.length], r.pick(rassen));
-      const niveau = 38 + (lk - 1) * 18 + r.gauss() * 10;
+      const niveau = 38 + (lk - 1) * 18 + (pruefung.niveau || 0) + r.gauss() * 10;
       for (const k of Object.keys(hund.werte)) hund.werte[k] = Math.max(10, Math.min(95, niveau + r.gauss() * 9));
       for (const g of po.GEGENSTAENDE) hund.vertrautheit[g.id] = Math.max(0.3, Math.min(1, 0.45 + lk * 0.12 + r.gauss() * 0.12));
       hund.alterMonate = 18 + r.int(0, 60);
