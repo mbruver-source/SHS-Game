@@ -3,151 +3,230 @@
 (function (SHS) {
   'use strict';
 
-  // Fellzeichnung je Rasse und Farbvariante (erste Variante = Standard).
-  // grund = Körper, kopf = Kopf (sonst grund), sattel = dunkler Rückenfleck, maske = Fang,
-  // kragen/blesse/pfoten = weiße Abzeichen, flecken = Platten/Merle, ohrForm 'steh' oder 'kipp'.
-  const FELL = {
-    'Labrador Retriever': {
-      gelb: { name: 'Gelb', grund: '#e3c27a', kopf: '#e3c27a', ohren: '#cfa862', rute: '#dcb86f', nase: '#3b2b20', ohrForm: 'kipp', schattierung: '#c9a35d' },
-      schwarz: { name: 'Schwarz', grund: '#1f1e1d', kopf: '#1f1e1d', ohren: '#171615', rute: '#1f1e1d', nase: '#050505', ohrForm: 'kipp', schattierung: '#3a3836' },
-      braun: { name: 'Braun (Schoko)', grund: '#5b3a24', kopf: '#5b3a24', ohren: '#4a2f1d', rute: '#5b3a24', nase: '#2e1c12', ohrForm: 'kipp', schattierung: '#734b30' },
-    },
-    'Malinois': {
-      falb: { name: 'Falb mit Maske', grund: '#c99250', kopf: '#c99250', maske: '#241911', ohren: '#241911', rute: '#c08848', rutenspitze: '#241911', ohrForm: 'steh', ruecken: 'rgba(36,25,17,0.28)' },
-      mahagoni: { name: 'Mahagoni', grund: '#9a5a2c', kopf: '#9a5a2c', maske: '#1e140e', ohren: '#1e140e', rute: '#8e5329', rutenspitze: '#1e140e', ohrForm: 'steh', ruecken: 'rgba(30,20,14,0.35)' },
-    },
-    'Beagle': {
-      dreifarbig: { name: 'Dreifarbig', grund: '#f3eee4', kopf: '#b9773d', sattel: '#221c18', ohren: '#a86a33', rute: '#221c18', rutenspitze: '#f7f3ec', ohrForm: 'kipp', blesse: '#f7f3ec' },
-      zitrone: { name: 'Zitronen-Weiß', grund: '#f5f0e4', kopf: '#e2c47e', sattel: '#e5c983', ohren: '#d8b66b', rute: '#e5c983', rutenspitze: '#f7f3ec', ohrForm: 'kipp', blesse: '#f7f3ec' },
-      rotweiss: { name: 'Rot-Weiß', grund: '#f3eee4', kopf: '#b2622c', sattel: '#b2622c', ohren: '#a0582a', rute: '#b2622c', rutenspitze: '#f7f3ec', ohrForm: 'kipp', blesse: '#f7f3ec' },
-    },
-    'Deutscher Schäferhund': {
-      schwarzbraun: { name: 'Schwarz-Braun', grund: '#b67d3e', kopf: '#b67d3e', sattel: '#1d1916', maske: '#1d1916', ohren: '#1d1916', rute: '#2a2420', ohrForm: 'steh' },
-      grau: { name: 'Grau (wildfarben)', grund: '#9c8d74', kopf: '#9c8d74', ruecken: 'rgba(30,28,25,0.55)', maske: '#2b2824', ohren: '#2b2824', rute: '#5e564b', ohrForm: 'steh' },
-      schwarz: { name: 'Schwarz', grund: '#1c1b1a', kopf: '#1c1b1a', ohren: '#141312', rute: '#1c1b1a', ohrForm: 'steh', schattierung: '#363432' },
-    },
-    'Border Collie': {
-      schwarzweiss: { name: 'Schwarz-Weiß', grund: '#1d1d1f', kopf: '#1d1d1f', kragen: '#f2f2f0', blesse: '#f2f2f0', ohren: '#1d1d1f', rute: '#1d1d1f', rutenspitze: '#f2f2f0', pfoten: '#f2f2f0', ohrForm: 'kipp' },
-      rotweiss: { name: 'Rot-Weiß', grund: '#7a4326', kopf: '#7a4326', kragen: '#f2f2f0', blesse: '#f2f2f0', ohren: '#6a3a21', rute: '#7a4326', rutenspitze: '#f2f2f0', pfoten: '#f2f2f0', ohrForm: 'kipp' },
-      merle: { name: 'Blue Merle', grund: '#8e98a5', kopf: '#8e98a5', flecken: '#2a2e35', kragen: '#f2f2f0', blesse: '#f2f2f0', ohren: '#2a2e35', rute: '#8e98a5', rutenspitze: '#f2f2f0', pfoten: '#f2f2f0', ohrForm: 'kipp' },
-    },
-    'Mischling': {
-      braungefleckt: { name: 'Braun gefleckt', grund: '#8c6b4f', kopf: '#8c6b4f', flecken: '#5e4532', ohren: '#5e4532', rute: '#8c6b4f', ohrForm: 'kipp', maske: '#6e523c' },
-      schwarz: { name: 'Schwarz mit Brustfleck', grund: '#222120', kopf: '#222120', kragen: '#ece8e0', ohren: '#1a1918', rute: '#222120', ohrForm: 'kipp' },
-      weissbraun: { name: 'Weiß-Braun', grund: '#efe9df', kopf: '#9a6a43', flecken: '#9a6a43', ohren: '#86593a', rute: '#efe9df', ohrForm: 'kipp' },
-      grau: { name: 'Grau gestromt', grund: '#7d7a74', kopf: '#7d7a74', ruecken: 'rgba(40,38,35,0.35)', ohren: '#4b4945', rute: '#7d7a74', ohrForm: 'steh', maske: '#4b4945' },
-    },
-  };
-
-  function fellVarianten(rasse) {
-    return FELL[rasse] || FELL.Mischling;
-  }
-
-  function fellFuer(rasse, variante) {
-    const v = fellVarianten(rasse);
-    return v[variante] || v[Object.keys(v)[0]];
-  }
+  // Fellfarben und Körperbau kommen aus js/rassen.js.
+  function fellVarianten(rasse) { return SHS.rassen.farben(rasse); }
+  function fellFuer(rasse, variante) { return SHS.rassen.fell(rasse, variante); }
 
   function ellipse(g, x, y, rx, ry, farbe, rand) {
     g.beginPath();
-    g.ellipse(x, y, Math.max(0.5, rx), Math.max(0.5, ry), 0, 0, Math.PI * 2);
+    g.ellipse(x, y, Math.max(1e-3, rx), Math.max(1e-3, ry), 0, 0, Math.PI * 2);
     if (farbe) { g.fillStyle = farbe; g.fill(); }
     if (rand) { g.strokeStyle = rand; g.lineWidth = 1; g.stroke(); }
   }
 
-  // Zeichnet den Hund am Ursprung, Blickrichtung +x (vorher translate/rotate setzen).
-  // z: { sk (px pro m), t (s), rasse, fell (Variante), liegt, rute (0..1), ruteHoch, naseTief, kopfW (rad), aktiv }
+  // Rumpfprofil eines Labradors von oben (Meter): [x, halbe Breite], vom Rutenansatz zum Hals.
+  const RUMPF = [[-0.35, 0.045], [-0.31, 0.1], [-0.24, 0.118], [-0.15, 0.104], [-0.05, 0.098],
+    [0.05, 0.12], [0.13, 0.125], [0.2, 0.108], [0.25, 0.078], [0.3, 0.058]];
+
+  // Geschlossene, weiche Kurve durch Punkte (Mittelpunkt-Spline).
+  function glattPfad(g, punkte) {
+    const n = punkte.length;
+    const mitte = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const m0 = mitte(punkte[n - 1], punkte[0]);
+    g.beginPath();
+    g.moveTo(m0[0], m0[1]);
+    for (let i = 0; i < n; i++) {
+      const m = mitte(punkte[i], punkte[(i + 1) % n]);
+      g.quadraticCurveTo(punkte[i][0], punkte[i][1], m[0], m[1]);
+    }
+    g.closePath();
+  }
+
+  // Punkte entlang einer quadratischen Kurve als sich verjüngende Kette zeichnen (Rute).
+  function verjuengt(g, p0, p1, p2, r0, r1, farbe, spitzeFarbe) {
+    const n = 36;
+    for (let i = 0; i <= n; i++) {
+      const u = i / n; const v = 1 - u;
+      const x = v * v * p0[0] + 2 * v * u * p1[0] + u * u * p2[0];
+      const y = v * v * p0[1] + 2 * v * u * p1[1] + u * u * p2[1];
+      g.fillStyle = spitzeFarbe && u > 0.78 ? spitzeFarbe : farbe;
+      g.beginPath(); g.arc(x, y, Math.max(1e-4, r0 + (r1 - r0) * u), 0, Math.PI * 2); g.fill();
+    }
+  }
+
+  // Zeichnet den Hund von oben am Ursprung, Blickrichtung +x (vorher translate/rotate setzen).
+  // z: { sk (px pro m), t, rasse, fell, liegt|liegtAnteil, sitztAnteil, gang (rad), tempo (m/s),
+  //      biegung (rad/s), rute (0..1), ruteHoch, naseTief, kopfW (rad) }
   function zeichneHund(g, z) {
+    const F = SHS.rassen.form(z.rasse);
     const f = fellFuer(z.rasse, z.fell);
-    const sk = z.sk;
-    const laenge = (z.liegt ? 0.55 : 0.62) * sk;
-    const breite = (z.liegt ? 0.3 : 0.24) * sk;
-    const L = laenge / 2; const B = breite / 2;
-    const kontur = 'rgba(0,0,0,0.35)';
+    const k = z.sk * F.groesse;
+    const t = z.t || 0;
+    const liegt = z.liegtAnteil !== undefined ? z.liegtAnteil : (z.liegt ? 1 : 0);
+    const sitzt = (z.sitztAnteil || 0) * (1 - liegt);
+    const tempo = z.tempo || 0;
+    const gang = z.gang || 0;
+    const biege = Math.max(-0.45, Math.min(0.45, (z.biegung || 0) * 0.13));
+    const atem = 1 + Math.sin(t * 2.6) * 0.022 * (0.3 + liegt);
+    const breitF = F.breit * (1 + 0.12 * liegt) * atem;
+    const versatz = (x) => biege * x * x * 5; // Rumpfbiegung in Kurven
+
+    const profil = RUMPF.map(([x, w]) => {
+      let xx = x < 0.2 ? x * F.lang : x + 0.2 * (F.lang - 1);
+      let ww = w * breitF;
+      if (xx < 0) { xx *= 1 - 0.42 * sitzt; if (x < -0.1) ww *= 1 + 0.25 * sitzt; }
+      return [xx, ww];
+    });
+    const links = profil.map(([x, w]) => [x * k, (-w + versatz(x)) * k]);
+    const rechts = profil.map(([x, w]) => [x * k, (w + versatz(x)) * k]).reverse();
+    const umriss = links.concat(rechts);
+    const rumpX = profil[0][0]; const halsX = profil[profil.length - 1][0];
+    const P = (x, y) => [x * k, (y + versatz(x)) * k]; // Punkt im Hundekoordinatensystem
 
     // Schatten
-    ellipse(g, 3, 3, L, B, 'rgba(0,0,0,0.25)');
-
-    // Rute
-    const freq = 2 + (z.rute || 0) * 12;
-    const ausschlag = (z.ruteHoch ? 0.6 : 0.25) * (0.3 + (z.rute || 0));
-    const rw = Math.PI + Math.sin(z.t * freq) * ausschlag;
-    const rl = 0.28 * sk * (z.ruteHoch ? 1 : 0.8);
-    const ex = -L + Math.cos(rw) * rl; const ey = Math.sin(rw) * rl;
-    g.lineCap = 'round';
-    g.strokeStyle = f.rute || f.grund;
-    g.lineWidth = Math.max(2, 0.055 * sk);
-    g.beginPath(); g.moveTo(-L * 0.9, 0); g.lineTo(ex, ey); g.stroke();
-    if (f.rutenspitze) {
-      g.strokeStyle = f.rutenspitze;
-      g.beginPath(); g.moveTo(-L + Math.cos(rw) * rl * 0.75, Math.sin(rw) * rl * 0.75); g.lineTo(ex, ey); g.stroke();
-    }
-
-    // Vorderpfoten (liegend nach vorn gestreckt)
-    if (z.liegt) {
-      const pf = f.pfoten || f.grund;
-      g.fillStyle = f.grund;
-      g.fillRect(L - 0.03 * sk, -B + 0.02 * sk, 0.17 * sk, 0.065 * sk);
-      g.fillRect(L - 0.03 * sk, B - 0.085 * sk, 0.17 * sk, 0.065 * sk);
-      g.fillStyle = pf;
-      g.fillRect(L + 0.09 * sk, -B + 0.02 * sk, 0.05 * sk, 0.065 * sk);
-      g.fillRect(L + 0.09 * sk, B - 0.085 * sk, 0.05 * sk, 0.065 * sk);
-    }
-
-    // Körper mit Abzeichen (auf den Körper beschnitten)
-    g.save();
-    g.beginPath(); g.ellipse(0, 0, L, B, 0, 0, Math.PI * 2); g.clip();
-    g.fillStyle = f.grund; g.fillRect(-L, -B, laenge, breite);
-    if (f.schattierung) ellipse(g, -L * 0.1, 0, L * 0.85, B * 0.35, f.schattierung + '55');
-    if (f.ruecken) ellipse(g, -L * 0.1, 0, L * 0.75, B * 0.55, f.ruecken);
-    if (f.sattel) ellipse(g, -L * 0.15, 0, L * 0.62, B * 0.95, f.sattel);
-    if (f.flecken) {
-      ellipse(g, -L * 0.45, -B * 0.45, L * 0.3, B * 0.5, f.flecken);
-      ellipse(g, L * 0.25, B * 0.55, L * 0.22, B * 0.45, f.flecken);
-    }
-    if (f.kragen) {
-      g.fillStyle = f.kragen;
-      g.fillRect(L * 0.55, -B, L * 0.45, breite);
-    }
+    g.save(); g.translate(0.03 * k, 0.03 * k);
+    g.fillStyle = 'rgba(0,0,0,0.22)';
+    glattPfad(g, umriss); g.fill();
     g.restore();
-    ellipse(g, 0, 0, L, B, null, kontur);
 
-    // Kopf
-    g.save();
-    g.translate(L, 0);
-    g.rotate(z.kopfW || 0);
-    const kr = 0.11 * sk;
-    if (f.kragen) ellipse(g, -kr * 0.2, 0, kr * 0.75, kr * 1.05, f.kragen);
-    // Ohren
-    g.fillStyle = f.ohren || f.kopf;
-    if (f.ohrForm === 'steh') {
+    const beinFarbe = ton(f.grund, -0.12);
+    const pfote = f.pfoten || ton(f.grund, -0.18);
+    const bein = (von, bis, dicke) => {
+      g.strokeStyle = beinFarbe; g.lineWidth = dicke * k; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(von[0], von[1]); g.lineTo(bis[0], bis[1]); g.stroke();
+      ellipse(g, bis[0] + 0.012 * k, bis[1], 0.032 * k, 0.024 * k, pfote);
+    };
+
+    // Beine: Trab (diagonale Paare), Sitz oder Liegen (Sphinx)
+    const vorneX = 0.17 + 0.2 * (F.lang - 1); const hintenX = -0.26 * F.lang;
+    if (liegt > 0.5) {
+      const vor = 0.2 * Math.min(1.2, F.beine + 0.2);
       for (const s of [-1, 1]) {
-        g.beginPath();
-        g.moveTo(kr * 0.05, s * kr * 0.45);
-        g.lineTo(-kr * 0.55, s * kr * 1.25);
-        g.lineTo(kr * 0.5, s * kr * 0.75);
-        g.closePath(); g.fill();
+        bein(P(vorneX - 0.04, s * 0.065 * F.breit), P(vorneX + vor, s * 0.06 * F.breit), 0.045);
+        ellipse(g, ...P(hintenX + 0.04, s * 0.115 * breitF), 0.1 * k * F.lang, 0.05 * k, ton(f.grund, -0.05));
+        ellipse(g, ...P(hintenX + 0.16, s * 0.15 * breitF), 0.034 * k, 0.022 * k, pfote);
+      }
+    } else if (sitzt > 0.5) {
+      for (const s of [-1, 1]) {
+        ellipse(g, ...P(vorneX + 0.09, s * 0.06), 0.032 * k, 0.024 * k, pfote);
+        ellipse(g, ...P(-0.1 * F.lang, s * 0.125 * breitF), 0.085 * k, 0.05 * k, ton(f.grund, -0.05));
+        ellipse(g, ...P(0.0, s * 0.14 * breitF), 0.032 * k, 0.022 * k, pfote);
+      }
+    } else {
+      const schritt = Math.min(1, tempo / 1.4) * 0.085 * Math.max(0.6, F.beine);
+      const beine = [[vorneX, -1, 0], [vorneX, 1, Math.PI], [hintenX, -1, Math.PI], [hintenX, 1, 0]];
+      for (const [x0, s, ph] of beine) {
+        const dx = Math.sin(gang + ph) * schritt;
+        bein(P(x0, s * 0.07 * F.breit), P(x0 + 0.03 + dx, s * 0.088 * F.breit), 0.04);
       }
     }
-    ellipse(g, kr * 0.6, 0, kr * 1.25, kr, f.kopf || f.grund);
+
+    // Rute (hinter dem Rumpf), schwingt nach und wedelt
+    const rTyp = F.rute;
+    if (rTyp !== 'ringel') {
+      const freq = 2 + (z.rute || 0) * 12;
+      const amp = (liegt > 0.5 ? 0.15 : (z.ruteHoch ? 0.55 : 0.25)) * (0.3 + (z.rute || 0));
+      const wedel = Math.sin(t * freq) * amp;
+      const laenge = { normal: 0.3, otter: 0.3, buschig: 0.33, kurz: 0.06 }[rTyp] || 0.3;
+      const dicke = { normal: 0.03, otter: 0.05, buschig: 0.06, kurz: 0.035 }[rTyp] || 0.03;
+      const basis = P(rumpX + 0.02, 0);
+      const winkel = Math.PI + wedel - biege * 1.4 + (liegt > 0.5 ? 0.5 : 0);
+      const kontroll = [basis[0] + Math.cos(winkel - wedel * 0.7) * laenge * 0.55 * k, basis[1] + Math.sin(winkel - wedel * 0.7) * laenge * 0.55 * k];
+      const ende = [basis[0] + Math.cos(winkel) * laenge * k, basis[1] + Math.sin(winkel) * laenge * k];
+      verjuengt(g, basis, kontroll, ende, dicke * k * 0.55, (rTyp === 'buschig' ? 0.028 : 0.01) * k, f.rute, f.rutenspitze);
+    }
+
+    // Rumpf mit Volumen (Wirbelsäule hell, Flanken dunkler) und Abzeichen
+    const breite = 0.13 * k * breitF;
+    const grad = g.createLinearGradient(0, -breite, 0, breite);
+    grad.addColorStop(0, ton(f.grund, -0.28)); grad.addColorStop(0.42, ton(f.grund, 0.1));
+    grad.addColorStop(0.58, ton(f.grund, 0.1)); grad.addColorStop(1, ton(f.grund, -0.32));
+    glattPfad(g, umriss);
+    g.fillStyle = grad; g.fill();
+    g.save(); g.clip();
+    if (f.schattierung) ellipse(g, ...P(-0.03, 0), 0.26 * k * F.lang, 0.03 * k, f.schattierung + '66');
+    if (f.ruecken) ellipse(g, ...P(-0.05, 0), 0.27 * k * F.lang, 0.065 * k * F.breit, f.ruecken);
+    if (f.sattel) ellipse(g, ...P(-0.07 * F.lang, 0), 0.2 * k * F.lang, 0.11 * k * breitF, f.sattel);
+    if (f.flecken) {
+      ellipse(g, ...P(-0.2 * F.lang, -0.06), 0.07 * k, 0.06 * k, f.flecken);
+      ellipse(g, ...P(0.06 * F.lang, 0.07), 0.06 * k, 0.05 * k, f.flecken);
+      ellipse(g, ...P(-0.05 * F.lang, 0.02), 0.035 * k, 0.03 * k, f.flecken);
+    }
+    if (f.kragen) { g.fillStyle = f.kragen; const a = P(halsX - 0.12, 0); g.fillRect(a[0], a[1] - 0.15 * k, 0.2 * k, 0.3 * k); }
+    g.restore();
+    // Fellstruktur am Rand
+    if (F.fell !== 'kurz') {
+      g.fillStyle = ton(f.grund, F.fell === 'locken' ? 0.08 : -0.04);
+      g.strokeStyle = ton(f.grund, -0.05); g.lineWidth = Math.max(1, 0.012 * k);
+      for (let i = 0; i < umriss.length; i++) {
+        const a = umriss[i]; const b = umriss[(i + 1) % umriss.length];
+        for (let u = 0; u < 1; u += 0.34) {
+          const x = a[0] + (b[0] - a[0]) * u; const y = a[1] + (b[1] - a[1]) * u;
+          if (F.fell === 'locken') { g.beginPath(); g.arc(x, y, 0.022 * k, 0, Math.PI * 2); g.fill(); } else {
+            const nx = y > 0 ? 1 : -1;
+            g.beginPath(); g.moveTo(x, y); g.lineTo(x - 0.015 * k, y + nx * (F.fell === 'draht' ? 0.012 : 0.022) * k); g.stroke();
+          }
+        }
+      }
+    }
+    glattPfad(g, umriss);
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1; g.stroke();
+
+    // Ringelrute liegt auf dem Rücken
+    if (rTyp === 'ringel') {
+      const c = P(rumpX + 0.07, 0.02);
+      g.strokeStyle = f.rute; g.lineWidth = 0.04 * k;
+      g.beginPath(); g.arc(c[0], c[1], 0.045 * k, 0.5, Math.PI * 2.1); g.stroke();
+      g.strokeStyle = 'rgba(0,0,0,0.2)'; g.lineWidth = 1; g.stroke();
+    }
+
+    // Kopf am Hals: Schädel, Fang, Ohren, Augen
+    const hals = P(halsX, 0);
+    g.save();
+    g.translate(hals[0], hals[1]);
+    const nicken = Math.sin(gang * 2) * 0.04 * Math.min(1, tempo);
+    g.rotate((z.kopfW || 0) + nicken + biege * 0.6);
+    if (z.naseTief) g.scale(0.9, 1);
+    const kb = Math.pow(F.breit, 0.6); // Kopfbreite
+    const kopf = f.kopf || f.grund;
+    ellipse(g, 0.0, 0, 0.05 * k, 0.058 * k * kb, kopf); // Halsansatz
+    const ohrFarbe = f.ohren || kopf;
+    if (F.ohr === 'steh') {
+      for (const s of [-1, 1]) {
+        g.fillStyle = ohrFarbe;
+        g.beginPath(); g.moveTo(0.005 * k, s * 0.03 * k * kb); g.lineTo(0.05 * k, s * 0.05 * k * kb);
+        g.lineTo(-0.005 * k, s * (0.06 * kb + 0.055 * F.ohrGr) * k); g.closePath(); g.fill();
+      }
+    }
+    const sl = 0.075; // Schädel-Halblänge
+    const fl = 0.02 + 0.085 * F.fang; // Fanglänge
+    const sg = g.createRadialGradient(0.07 * k, -0.02 * k, 0.01 * k, 0.07 * k, 0, 0.09 * k);
+    sg.addColorStop(0, ton(kopf, 0.15)); sg.addColorStop(1, ton(kopf, -0.2));
+    g.fillStyle = sg;
+    g.beginPath(); g.ellipse(0.065 * k, 0, sl * k, 0.066 * k * kb, 0, 0, Math.PI * 2); g.fill();
+    // Fang
+    const fx0 = 0.11 * k; const fx1 = (0.11 + fl) * k;
+    g.beginPath(); g.moveTo(fx0, -0.045 * k * kb); g.quadraticCurveTo(fx1, -0.04 * k * kb, fx1, 0);
+    g.quadraticCurveTo(fx1, 0.04 * k * kb, fx0, 0.045 * k * kb); g.closePath();
+    g.fillStyle = kopf; g.fill();
     if (f.maske) {
-      g.save();
-      g.beginPath(); g.ellipse(kr * 0.6, 0, kr * 1.25, kr, 0, 0, Math.PI * 2); g.clip();
-      ellipse(g, kr * 1.55, 0, kr * 0.7, kr * 0.65, f.maske);
+      g.save(); g.clip();
+      g.fillStyle = f.maske; g.fillRect(fx0 - 0.01 * k, -0.06 * k, fx1, 0.12 * k);
       g.restore();
     }
-    if (f.blesse) {
-      g.fillStyle = f.blesse;
-      g.fillRect(-kr * 0.3, -kr * 0.13, kr * 2.1, kr * 0.26);
+    if (f.blesse) { g.fillStyle = f.blesse; g.fillRect(0.02 * k, -0.011 * k, fx1 - 0.03 * k, 0.022 * k); }
+    // Augen
+    for (const s of [-1, 1]) ellipse(g, 0.1 * k, s * 0.036 * k * kb, 0.009 * k, 0.007 * k, '#140f0c');
+    // Nase
+    g.fillStyle = z.naseTief ? (f.nase || '#141010') : ton(f.nase || '#141010', 0.15);
+    g.beginPath(); g.ellipse(fx1 - 0.008 * k, 0, 0.016 * k, 0.022 * k * Math.min(1.2, kb), 0, 0, Math.PI * 2); g.fill();
+    // Kipp- und Hängeohren über dem Schädel
+    if (F.ohr === 'kipp') {
+      for (const s of [-1, 1]) {
+        g.fillStyle = ohrFarbe;
+        g.beginPath(); g.moveTo(0.0, s * 0.045 * k * kb); g.lineTo(0.045 * k, s * 0.055 * k * kb);
+        g.lineTo(0.05 * k, s * (0.07 * kb + 0.025 * F.ohrGr) * k); g.closePath(); g.fill();
+      }
+    } else if (F.ohr === 'haenge') {
+      for (const s of [-1, 1]) {
+        const og = g.createLinearGradient(0, s * 0.04 * k, 0, s * 0.1 * k);
+        og.addColorStop(0, ton(ohrFarbe, -0.1)); og.addColorStop(1, ton(ohrFarbe, 0.1));
+        g.fillStyle = og;
+        g.beginPath(); g.ellipse(0.045 * k, s * (0.06 * kb + 0.012 * F.ohrGr) * k, (0.035 + 0.02 * F.ohrGr) * k, 0.028 * k, s * 0.25, 0, Math.PI * 2); g.fill();
+      }
     }
-    ellipse(g, kr * 0.6, 0, kr * 1.25, kr, null, kontur);
-    if (f.ohrForm !== 'steh') {
-      ellipse(g, kr * 0.15, -kr * 0.95, kr * 0.55, kr * 0.32, f.ohren || f.kopf, kontur);
-      ellipse(g, kr * 0.15, kr * 0.95, kr * 0.55, kr * 0.32, f.ohren || f.kopf, kontur);
-    }
-    // Nase: tief = größer/dunkler
-    g.fillStyle = z.naseTief ? (f.nase || '#111') : '#444';
-    g.beginPath(); g.arc(kr * 1.8, 0, kr * (z.naseTief ? 0.33 : 0.24), 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 1;
+    g.beginPath(); g.ellipse(0.065 * k, 0, sl * k, 0.066 * k * kb, 0, 0, Math.PI * 2); g.stroke();
     g.restore();
   }
 
@@ -346,13 +425,212 @@
     ellipse(g, x + b / 2, yBoden - h, b / 2.4, ry * 0.8, ton(farbe, -0.05));
   }
 
+  // Liegender Hund (Sphinx-Platz) von der Seite. Koordinaten intern in "Hundemetern":
+  // Ursprung = Boden unter der Brust, x nach vorn (rechts), y nach unten.
+  // p: { S (px/m), boden, naseX, naseY, nachOben, F (Form), f (Fell), t, blick, aktiv, rute }
+  function zeichneHundLiegend(g, p) {
+    const { F, f, t } = p;
+    const K = p.S * F.groesse; // px pro Hundemeter
+    const L = F.lang;
+    const h = 0.24 * Math.pow(F.breit, 0.35); // Rumpfhöhe im Liegen
+    const fang = 0.02 + 0.085 * F.fang;
+    const kopfLaenge = 0.125 + fang;
+    const atem = 1 + Math.sin(t * 2.6) * 0.022;
+
+    // Kopfhaltung: Nase zur Quelle, bei Hochlagen nach oben, beim Zurückschauen zum HF gedreht
+    let winkel; let kx; let ky; // Kopfursprung (Hinterkopf) in px
+    const kopfPx = kopfLaenge * K;
+    if (p.blick) {
+      winkel = Math.PI + 0.35;
+    } else {
+      winkel = p.nachOben ? -0.55 : Math.max(-0.2, Math.min(0.75, Math.atan2(p.naseY - (p.boden - 0.2 * K), kopfPx * 0.9)));
+    }
+    kx = p.naseX - Math.cos(winkel) * kopfPx;
+    ky = p.naseY - Math.sin(winkel) * kopfPx;
+    // Brust liegt hinter dem Kopf
+    const brustX = (p.blick ? p.naseX - 0.05 * K : kx) - 0.05 * K;
+    if (p.blick) { kx = brustX + 0.03 * K; ky = p.boden - (h + 0.07) * K; }
+
+    // Schatten
+    ellipse(g, brustX - 0.25 * K * L, p.boden + 1, 0.48 * K * L, 0.045 * K, 'rgba(0,0,0,0.28)');
+
+    g.save();
+    g.translate(brustX, p.boden);
+    g.scale(K, K);
+    const px = 1 / K; // 1 Pixel in Hundemetern
+    const kopfL = [(kx - brustX) / K, (ky - p.boden) / K];
+
+    // Rute
+    const T = [-0.6 * L, -0.55 * h];
+    const wedel = Math.sin(t * (2 + (p.rute || 0.2) * 10)) * 0.02 * (p.rute || 0.2) * 3;
+    const rTyp = F.rute;
+    if (rTyp === 'ringel') {
+      g.strokeStyle = volumen(g, f.rute, -h - 0.1, -h + 0.05); g.lineWidth = 0.04;
+      g.beginPath(); g.arc(-0.55 * L, -0.95 * h, 0.055, Math.PI * 0.2, Math.PI * 1.9); g.stroke();
+    } else if (rTyp === 'kurz') {
+      ellipse(g, T[0] - 0.02, T[1], 0.035, 0.025, f.rute);
+    } else {
+      const ende = [-0.6 * L - 0.32, -0.03 + wedel];
+      const kontroll = [-0.6 * L - 0.1, -0.06];
+      const r0 = rTyp === 'otter' ? 0.032 : rTyp === 'buschig' ? 0.035 : 0.02;
+      const r1 = rTyp === 'buschig' ? 0.02 : 0.007;
+      verjuengt(g, T, kontroll, ende, r0, r1, f.rute, f.rutenspitze);
+      if (rTyp === 'buschig' || F.fell === 'lang') {
+        // buschige/befederte Rute: weicher Haarsaum
+        g.save(); g.globalAlpha = 0.35;
+        verjuengt(g, T, kontroll, ende, r0 * 1.5, r1 * 1.8, ton(f.rute, 0.1));
+        g.restore();
+      }
+    }
+
+    // Hinterer (ferner) Vorderlauf
+    const vorLauf = 0.24 * Math.pow(F.beine, 0.5);
+    const lauf = (dy, farbe, hebung) => {
+      g.strokeStyle = farbe; g.lineWidth = 0.05 * Math.pow(F.breit, 0.5); g.lineCap = 'round';
+      g.beginPath(); g.moveTo(-0.03, -0.06 + dy); g.quadraticCurveTo(vorLauf * 0.5, -0.03 + dy, vorLauf, -0.025 + dy - hebung); g.stroke();
+      ellipse(g, vorLauf + 0.02, -0.022 + dy - hebung, 0.04, 0.022, f.pfoten || ton(f.grund, -0.12));
+    };
+    lauf(-0.022, ton(f.grund, -0.3), 0);
+
+    // Rumpf (atmet)
+    g.save();
+    g.scale(1, atem);
+    g.beginPath();
+    g.moveTo(T[0], T[1]);
+    g.bezierCurveTo(-0.52 * L, -0.92 * h, -0.3 * L, -0.96 * h, -0.14 * L, -0.9 * h);
+    g.bezierCurveTo(-0.06, -0.87 * h, -0.04, -1.02 * h, 0.0, -1.0 * h);
+    g.bezierCurveTo(0.075, -0.93 * h, 0.09, -0.4 * h, 0.045, -0.12 * h);
+    g.lineTo(0.0, -0.01);
+    g.lineTo(-0.3 * L, 0);
+    g.bezierCurveTo(-0.45 * L, 0.005, -0.62 * L - 0.04, -0.04 * h, -0.64 * L - 0.02, -0.3 * h);
+    g.quadraticCurveTo(-0.65 * L, -0.5 * h, T[0], T[1]);
+    g.closePath();
+    g.fillStyle = volumen(g, f.grund, -h, 0);
+    g.fill();
+    g.save(); g.clip();
+    if (f.schattierung) ellipse(g, -0.3 * L, -0.9 * h, 0.3 * L, 0.08 * h, f.schattierung + '55');
+    if (f.ruecken) { g.fillStyle = f.ruecken; g.fillRect(-0.7 * L, -1.1 * h, 0.75 * L, 0.35 * h); }
+    if (f.sattel) { g.fillStyle = volumen(g, f.sattel, -h, -0.4 * h); g.beginPath(); g.ellipse(-0.3 * L, -0.85 * h, 0.3 * L, 0.32 * h, 0, 0, Math.PI * 2); g.fill(); }
+    if (f.flecken) {
+      ellipse(g, -0.42 * L, -0.6 * h, 0.08, 0.06, f.flecken);
+      ellipse(g, -0.15 * L, -0.75 * h, 0.07, 0.05, f.flecken);
+      ellipse(g, -0.3 * L, -0.3 * h, 0.045, 0.04, f.flecken);
+    }
+    if (f.kragen) ellipse(g, 0.04, -0.5 * h, 0.06, 0.5 * h, f.kragen);
+    // Keule (angewinkelter Hinterlauf)
+    g.fillStyle = 'rgba(255,255,255,0.07)';
+    g.beginPath(); g.ellipse(-0.47 * L, -0.36 * h, 0.15, 0.36 * h, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 1.2 * px;
+    g.beginPath(); g.ellipse(-0.47 * L, -0.36 * h, 0.15, 0.36 * h, 0, -Math.PI * 0.55, Math.PI * 0.6); g.stroke();
+    g.restore();
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = px; g.stroke();
+    // Fellstruktur: weicher, unregelmäßiger Rand entlang des Körperumrisses
+    if (F.fell !== 'kurz') {
+      const stil = {
+        lang: { b: 0.022, d: [0.012, 0.006], a: 0.55 },
+        doppel: { b: 0.026, d: [0.008, 0.005], a: 0.5 },
+        locken: { b: 0.032, d: [0.001, 0.02], a: 0.85 },
+        draht: { b: 0.016, d: [0.004, 0.006], a: 0.6 },
+      }[F.fell];
+      g.save();
+      g.globalAlpha = stil.a;
+      g.strokeStyle = ton(f.grund, 0.05); g.lineWidth = stil.b; g.lineCap = 'round'; g.lineJoin = 'round';
+      g.setLineDash(stil.d);
+      g.stroke();
+      g.restore();
+    }
+    g.restore();
+
+    // Hinterpfote vor der Keule
+    ellipse(g, -0.3 * L, -0.022, 0.065, 0.022, f.pfoten || ton(f.grund, -0.12));
+
+    // Hals: vom Widerrist/Brust zum Hinterkopf
+    const kd = 0.088 * Math.pow(F.breit, 0.4); // Kopfhöhe
+    const ca = Math.cos(winkel); const sa = Math.sin(winkel);
+    const flip = ca < 0 ? -1 : 1;
+    // Punkt im Kopfkoordinatensystem (rotiert, ggf. gespiegelt) -> Hundekoordinaten
+    const imKopf = (x, y) => [kopfL[0] + ca * x - sa * y * flip, kopfL[1] + sa * x + ca * y * flip];
+    const kopfOben = imKopf(0, -kd * 0.55);
+    const kopfUnten = imKopf(0.03, kd * 0.55);
+    g.beginPath();
+    g.moveTo(-0.05, -0.98 * h);
+    g.quadraticCurveTo((kopfOben[0] - 0.05) / 2, Math.min(kopfOben[1], -h) - 0.02, kopfOben[0], kopfOben[1]);
+    g.lineTo(kopfUnten[0], kopfUnten[1]);
+    g.quadraticCurveTo(0.08, -0.35 * h, 0.04, -0.15 * h);
+    g.closePath();
+    g.fillStyle = volumen(g, f.kopf || f.grund, -h - 0.1, -0.1);
+    g.fill();
+    if (f.kragen) { g.save(); g.clip(); ellipse(g, 0.05, -0.45 * h, 0.07, 0.45 * h, f.kragen); g.restore(); }
+
+    // Naher Vorderlauf (bei aktiver Anzeige scharrend)
+    const scharr = p.aktiv ? Math.max(0, Math.sin(t * 12)) * 0.06 : 0;
+    lauf(0, ton(f.grund, -0.02), scharr);
+
+    // Kopf
+    g.save();
+    g.translate(kopfL[0], kopfL[1]);
+    g.rotate(winkel);
+    if (flip < 0) g.scale(1, -1);
+    const kopf = f.kopf || f.grund;
+    const s = 0.125; const spitze = s + fang;
+    const ohr = f.ohren || kopf;
+    if (F.ohr === 'steh') {
+      g.fillStyle = volumen(g, ohr, -kd - 0.1, -kd * 0.5);
+      g.beginPath(); g.moveTo(0.0, -kd * 0.7); g.lineTo(0.06, -kd * 0.8);
+      g.lineTo(0.012, -kd * 0.85 - 0.085 * F.ohrGr); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(230,180,160,0.35)';
+      g.beginPath(); g.moveTo(0.015, -kd * 0.78); g.lineTo(0.045, -kd * 0.82); g.lineTo(0.017, -kd * 0.85 - 0.06 * F.ohrGr); g.closePath(); g.fill();
+    }
+    g.beginPath();
+    g.moveTo(-0.01, -kd * 0.55);
+    g.quadraticCurveTo(0.05, -kd * 1.08, s - 0.005, -kd * 0.62);
+    g.lineTo(s + 0.008, -kd * (fang < 0.06 ? 0.5 : 0.4));
+    g.lineTo(spitze - 0.008, -kd * 0.32);
+    g.quadraticCurveTo(spitze + 0.012, -kd * 0.25, spitze + 0.004, -kd * 0.02);
+    g.lineTo(spitze - 0.012, kd * 0.2);
+    g.quadraticCurveTo(s, kd * 0.52, s * 0.5, kd * 0.62);
+    g.quadraticCurveTo(-0.03, kd * 0.55, -0.025, 0);
+    g.closePath();
+    g.fillStyle = volumen(g, kopf, -kd, kd * 0.6);
+    g.fill();
+    g.save(); g.clip();
+    if (f.maske) { g.fillStyle = f.maske; g.fillRect(s * 0.8, -kd, fang + 0.1, kd * 2); }
+    if (f.blesse) { g.fillStyle = f.blesse; g.fillRect(0.02, -kd * 0.95, spitze, kd * 0.2); }
+    g.restore();
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = px; g.stroke();
+    // Auge, Lefze, Nase
+    ellipse(g, s * 0.72, -kd * 0.36, 0.012, 0.008, '#140e0b');
+    ellipse(g, s * 0.72 + 0.004, -kd * 0.4, 0.003, 0.003, 'rgba(255,255,255,0.8)');
+    g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = px;
+    g.beginPath(); g.moveTo(spitze - 0.006, kd * 0.12); g.quadraticCurveTo(s + fang * 0.4, kd * 0.3, s * 0.92, kd * 0.22); g.stroke();
+    ellipse(g, spitze, -kd * 0.12, 0.016, 0.013, f.nase || '#141010');
+    // Kipp- und Hängeohren
+    if (F.ohr === 'kipp') {
+      g.fillStyle = volumen(g, ohr, -kd - 0.06, -kd * 0.4);
+      g.beginPath(); g.moveTo(0.0, -kd * 0.72);
+      g.quadraticCurveTo(0.01, -kd * 0.75 - 0.07 * F.ohrGr, 0.075, -kd * 0.62);
+      g.lineTo(0.05, -kd * 0.8); g.closePath(); g.fill();
+    } else if (F.ohr === 'haenge') {
+      g.fillStyle = volumen(g, ohr, -kd * 0.6, kd * 0.6 + 0.06 * F.ohrGr);
+      g.beginPath(); g.moveTo(0.0, -kd * 0.62);
+      g.bezierCurveTo(0.065, -kd * 0.78, 0.075, kd * 0.35 + 0.05 * F.ohrGr, 0.025, kd * 0.5 + 0.06 * F.ohrGr);
+      g.quadraticCurveTo(-0.03, kd * 0.2, 0.0, -kd * 0.62);
+      g.fill();
+      g.strokeStyle = 'rgba(0,0,0,0.25)'; g.stroke();
+    }
+    g.restore();
+    g.restore();
+  }
+
   // z: { rasse, fell, disziplin, lk, versteckTyp, versteckHoehe, quelleHoehe, quelleTyp,
   //      abstand (m), aktiv, blick, rute, t, zeigeAbstand }
   function zeichneAnzeigeSzene(g, W, H, z) {
     const f = fellFuer(z.rasse, z.fell);
     // px pro Meter so wählen, dass Hund (inkl. Rute), Abstand und Versteck ins Bild passen
     const abstand = Math.max(0.02, z.abstand || 0.1);
-    const S = Math.min(W / (abstand + 1.62), H * 1.25);
+    const F = SHS.rassen.form(z.rasse);
+    const hundLaenge = 1.15 * F.groesse * Math.max(1, F.lang) + 0.08; // Rute bis Nase in m
+    const S = Math.min(W / (abstand + hundLaenge + 0.55), H * 1.25);
     const horizont = H * 0.3;
     const boden = H * 0.86;
     const t = z.t;
@@ -378,7 +656,7 @@
     }
 
     // Versteck rechts, Geruchsquelle an der linken Vorderseite
-    const objX = Math.max(W * 0.58, (abstand + 1.04) * S + 4);
+    const objX = Math.max(W * 0.58, (abstand + hundLaenge) * S + 4);
     const hoch = (z.versteckHoehe || 0) > 0;
     const hochUnten = hoch ? z.versteckHoehe * S : 0;
     let quelleY = boden - Math.max(0.03, z.quelleHoehe || 0) * S;
@@ -442,104 +720,12 @@
     if (z.quelleTyp === 'spielzeug') ellipse(g, objX - 0.02 * S, quelleY - 4, 6, 6, '#d93a3a', '#7a1010');
     else if (z.quelleTyp === 'futter') { g.fillStyle = '#8a5a2b'; g.fillRect(objX - 0.06 * S, quelleY - 4, 0.08 * S, 6); }
 
-    // Hund in passiver Platzanzeige, Nase auf die Quelle gerichtet
+    // Hund in passiver Platzanzeige (Seitenansicht), Nase auf die Quelle gerichtet
     const naseX = objX - abstand * S;
-    // Liegend erreicht die Nase höchstens ca. 30 cm; Hochlagen darüber werden von unten verwiesen.
-    const naseY = Math.max(boden - 0.3 * S, quelleY);
+    // Liegend erreicht die Nase höchstens ca. 30 cm (kleine Hunde weniger); Hochlagen darüber werden von unten verwiesen.
+    const naseY = Math.max(boden - (0.12 + 0.18 * F.groesse) * S, quelleY);
     const nachOben = quelleY < naseY - 0.02 * S;
-    const brustX = naseX - 0.27 * S;
-    const koerperX = brustX - 0.24 * S;
-    const atem = 1 + Math.sin(t * 2.6) * 0.025;
-
-    ellipse(g, koerperX + 0.05 * S, boden + 1, 0.42 * S, 0.045 * S, 'rgba(0,0,0,0.28)');
-
-    // Rute am Boden, leicht wedelnd
-    const wedel = Math.sin(t * (2 + (z.rute || 0.2) * 10)) * 0.025 * S * (z.rute || 0.2);
-    g.strokeStyle = volumen(g, f.rute || f.grund, boden - 0.08 * S, boden);
-    g.lineWidth = 0.045 * S; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(koerperX - 0.24 * S, boden - 0.08 * S);
-    g.quadraticCurveTo(koerperX - 0.38 * S, boden - 0.02 * S, koerperX - 0.5 * S, boden - 0.025 * S + wedel); g.stroke();
-    if (f.rutenspitze) {
-      g.strokeStyle = f.rutenspitze;
-      g.beginPath(); g.moveTo(koerperX - 0.46 * S, boden - 0.025 * S + wedel * 0.8); g.lineTo(koerperX - 0.5 * S, boden - 0.025 * S + wedel); g.stroke();
-    }
-
-    // Hinterhand (Keule) und Körper
-    const kh = 0.13 * S * atem;
-    g.save();
-    g.beginPath(); g.ellipse(koerperX, boden - kh, 0.28 * S, kh, 0, 0, Math.PI * 2);
-    g.ellipse(koerperX - 0.17 * S, boden - 0.105 * S, 0.12 * S, 0.105 * S, 0, 0, Math.PI * 2);
-    g.ellipse(brustX, boden - 0.14 * S, 0.1 * S, 0.12 * S, 0, 0, Math.PI * 2);
-    g.fillStyle = volumen(g, f.grund, boden - 0.28 * S, boden);
-    g.fill();
-    g.clip();
-    if (f.ruecken) { g.fillStyle = f.ruecken; g.fillRect(koerperX - 0.3 * S, boden - 0.3 * S, 0.55 * S, 0.12 * S); }
-    if (f.sattel) {
-      g.fillStyle = volumen(g, f.sattel, boden - 0.28 * S, boden - 0.08 * S);
-      g.beginPath(); g.ellipse(koerperX - 0.03 * S, boden - 0.22 * S, 0.25 * S, 0.1 * S, 0, 0, Math.PI * 2); g.fill();
-    }
-    if (f.flecken) {
-      ellipse(g, koerperX - 0.12 * S, boden - 0.17 * S, 0.08 * S, 0.06 * S, f.flecken);
-      ellipse(g, koerperX + 0.12 * S, boden - 0.2 * S, 0.06 * S, 0.05 * S, f.flecken);
-    }
-    if (f.kragen) ellipse(g, brustX + 0.03 * S, boden - 0.12 * S, 0.08 * S, 0.12 * S, f.kragen);
-    g.restore();
-    // Hinterpfote
-    ellipse(g, koerperX - 0.05 * S, boden - 0.018 * S, 0.06 * S, 0.02 * S, f.pfoten || ton(f.grund, -0.15));
-
-    // Vorderläufe nach vorn gestreckt (der hintere etwas dunkler), aktiv = Scharren
-    const scharr = z.aktiv ? Math.max(0, Math.sin(t * 12)) * 0.06 * S : 0;
-    const lauf = (yOff, farbe, hebung) => {
-      const x0 = brustX - 0.02 * S; const x1 = brustX + 0.19 * S;
-      const y = boden - 0.04 * S - yOff;
-      g.strokeStyle = farbe; g.lineWidth = 0.05 * S; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(x0, y); g.quadraticCurveTo((x0 + x1) / 2, y + 0.008 * S, x1, y - hebung); g.stroke();
-      ellipse(g, x1 + 0.02 * S, y - hebung + 0.004 * S, 0.038 * S, 0.022 * S, f.pfoten || ton(f.grund, -0.1));
-    };
-    lauf(0.025 * S, ton(f.grund, -0.25), 0);
-    lauf(0, ton(f.grund, 0.05), scharr);
-
-    // Kopf: zur Quelle gerichtet oder (Blick zurück) zum HF gedreht
-    const halsX = brustX + 0.04 * S; const halsY = boden - 0.22 * S;
-    let kopfX = naseX - 0.16 * S; let kopfY = naseY - (nachOben ? -0.06 : 0.03) * S;
-    if (nachOben) kopfX = naseX - 0.13 * S;
-    let winkel = Math.atan2(naseY - kopfY, naseX - kopfX) + 0.15;
-    if (z.blick) { kopfX = halsX + 0.02 * S; kopfY = halsY - 0.08 * S; winkel = Math.PI + 0.5; }
-    // Hals
-    g.strokeStyle = volumen(g, f.kopf || f.grund, halsY - 0.06 * S, boden - 0.1 * S);
-    g.lineWidth = 0.11 * S; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(brustX - 0.02 * S, boden - 0.15 * S); g.lineTo(kopfX, kopfY); g.stroke();
-    if (f.kragen) { g.strokeStyle = f.kragen; g.lineWidth = 0.05 * S; g.beginPath(); g.moveTo(brustX, boden - 0.12 * S); g.lineTo((brustX + kopfX) / 2, (boden - 0.12 * S + kopfY) / 2 + 0.02 * S); g.stroke(); }
-
-    g.save();
-    g.translate(kopfX, kopfY);
-    g.rotate(winkel);
-    if (Math.cos(winkel) < 0) g.scale(1, -1); // Kopf nach hinten gedreht: Oberseite bleibt oben
-    const k = (f.kopf || f.grund);
-    // Ohr hinten
-    if (f.ohrForm === 'steh') {
-      g.fillStyle = f.ohren || ton(k, -0.2);
-      g.beginPath(); g.moveTo(-0.03 * S, -0.05 * S); g.lineTo(-0.02 * S, -0.15 * S); g.lineTo(0.035 * S, -0.06 * S); g.closePath(); g.fill();
-    }
-    // Schädel und Fang
-    g.fillStyle = volumen(g, k, -0.07 * S, 0.06 * S);
-    g.beginPath(); g.ellipse(0, 0, 0.075 * S, 0.062 * S, 0, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.moveTo(0.03 * S, -0.045 * S); g.lineTo(0.16 * S, -0.018 * S); g.lineTo(0.16 * S, 0.02 * S); g.lineTo(0.03 * S, 0.05 * S); g.closePath(); g.fill();
-    if (f.maske) {
-      g.fillStyle = f.maske;
-      g.beginPath(); g.moveTo(0.07 * S, -0.035 * S); g.lineTo(0.16 * S, -0.018 * S); g.lineTo(0.16 * S, 0.02 * S); g.lineTo(0.07 * S, 0.04 * S); g.closePath(); g.fill();
-    }
-    if (f.blesse) { g.fillStyle = f.blesse; g.fillRect(-0.01 * S, -0.058 * S, 0.15 * S, 0.016 * S); }
-    // Auge, Nase
-    ellipse(g, 0.035 * S, -0.022 * S, 0.011 * S, 0.008 * S, '#120d0a');
-    ellipse(g, 0.038 * S, -0.025 * S, 0.003 * S, 0.003 * S, 'rgba(255,255,255,0.8)');
-    ellipse(g, 0.163 * S, 0, 0.016 * S, 0.016 * S, f.nase || '#111');
-    // Hängeohr vorn
-    if (f.ohrForm !== 'steh') {
-      g.fillStyle = volumen(g, f.ohren || ton(k, -0.15), -0.04 * S, 0.08 * S);
-      g.beginPath(); g.ellipse(-0.025 * S, 0.02 * S, 0.035 * S, 0.06 * S, 0.3, 0, Math.PI * 2); g.fill();
-    }
-    g.restore();
+    zeichneHundLiegend(g, { S, boden, naseX, naseY, nachOben, F, f, t, blick: z.blick, aktiv: z.aktiv, rute: z.rute });
 
     // Fläche: Gegenstand liegt im Gras, Halme im Vordergrund
     if (z.disziplin === 'flaeche') {
@@ -577,5 +763,5 @@
     }
   }
 
-  SHS.grafik = { FELL, fellVarianten, fellFuer, zeichneHund, zeichneTruemmer, kiesPunkte, zeichneAnzeigeSzene };
+  SHS.grafik = { fellVarianten, fellFuer, zeichneHund, zeichneTruemmer, kiesPunkte, zeichneAnzeigeSzene };
 })(globalThis.SHS = globalThis.SHS || {});

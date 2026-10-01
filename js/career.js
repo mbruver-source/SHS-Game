@@ -66,6 +66,35 @@
     return werte[key] - alt;
   }
 
+  // Trainingsrhythmus Mo – Mi – Fr: an den freien Tagen dazwischen (Di, Do) erholt sich der Hund
+  // teilweise, am Wochenende vollständig. Ausgeruht lernt er etwas mehr, müde deutlich weniger.
+  const TRAININGSTAGE = ['Montag', 'Mittwoch', 'Freitag'];
+  const BELASTUNG = 0.3; // Energieverbrauch je Trainingseinheit
+  const ERHOLUNG_RUHETAG = 0.16; // Erholung am freien Tag zwischen zwei Einheiten
+  const ERHOLUNG_WOCHENENDE = 0.6; // Sa + So
+
+  function naechsterTrainingstag(stand) {
+    return TRAININGSTAGE[stand.trainingsDieseWoche] || null;
+  }
+
+  function lernFaktor(energie) {
+    if (energie < 0.35) return { faktor: 0.45, zustand: 'müde – wenig Fortschritt' };
+    if (energie >= 0.75) return { faktor: 1.1, zustand: 'ausgeruht' };
+    return { faktor: 1, zustand: '' };
+  }
+
+  // Beginn einer Einheit: Erholung seit der letzten Einheit gutschreiben.
+  function einheitBeginnen(stand) {
+    const h = stand.hund;
+    if (stand.trainingsDieseWoche > 0) h.energie = clamp(h.energie + ERHOLUNG_RUHETAG, 0, 1);
+    return { tag: naechsterTrainingstag(stand), ...lernFaktor(h.energie) };
+  }
+
+  function einheitBeenden(stand, belastung) {
+    stand.hund.energie = clamp(stand.hund.energie - belastung, 0, 1);
+    stand.trainingsDieseWoche += 1;
+  }
+
   function trainieren(stand, art, gegenstandId) {
     if (stand.trainingsDieseWoche >= TRAININGS_JE_WOCHE) {
       return { ok: false, text: 'Diese Woche sind keine Trainingseinheiten mehr frei.' };
@@ -74,8 +103,9 @@
     if (!t) return { ok: false, text: 'Unbekanntes Training.' };
     const h = stand.hund;
     const r = rndFuer(stand, art.length * 31);
-    const muede = h.energie < 0.35;
-    const faktor = (muede ? 0.45 : 1) * r.range(0.75, 1.25) * (h.alterMonate < 15 ? 1.15 : 1);
+    const einheit = einheitBeginnen(stand);
+    const muede = einheit.faktor < 1;
+    const faktor = einheit.faktor * r.range(0.75, 1.25) * (h.alterMonate < 15 ? 1.15 : 1);
     const d = {};
     const add = (k, b) => { d[k] = (d[k] || 0) + steigere(h.werte, k, b, faktor); };
     switch (art) {
@@ -99,9 +129,8 @@
       }
       default: break;
     }
-    h.energie = clamp(h.energie - 0.28, 0, 1);
-    stand.trainingsDieseWoche += 1;
-    const text = `${t.name}${muede ? ' (Hund müde – wenig Fortschritt)' : ''}`;
+    einheitBeenden(stand, BELASTUNG);
+    const text = `${einheit.tag}: ${t.name}${einheit.zustand ? ` (Hund ${einheit.zustand})` : ''}`;
     stand.verlauf.push({ woche: stand.woche, text });
     return { ok: true, text, deltas: d, muede };
   }
@@ -110,7 +139,7 @@
   function uebungssucheVerbuchen(stand, ergebnis, gegenstandId) {
     if (stand.trainingsDieseWoche >= TRAININGS_JE_WOCHE) return null;
     const h = stand.hund;
-    const f = h.energie < 0.35 ? 0.45 : 1;
+    const f = einheitBeginnen(stand).faktor;
     const d = {};
     d.nase = steigere(h.werte, 'nase', 3, f);
     d.selbststaendig = steigere(h.werte, 'selbststaendig', 3, f);
@@ -119,15 +148,14 @@
       const alt = h.vertrautheit[gegenstandId] || 0;
       h.vertrautheit[gegenstandId] = clamp(alt + 0.06 * (1 - alt), 0, 1);
     }
-    h.energie = clamp(h.energie - 0.25, 0, 1);
-    stand.trainingsDieseWoche += 1;
+    einheitBeenden(stand, BELASTUNG * 0.9);
     return d;
   }
 
   function wocheBeenden(stand) {
     const h = stand.hund;
-    const ruhe = TRAININGS_JE_WOCHE - stand.trainingsDieseWoche;
-    h.energie = clamp(h.energie + 0.55 + ruhe * 0.1, 0, 1);
+    const ausgefallen = TRAININGS_JE_WOCHE - stand.trainingsDieseWoche; // ausgelassene Einheiten = zusätzliche Ruhe
+    h.energie = clamp(h.energie + ERHOLUNG_WOCHENENDE + ausgefallen * ERHOLUNG_RUHETAG, 0, 1);
     h.alterMonate = Math.round((h.alterMonate + 7 / 30.44) * 100) / 100;
     // Nicht trainierte Gerüche verblassen leicht.
     for (const k of Object.keys(h.vertrautheit)) h.vertrautheit[k] = clamp(h.vertrautheit[k] - 0.004, 0.05, 1);
@@ -184,7 +212,7 @@
   }
 
   SHS.career = {
-    TRAININGS, TRAININGS_JE_WOCHE,
+    TRAININGS, TRAININGS_JE_WOCHE, TRAININGSTAGE, naechsterTrainingstag,
     neuerSpielstand, trainieren, uebungssucheVerbuchen, wocheBeenden, eintragen, klasseBestanden,
     darfPruefen, datumText, alterText, aktualisiereAusschreibungen,
   };

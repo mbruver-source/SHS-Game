@@ -209,13 +209,18 @@
         <div class="spalten">
           <section class="karte">
             <h2>Dein Hund</h2>
-            <div class="energie">Energie ${balken(h.energie * 100)}</div>
+            <div class="energie" title="Sinkt mit jedem Training, erholt sich an den freien Tagen (Di, Do) und am Wochenende.">Energie ${balken(h.energie * 100)}</div>
             <table class="werte">${werte}</table>
             <h3>Geruchsbild der Gegenstände</h3>
             <table class="werte">${vertraut}</table>
           </section>
           <section class="karte">
-            <h2>Training <small>${frei} von ${career.TRAININGS_JE_WOCHE} Einheiten frei</small></h2>
+            <h2>Training <small>${frei ? `nächste Einheit: ${career.naechsterTrainingstag(s)}` : 'diese Woche erledigt'}</small></h2>
+            <div class="wochenplan">${['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((tag, i) => {
+              const einheit = [0, 2, 4].indexOf(i);
+              const cls = einheit >= 0 ? (einheit < s.trainingsDieseWoche ? 'erledigt' : 'training') : 'ruhe';
+              return `<span class="${cls}" title="${einheit >= 0 ? 'Trainingstag' : 'Erholung'}">${tag}</span>`;
+            }).join('')}</div>
             <div class="trainings">
               ${Object.entries(career.TRAININGS).map(([k, t]) => `<button data-training="${k}" ${frei ? '' : 'disabled'} title="${esc(t.text)}"><b>${t.name}</b><span>${t.text}</span></button>`).join('')}
               <button data-a="uebung" class="uebung"><b>Übungssuche</b><span>Behältnis, Trümmer oder Fläche frei üben – mit Geruchsansicht. ${frei ? 'Zählt als Trainingseinheit.' : 'Diese Woche ohne Trainingseffekt.'}</span></button>

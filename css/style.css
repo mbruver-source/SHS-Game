@@ -91,6 +91,11 @@ table { border-collapse: collapse; width: 100%; }
 .balken { background: var(--gruen-hell); border-radius: 4px; height: 10px; overflow: hidden; min-width: 60px; }
 .balken div { background: var(--balken); height: 100%; }
 .energie { display: grid; grid-template-columns: auto 1fr; gap: .6em; align-items: center; margin-bottom: .8em; }
+.wochenplan { display: flex; gap: 4px; margin: 0 0 .8em; }
+.wochenplan span { flex: 1; text-align: center; font-size: .8em; padding: .25em 0; border-radius: 6px; border: 1px solid var(--linie); color: var(--leise); }
+.wochenplan .training { border-color: var(--gruen); color: var(--gruen); font-weight: 700; }
+.wochenplan .erledigt { background: var(--gruen); border-color: var(--gruen); color: #fff; font-weight: 700; }
+.wochenplan .ruhe { background: var(--gruen-hell); }
 .trainings { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
 .trainings button { text-align: left; display: flex; flex-direction: column; gap: .2em; padding: .7em; }
 .trainings button span { font-size: .82em; color: var(--leise); }

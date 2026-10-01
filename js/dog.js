@@ -14,14 +14,9 @@
     konzentration: 'Konzentration',
   };
 
-  const RASSEN = {
-    'Labrador Retriever': { nase: 6, impuls: -6, anzeige: 3, konzentration: 2 },
-    'Malinois': { ausdauer: 8, impuls: -8, selbststaendig: 6, konzentration: 2 },
-    'Beagle': { nase: 12, impuls: -10, konzentration: -6, selbststaendig: 4 },
-    'Deutscher Schäferhund': { konzentration: 6, anzeige: 4, nase: 2, selbststaendig: -2 },
-    'Border Collie': { konzentration: 4, praezision: 5, selbststaendig: -4, ausdauer: 4 },
-    'Mischling': { nase: 2, impuls: 2, anzeige: 2, differenzierung: 2 },
-  };
+  // Werte-Abweichungen je Rasse (Quelle: js/rassen.js)
+  const RASSEN = {};
+  for (const name of SHS.rassen.liste) RASSEN[name] = SHS.rassen.RASSEN[name].werte;
 
   function neuerHund(name, rasse) {
     const mod = RASSEN[rasse] || RASSEN.Mischling;
@@ -50,7 +45,8 @@
       this.richtung = 0;
       this.zustand = 'sitzt';
       this.zustandSeit = 0;
-      this.motivation = 1;
+      // Ein müder Hund (wenig Erholung seit dem letzten Training) startet mit weniger Suchmotivation.
+      this.motivation = clamp(0.72 + 0.28 * (hund.energie ?? 1), 0.5, 1);
       this.ziel = null; // aktueller Wegpunkt
       this.pause = 0;
       this.ignoriert = new Set(); // Quellen, die der Hund als "nicht mein Gegenstand" abgehakt hat
@@ -74,6 +70,17 @@
       this.kopfschlag = 0;
       this.liegt = false;
       this.reizZiel = null;
+      // Bewegung / Animation
+      this.v = 0; // aktuelle Geschwindigkeit (m/s)
+      this.gangPhase = 0; // Schrittzyklus (rad)
+      this.drehRate = 0; // geglättete Drehgeschwindigkeit (rad/s) – Rumpfbiegung
+      this.liegtAnim = 0; // 0 = steht, 1 = liegt (Übergang)
+      this.sitztAnim = 1; // 0 = steht, 1 = sitzt
+      this.bewegtFrame = false;
+      // Systematisches Absuchen: gut ausgebildete Hunde umrunden Verstecke sauber
+      this.ausbildung = (this.w.nase + this.w.selbststaendig + this.w.konzentration) / 3;
+      this.umrundung = null;
+      this.abgesucht = new Set();
     }
 
     setzePosition(x, y) { this.x = x; this.y = y; }
@@ -161,6 +168,8 @@
 
     // ---- Simulation -------------------------------------------------------------
     update(dt, ctx) {
+      const richtungVorher = this.richtung;
+      this.bewegtFrame = false;
       this.zustandSeit += dt;
       if (this.stabil > 0) this.stabil -= dt;
       if (this.hinweis) { this.hinweis.rest -= dt; if (this.hinweis.rest <= 0) this.hinweis = null; }
@@ -194,6 +203,18 @@
 
       if (sucht) this.pruefeVerleitungen(ctx);
       if (ctx.leine) this.leineBegrenzen(ctx);
+
+      // Animation: Abbremsen im Stand, Rumpfbiegung, Hinlegen/Hinsetzen als Übergang
+      if (!this.bewegtFrame) this.v = Math.max(0, this.v - dt * 4);
+      if (dt > 0) {
+        let dw = this.richtung - richtungVorher;
+        while (dw > Math.PI) dw -= 2 * Math.PI;
+        while (dw < -Math.PI) dw += 2 * Math.PI;
+        this.drehRate += (dw / dt - this.drehRate) * Math.min(1, dt * 6);
+      }
+      const sitzZiel = (this.zustand === 'sitzt' || this.zustand === 'beiHF') ? 1 : 0;
+      this.liegtAnim += clamp((this.liegt ? 1 : 0) - this.liegtAnim, -dt * 2.5, dt * 2.5);
+      this.sitztAnim += clamp(sitzZiel - this.sitztAnim, -dt * 3, dt * 3);
     }
 
     markiereBesuch(dt) {
@@ -205,18 +226,52 @@
       return this.besuche.get(Math.round(x * 2) + ',' + Math.round(y * 2)) || 0;
     }
 
+    // Natürliche Fortbewegung: der Hund läuft in Blickrichtung, dreht mit begrenzter
+    // Geschwindigkeit (in Kurven langsamer), beschleunigt und bremst weich ab.
     bewegeZu(p, speed, dt) {
       const dx = p.x - this.x; const dy = p.y - this.y;
       const d = Math.hypot(dx, dy);
       if (d < 1e-6) return 0;
+      this.bewegtFrame = true;
       const zielWinkel = Math.atan2(dy, dx);
       let diff = zielWinkel - this.richtung;
       while (diff > Math.PI) diff -= 2 * Math.PI;
       while (diff < -Math.PI) diff += 2 * Math.PI;
-      this.richtung += clamp(diff, -dt * 7, dt * 7);
-      const s = Math.min(d, speed * dt);
-      this.x += (dx / d) * s; this.y += (dy / d) * s;
-      return d - s;
+      // Letzte Zentimeter: direkt und langsam an den Punkt
+      if (d < 0.12) {
+        this.richtung += clamp(diff, -dt * 5, dt * 5);
+        const s = Math.min(d, Math.max(0.25, Math.min(speed, this.v)) * dt);
+        this.x += (dx / d) * s; this.y += (dy / d) * s;
+        this.v = Math.max(0.2, this.v * 0.9);
+        this.gangPhase += (s / 0.5) * Math.PI * 2;
+        return d - s;
+      }
+      const maxDreh = dt * (2.8 + 4.5 * (1 - Math.min(1, this.v / 1.6)));
+      this.richtung += clamp(diff, -maxDreh, maxDreh);
+      let vZiel = speed * Math.max(0.15, Math.cos(Math.min(Math.abs(diff), Math.PI / 2 + 0.3)));
+      if (d < 0.5) vZiel *= Math.max(0.35, d / 0.5);
+      this.v += clamp(vZiel - this.v, -dt * 4, dt * 3);
+      const s = Math.min(d, Math.max(0, this.v) * dt);
+      this.x += Math.cos(this.richtung) * s; this.y += Math.sin(this.richtung) * s;
+      this.gangPhase += (s / 0.5) * Math.PI * 2;
+      return Math.hypot(p.x - this.x, p.y - this.y);
+    }
+
+    // Punkte für das Umrunden eines Verstecks: gut ausgebildete Hunde gehen eng und
+    // vollständig herum, weniger geübte nur einen Bogen.
+    erzeugeUmrundung(v) {
+      const groesse = v.r !== undefined ? v.r : Math.max(v.w || 0.3, v.h || 0.3) / 2;
+      const radius = groesse + 0.12 + (1 - this.ausbildung) * 0.12;
+      const bogen = Math.PI * (0.9 + 1.2 * this.ausbildung); // bis ca. 380°
+      const start = Math.atan2(this.y - v.y, this.x - v.x);
+      const richtung = this.rnd() < 0.5 ? 1 : -1;
+      const n = Math.max(4, Math.round(bogen / 0.6));
+      const punkte = [];
+      for (let i = 1; i <= n; i++) {
+        const w = start + richtung * (bogen * i) / n;
+        punkte.push({ x: v.x + Math.cos(w) * radius, y: v.y + Math.sin(w) * radius });
+      }
+      return { versteck: v, punkte, idx: 0 };
     }
 
     tempo(basis) {
@@ -248,6 +303,8 @@
         if (lage.disziplin === 'flaeche') dHF = Math.abs(c.y - ctx.hf.y) * 1.3 + Math.abs(c.x - ctx.hf.x) * 0.15;
         const neu = 1 / (1 + this.besuchsWert(c.x, c.y) * (lage.disziplin === 'behaeltnis' ? 1.2 : 2.5));
         let score = neu * 1.6 - dHF * nahHF - Math.hypot(c.x - this.x, c.y - this.y) * 0.12 + r() * 0.35;
+        // Trainierte Hunde merken sich, welche Verstecke schon sauber abgesucht sind.
+        if (c.versteck && this.abgesucht.has(c.versteck.id)) score -= 1.2 * this.ausbildung;
         if (this.hinweis) score -= Math.hypot(c.x - this.hinweis.x, c.y - this.hinweis.y) * 0.8;
         if (score > bestScore) { bestScore = score; best = c; }
       }
@@ -275,11 +332,34 @@
         return;
       }
       if (this.pause > 0) { this.pause -= dt; return; }
+      // Versteck umrunden: langsam, Nase tief, Punkt für Punkt
+      if (this.umrundung) {
+        const u = this.umrundung;
+        this.naseTief = true;
+        const rest = this.bewegeZu(u.punkte[u.idx], this.tempo(0.45 + 0.2 * this.ausbildung), dt);
+        if (rest < 0.07) {
+          u.idx += 1;
+          if (u.idx >= u.punkte.length) {
+            this.abgesucht.add(u.versteck.id);
+            this.umrundung = null;
+            this.ziel = null;
+            this.pause = this.rnd.range(0.1, 0.3);
+          }
+        }
+        return;
+      }
       if (!this.ziel) this.ziel = this.waehleWegpunkt(ctx);
       const basis = this.lage.disziplin === 'behaeltnis' ? 0.9 : this.lage.disziplin === 'truemmer' ? 1.0 : 1.5;
       const rest = this.bewegeZu(this.ziel, this.tempo(basis), dt);
       if (rest < 0.05) {
         const v = this.ziel.versteck;
+        // Systematisch absuchen: je besser ausgebildet, desto eher wird das Versteck umrundet.
+        const pUmrunden = clamp(this.ausbildung * 1.4 - 0.15, 0.08, 0.95) * (0.5 + 0.5 * this.motivation);
+        if (v && this.lage.disziplin !== 'flaeche' && !this.abgesucht.has(v.id) && this.rnd() < pUmrunden) {
+          this.umrundung = this.erzeugeUmrundung(v);
+          this.ziel = null;
+          return;
+        }
         this.pause = v ? this.rnd.range(0.4, 1.0) * (1.3 - this.motivation * 0.5) : this.rnd.range(0.05, 0.3);
         if (v && this.lage.disziplin === 'truemmer' && this.rnd() < 0.025 * (1 - this.w.impuls)) {
           ctx.melde({ typ: 'randalieren', versteck: v });

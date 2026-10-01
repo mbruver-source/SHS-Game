@@ -545,13 +545,19 @@
         while (kopfW > Math.PI) kopfW -= 2 * Math.PI;
         while (kopfW < -Math.PI) kopfW += 2 * Math.PI;
         kopfW = Math.max(-1.6, Math.min(1.6, kopfW));
-      } else if (h.zustand === 'geruch') kopfW = Math.sin(t * 9) * 0.35;
-      else if (h.zustand === 'sucht') kopfW = Math.sin(t * 2.5) * 0.25;
+      } else if (h.zustand === 'geruch') kopfW = Math.sin(t * 6.3) * 0.28 + Math.sin(t * 13.7) * 0.06;
+      else if (h.zustand === 'sucht') {
+        // Schnüffeln: langsames Pendeln, im Stand kurze, schnelle Bewegungen
+        const still = h.v < 0.2;
+        kopfW = h.naseTief ? Math.sin(t * (still ? 5.2 : 2.6)) * (still ? 0.22 : 0.3) + Math.sin(t * 9.1) * 0.05 : Math.sin(t * 1.3) * 0.15;
+      }
       g.save();
       g.translate(px, py);
       g.rotate(w);
       SHS.grafik.zeichneHund(g, {
-        sk, t, rasse: this.opts.hund.rasse, fell: this.opts.hund.fell, liegt: h.liegt, rute: h.rute, ruteHoch: h.ruteHoch,
+        sk, t, rasse: this.opts.hund.rasse, fell: this.opts.hund.fell,
+        liegtAnteil: h.liegtAnim, sitztAnteil: h.sitztAnim, gang: h.gangPhase, tempo: h.v, biegung: h.drehRate,
+        rute: h.rute, ruteHoch: h.ruteHoch,
         naseTief: h.naseTief, kopfW,
       });
       g.restore();

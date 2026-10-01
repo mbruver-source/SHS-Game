@@ -89,7 +89,8 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 | `js/scent.js` | Geruchsmodell |
 | `js/layouts.js` | Suchlagen je Disziplin/LK |
 | `js/judge.js` | Wertungsrichter |
-| `js/dog.js` | Hundewerte, Rassen, Such-KI |
+| `js/rassen.js` | 30 verbreitete Rassen + Mischling: Spielwerte, Körperbau, Farbvarianten (einzige Quelle) |
+| `js/dog.js` | Hundewerte und Such-KI inkl. Bewegungsphysik und Umrunden von Verstecken |
 | `js/suchlage.js` | Ablauf einer Suchlage, HF-Bot, kopflose Simulation |
 | `js/career.js` | Spielstand, Training, Leistungsnachweis, Aufstieg |
 | `js/competition.js` | KI-Teams, Prüfungssimulation |
@@ -110,3 +111,25 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 - Suchlage in 2D von oben; die Ausrichtung (quer/hochkant) passt sich der Bildschirmform an.
 - **Fell:** Jede Rasse hat Farbvarianten (z. B. Labrador gelb/schwarz/braun, Border Collie schwarz-weiß/rot-weiß/blue merle). Die Variante wird bei der Anlage gewählt und lässt sich im Hof durch Klick auf das Hundebild ändern (`hund.fell`).
 - **Nahaufnahme der Anzeige (Taste N):** Sobald der Hund anzeigt, erscheint ein Fenster in 3D-Optik (Perspektive, Schattierung). Es zeigt den Hund in passiver Platzanzeige am Versteck, mit Körpersprache: Zurückschauen zum HF, aktives Scharren/Bellen, Rute. In der Übung wird zusätzlich der Abstand Nase–Quelle eingeblendet, rot ab mehr als 20 cm (Hochlagen ausgenommen).
+
+## Rassen, Bewegung und Training (v0.4)
+- **Rassen:** Es gibt 30 in Deutschland verbreitete Rassen plus Mischling; die Reihenfolge ist eine Näherung. Jede Rasse hat drei Arten von Angaben:
+  - Spielwerte als Abweichung vom Grundwert
+  - Körperbau: Größe, Rumpflänge und -breite, Beinlänge, Fanglänge, Ohrform (Steh-, Kipp- oder Hängeohr), Rutenform, Fellart
+  - Farbvarianten
+- **Darstellung:** Der Hund wird von oben und von der Seite mit anatomischer Silhouette gezeichnet. Dazu kommen Fellschattierung, Abzeichen und eine Fellstruktur am Rand (lang, doppelt, lockig, rau).
+- **Bewegung:**
+  - Der Hund läuft in Blickrichtung. Er dreht mit begrenzter Geschwindigkeit und wird in Kurven langsamer.
+  - Er beschleunigt und bremst weich.
+  - Die Beine bewegen sich im Trab in diagonalen Paaren, der Rumpf biegt sich in Kurven und die Rute schwingt nach.
+  - Hinsetzen und Ablegen laufen als Übergang ab. Beim Liegen ist die Atmung zu sehen.
+- **Systematisches Absuchen:** Der Ausbildungsstand ergibt sich aus Nase, Selbstständigkeit und Konzentration.
+  - Gut ausgebildete Hunde umrunden Verstecke im Trümmerfeld und Behältnisse eng und vollständig, bis etwa 380°.
+  - Weniger geübte Hunde laufen nur einen Bogen oder lassen das Versteck aus.
+  - Abgesuchte Verstecke werden gemerkt und seltener erneut angelaufen.
+- **Trainingsrhythmus Mo – Mi – Fr:**
+  - Jede Einheit kostet 30 % Energie.
+  - Am freien Tag dazwischen (Di, Do) erholt sich der Hund um 16 %.
+  - Am Wochenende erholt er sich um 60 %, ausgelassene Einheiten bringen zusätzliche Ruhe.
+  - Ausgeruht (Energie ab 75 %) lernt der Hund 10 % mehr, müde (unter 35 %) nur 45 %.
+  - Die Energie bestimmt auch die anfängliche Suchmotivation in Übung und Prüfung. Wer am Freitag vor einer Samstagsprüfung hart trainiert, startet mit einem weniger frischen Hund.
