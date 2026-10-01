@@ -147,3 +147,7 @@ table { border-collapse: collapse; width: 100%; }
 .steuerung { position: absolute; right: 8px; top: 48px; background: var(--karte); border: 1px solid var(--linie); border-radius: 10px; padding: 12px 14px; max-width: 420px; z-index: 5; box-shadow: 0 6px 24px rgba(0,0,0,.25); font-size: .9em; }
 .steuerung td { padding: 2px 6px; border-bottom: 1px solid var(--linie); }
 .steuerung td:first-child { white-space: nowrap; font-weight: 600; }
+.aufstieg { background: var(--gruen-hell); border-radius: 8px; padding: .6em .8em; margin: 1em 0; }
+.aufstieg-felder { display: flex; flex-wrap: wrap; gap: 6px; margin-top: .4em; }
+.aufstieg-felder span { background: var(--karte); border: 1px solid var(--linie); border-radius: 6px; padding: .15em .5em; font-size: .88em; }
+.aufstieg-felder span.ok { border-color: var(--gruen); color: var(--gruen); font-weight: 600; }

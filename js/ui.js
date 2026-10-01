@@ -226,6 +226,7 @@
               <button data-a="uebung" class="uebung"><b>Übungssuche</b><span>Behältnis, Trümmer oder Fläche frei üben – mit Geruchsansicht. ${frei ? 'Zählt als Trainingseinheit.' : 'Diese Woche ohne Trainingseffekt.'}</span></button>
             </div>
             <div class="knopfreihe"><button class="primaer" data-a="woche">Woche beenden ▶</button></div>
+            ${aufstiegHtml(s)}
             <h2>Ausschreibungen</h2>
             <ul class="ausschreibungen">${ausschreibungen}</ul>
           </section>
@@ -278,6 +279,23 @@
     };
     bg.querySelector('#fellNeu').addEventListener('change', zeichne);
     zeichne();
+  }
+
+  // Fortschritt zum Klassenaufstieg: Bestwerte der aktuellen LK je Disziplin (ED und DK zählen).
+  function aufstiegHtml(s) {
+    if (s.lk >= 3) {
+      return '<div class="aufstieg"><b>Leistungsklasse 3</b> – die höchste Stufe ist erreicht.</div>';
+    }
+    const best = s.lkBestwerte[s.lk];
+    const felder = po.DISZIPLIN_REIHENFOLGE.map((d) => {
+      const v = best[d];
+      const ok = v >= po.MINDESTPUNKTE_JE_DISZIPLIN;
+      return `<span class="${ok ? 'ok' : ''}">${ok ? '✔' : '○'} ${diszName(d)}: ${v === undefined ? '–' : v + ' P.'}</span>`;
+    }).join('');
+    const fehlt = po.DISZIPLIN_REIHENFOLGE.filter((d) => !(best[d] >= po.MINDESTPUNKTE_JE_DISZIPLIN)).length;
+    return `<div class="aufstieg"><b>Aufstieg in LK ${s.lk + 1}</b> <span class="klein">– in jeder Disziplin mind. 70 Punkte in LK ${s.lk}
+      (Bestwerte aus Dreikampf und Einzeldisziplinen)${fehlt ? `, noch ${fehlt} offen` : ''}</span>
+      <div class="aufstieg-felder">${felder}</div></div>`;
   }
 
   function deltasText(d) {

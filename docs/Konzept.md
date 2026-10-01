@@ -55,7 +55,7 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 - **Handzeichen ohne Anzeige:** Hebt der HF den Arm, ohne dass der Hund anzeigt, zählt das als Fehlanzeige.
 - **Fehlanzeige:** Der WR löst sie nach der ersten Anzeigephase auf. Danach wird der Hund neu angesetzt; das erste „Such!“ danach ist frei.
 - **LK 3, Fläche:** Das zweite Handzeichen gibt der HF auf dem Mittelweg auf Höhe des Hundes (er darf den Mittelweg nicht verlassen).
-- **Klassenaufstieg:** Die Bestwerte je Disziplin innerhalb einer LK werden über DK und ED gesammelt. Sind alle drei mindestens 70, steigt der Hund in die nächste LK auf.
+- **Klassenaufstieg** (mit Marco abgestimmt, 01.10.2026): Die Bestwerte je Disziplin innerhalb einer LK werden über DK und ED gesammelt. Sind alle drei mindestens 70, steigt der Hund in die nächste LK auf. Der Fortschritt wird im Hof angezeigt.
 - **Gegenstände im DK:** In LK 1 wird in allen drei Disziplinen derselbe Gegenstand gesucht. In LK 2 werden genau 2, in LK 3 genau 3 verschiedene Gegenstände auf die Disziplinen verteilt.
 
 ## Simulation
