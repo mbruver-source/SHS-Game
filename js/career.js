@@ -37,7 +37,68 @@
   }
 
   function rndFuer(stand, salz) {
-    return SHS.rng((stand.seed + stand.woche * 7919 + stand.trainingsDieseWoche * 104729 + (salz || 0)) >>> 0);
+    let teamSalz = 0;
+    for (const c of String(stand.hund.name)) teamSalz = (teamSalz * 31 + c.charCodeAt(0)) >>> 0;
+    return SHS.rng((stand.seed + stand.woche * 7919 + stand.trainingsDieseWoche * 104729 + (salz || 0) + teamSalz) >>> 0);
+  }
+
+  // ---------------------------------------------------------------- Profil (Benutzer) mit mehreren Hunden
+  // Ein Profil gehört einem Hundeführer. Jeder Hund ist ein "Team" (Spielstand der Version 1) mit eigenen
+  // Werten, Training, LK und Leistungsnachweis. Kalender (Woche, Ausschreibungen) und HF sind gemeinsam.
+  const MAX_HUNDE_JE_PRUEFUNG = 2; // PO: ein HF darf maximal 2 Hunde vorführen
+
+  function neuesProfil(hfName, hundName, rasse, fell, seed) {
+    const team = neuerSpielstand(hfName, hundName, rasse, seed);
+    team.hund.fell = fell;
+    return { version: 2, id: 'p' + (seed >>> 0).toString(36) + Date.now().toString(36), hfName, seed: seed >>> 0, teams: [team], aktiv: 0, pruefungsStarts: {} };
+  }
+
+  function ausAltemStand(stand) {
+    return { version: 2, id: 'p' + (stand.seed >>> 0).toString(36) + 'alt', hfName: stand.hf.name, seed: stand.seed, teams: [stand], aktiv: 0, pruefungsStarts: {} };
+  }
+
+  function aktivesTeam(profil) {
+    return profil.teams[Math.min(profil.aktiv || 0, profil.teams.length - 1)];
+  }
+
+  // Weiteren Hund aufnehmen: startet mit 12 Monaten in der aktuellen Woche des Profils.
+  function hundAufnehmen(profil, hundName, rasse, fell) {
+    const vorlage = profil.teams[0];
+    const team = neuerSpielstand(profil.hfName, hundName, rasse, profil.seed);
+    team.hund.fell = fell;
+    team.woche = vorlage.woche;
+    team.ausschreibungen = [];
+    aktualisiereAusschreibungen(team);
+    // bereits gelaufene Prüfungen dieses Profils bleiben für den neuen Hund unberührt (eigene erledigt-Flags)
+    profil.teams.push(team);
+    profil.aktiv = profil.teams.length - 1;
+    return team;
+  }
+
+  function wocheBeendenProfil(profil) {
+    for (const t of profil.teams) wocheBeenden(t);
+  }
+
+  // HF-Erfahrung über alle Hunde des Profils.
+  function hfErfahrungProfil(profil) {
+    let trainings = 0; let uebungen = 0; let pruefungen = 0;
+    for (const t of profil.teams) {
+      const u = t.verlauf.filter((v) => v.typ === 'uebung').length;
+      uebungen += u; trainings += t.verlauf.length - u; pruefungen += t.leistungsnachweis.length;
+    }
+    return clamp(0.25 + trainings * 0.008 + uebungen * 0.02 + pruefungen * 0.04, 0, 0.95);
+  }
+
+  // Eigene Starts in einer Prüfung (für Rangliste und PO-Grenze von 2 Hunden je HF).
+  function eigeneStarts(profil, pruefungId) {
+    if (!profil.pruefungsStarts) profil.pruefungsStarts = {};
+    return profil.pruefungsStarts[pruefungId] || [];
+  }
+
+  function startVermerken(profil, pruefungId, eintrag) {
+    if (!profil.pruefungsStarts) profil.pruefungsStarts = {};
+    if (!profil.pruefungsStarts[pruefungId]) profil.pruefungsStarts[pruefungId] = [];
+    profil.pruefungsStarts[pruefungId].push(eintrag);
   }
 
   function datumDerWoche(woche) {
@@ -237,6 +298,8 @@
 
   SHS.career = {
     TRAININGS, TRAININGS_JE_WOCHE, TRAININGSTAGE, naechsterTrainingstag, hfErfahrung, protokolliereSuche,
+    MAX_HUNDE_JE_PRUEFUNG, neuesProfil, ausAltemStand, aktivesTeam, hundAufnehmen, wocheBeendenProfil,
+    hfErfahrungProfil, eigeneStarts, startVermerken,
     neuerSpielstand, trainieren, uebungssucheVerbuchen, wocheBeenden, eintragen, klasseBestanden,
     darfPruefen, datumText, alterText, aktualisiereAusschreibungen,
   };

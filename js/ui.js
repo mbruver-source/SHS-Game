@@ -8,12 +8,24 @@
   const gegName = (id) => po.GEGENSTAENDE.find((g) => g.id === id).name;
   const diszName = (d) => po.DISZIPLINEN[d].name;
 
-  const app = { stand: null, root: null, szene: null };
+  // profil = Benutzer mit allen Hunden; stand = gerade aktiver Hund (Team) des Profils
+  const app = { profil: null, stand: null, root: null, szene: null };
 
   function speichern() {
-    if (app.stand && !SHS.storage.speichern(app.stand)) {
+    if (app.profil && !SHS.storage.speichernProfil(app.profil)) {
       hinweis('Der Spielstand konnte im Browser nicht gespeichert werden. Bitte über „Exportieren“ sichern.');
     }
+  }
+
+  function profilOeffnen(profil) {
+    app.profil = profil;
+    app.stand = career.aktivesTeam(profil);
+  }
+
+  function teamWechseln(i) {
+    app.profil.aktiv = i;
+    app.stand = app.profil.teams[i];
+    speichern();
   }
 
   function zeige(html) {
@@ -83,33 +95,42 @@
 
   // ------------------------------------------------------------------ Start
   function start() {
-    const vorhanden = SHS.storage.laden();
+    const profile = SHS.storage.profile();
+    const liste = profile.map((p) => `<li><button class="primaer gross" data-profil="${esc(p.id)}">${esc(p.name)}
+        <span class="klein">${esc((p.hunde || []).join(', '))}</span></button>
+        <button class="profil-loeschen" data-loeschen="${esc(p.id)}" title="Benutzer löschen">✕</button></li>`).join('');
     zeige(`
       <div class="startseite">
         <div class="logo">🐕‍🦺 <span>SHS</span></div>
         <h1>Spürhundesport</h1>
         <p class="unter">Training und Prüfungen nach der VDH-Spürhundesport-Prüfungsordnung</p>
+        ${profile.length ? `<h3>Weiterspielen</h3><ul class="profil-liste">${liste}</ul>` : ''}
         <div class="start-knoepfe">
-          ${vorhanden ? `<button class="primaer gross" data-a="weiter">Weiterspielen – ${esc(vorhanden.hund.name)}, Woche ${vorhanden.woche}</button>` : ''}
-          <button class="${vorhanden ? '' : 'primaer '}gross" data-a="neu">Neues Spiel</button>
+          <button class="${profile.length ? '' : 'primaer '}gross" data-a="neu">Neuer Benutzer</button>
           <button data-a="import">Spielstand importieren…</button>
           <input type="file" accept=".json,application/json" class="versteckt" id="importDatei">
         </div>
-        <p class="version">Version ${esc(SHS.VERSION || '')} · läuft komplett offline · Spielstand bleibt in diesem Browser</p>
+        <p class="version">Version ${esc(SHS.VERSION || '')} · läuft komplett offline · Spielstände bleiben in diesem Browser</p>
       </div>`);
-    app.root.querySelector('.start-knoepfe').addEventListener('click', (e) => {
-      const a = e.target.dataset.a;
-      if (a === 'weiter') { app.stand = vorhanden; hof(); }
-      if (a === 'neu') {
-        if (vorhanden) {
-          dialog('<h3>Neues Spiel?</h3><p>Der bisherige Spielstand in diesem Browser wird überschrieben. Vorher exportieren?</p>', [
-            { text: 'Abbrechen' },
-            { text: 'Exportieren', aktion: () => { SHS.storage.exportieren(vorhanden); return false; } },
-            { text: 'Neu beginnen', primaer: true, aktion: () => neuesSpiel() },
-          ]);
-        } else neuesSpiel();
+    app.root.querySelector('.startseite').addEventListener('click', (e) => {
+      const z = e.target.closest('[data-a],[data-profil],[data-loeschen]');
+      if (!z) return;
+      if (z.dataset.profil) {
+        const p = SHS.storage.ladenProfil(z.dataset.profil);
+        if (!p) { hinweis('Dieser Spielstand konnte nicht geladen werden.'); return; }
+        profilOeffnen(p);
+        hof();
       }
-      if (a === 'import') app.root.querySelector('#importDatei').click();
+      if (z.dataset.loeschen) {
+        const p = SHS.storage.ladenProfil(z.dataset.loeschen);
+        dialog(`<h3>Benutzer löschen?</h3><p>Der Spielstand von <b>${esc(p ? p.hfName : '')}</b> mit allen Hunden wird aus diesem Browser gelöscht. Vorher exportieren?</p>`, [
+          { text: 'Abbrechen' },
+          { text: 'Exportieren', aktion: () => { if (p) SHS.storage.exportieren(p); return false; } },
+          { text: 'Löschen', primaer: true, aktion: () => { SHS.storage.loeschenProfil(z.dataset.loeschen); start(); } },
+        ]);
+      }
+      if (z.dataset.a === 'neu') neuesSpiel('profil');
+      if (z.dataset.a === 'import') app.root.querySelector('#importDatei').click();
     });
     app.root.querySelector('#importDatei').addEventListener('change', importAusDatei);
   }
@@ -117,20 +138,22 @@
   function importAusDatei(e) {
     const datei = e.target.files[0];
     if (!datei) return;
-    SHS.storage.importieren(datei).then((s) => {
-      app.stand = s;
+    SHS.storage.importieren(datei).then((p) => {
+      profilOeffnen(p);
       speichern();
-      hinweis('Spielstand importiert.');
+      hinweis(`Spielstand von ${p.hfName} importiert.`);
       hof();
     }).catch((err) => hinweis(err.message));
   }
 
-  function neuesSpiel() {
+  // modus 'profil' = neuer Benutzer mit erstem Hund, 'hund' = weiteren Hund ins aktuelle Profil aufnehmen
+  function neuesSpiel(modus) {
+    const neuerHund = modus === 'hund';
     const rassen = Object.keys(SHS.dog.RASSEN);
     zeige(`
       <div class="karte schmal">
-        <h2>Neues Team</h2>
-        <label>Dein Name (Hundeführer/in)<input id="hfName" maxlength="30" placeholder="z. B. Alex"></label>
+        <h2>${neuerHund ? `Weiteren Hund aufnehmen <small>${esc(app.profil.hfName)}</small>` : 'Neuer Benutzer'}</h2>
+        ${neuerHund ? '' : '<label>Dein Name (Hundeführer/in)<input id="hfName" maxlength="30" placeholder="z. B. Alex"></label>'}
         <label>Name des Hundes<input id="hundName" maxlength="20" placeholder="z. B. Aiko"></label>
         <label>Rasse<select id="rasse">${rassen.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label>
         <label>Fellfarbe<select id="fell"></select></label>
@@ -158,12 +181,18 @@
     q('#fell').addEventListener('change', vorschau);
     info();
     app.root.querySelector('.knopfreihe').addEventListener('click', (e) => {
-      if (e.target.dataset.a === 'zurueck') start();
+      if (e.target.dataset.a === 'zurueck') { if (neuerHund) hof(); else start(); }
       if (e.target.dataset.a === 'los') {
-        const hf = app.root.querySelector('#hfName').value.trim() || 'Hundeführer';
         const hund = app.root.querySelector('#hundName').value.trim() || 'Hund';
-        app.stand = career.neuerSpielstand(hf, hund, q('#rasse').value, SHS.neuerSeed());
-        app.stand.hund.fell = q('#fell').value;
+        if (neuerHund) {
+          if (app.profil.teams.some((t) => t.hund.name === hund)) { hinweis('Einen Hund mit diesem Namen gibt es schon.'); return; }
+          app.stand = career.hundAufnehmen(app.profil, hund, q('#rasse').value, q('#fell').value);
+          speichern();
+          hof();
+          return;
+        }
+        const hf = app.root.querySelector('#hfName').value.trim() || 'Hundeführer';
+        profilOeffnen(career.neuesProfil(hf, hund, q('#rasse').value, q('#fell').value, SHS.neuerSeed()));
         speichern();
         hof();
         einfuehrungAnbieten();
@@ -190,9 +219,11 @@
       const art = a.art === 'DK' ? 'Dreikampf' : `Einzeldisziplin ${diszName(a.disziplin)}`;
       let aktion = `<span class="klein">in ${a.woche - s.woche} Woche(n)</span>`;
       if (diese) {
-        aktion = career.darfPruefen(s)
-          ? `<button class="primaer" data-pruefung="${a.id}">Starten</button>`
-          : `<span class="klein warn">Hund zu jung (mind. ${po.MINDESTALTER_MONATE} Monate)</span>`;
+        const starts = career.eigeneStarts(app.profil, a.id);
+        if (a.erledigt) aktion = '<span class="klein">gestartet ✔</span>';
+        else if (!career.darfPruefen(s)) aktion = `<span class="klein warn">Hund zu jung (mind. ${po.MINDESTALTER_MONATE} Monate)</span>`;
+        else if (starts.length >= career.MAX_HUNDE_JE_PRUEFUNG) aktion = `<span class="klein warn">Schon ${career.MAX_HUNDE_JE_PRUEFUNG} Hunde gemeldet (PO)</span>`;
+        else aktion = `<button class="primaer" data-pruefung="${a.id}">Starten</button>`;
       }
       return `<li class="${diese ? 'diese' : ''}"><div><b>${esc(a.verein)}</b> – ${art}, LK ${s.lk}<br>
         <span class="klein">Sa., ${career.datumText(a.woche)}</span></div>${aktion}</li>`;
@@ -201,10 +232,14 @@
 
     zeige(`
       <div class="hof">
+        <nav class="hunde-leiste">
+          ${app.profil.teams.map((t, i) => `<button class="${t === s ? 'aktiv' : ''}" data-team="${i}">${esc(t.hund.name)} <span class="klein">LK ${t.lk}</span></button>`).join('')}
+          <button data-a="hundNeu" title="Weiteren Hund aufnehmen">+ Hund</button>
+        </nav>
         <header class="hof-kopf">
           <canvas class="hund-portrait" title="Fellfarbe ändern"></canvas>
           <div class="hof-name"><h1>${esc(h.name)} <small>${esc(h.rasse)}</small></h1>
-            <div class="klein">HF ${esc(s.hf.name)} (Erfahrung ${Math.round(career.hfErfahrung(s) * 100)} %) · ${career.alterText(h.alterMonate)} · Leistungsklasse <b>LK ${s.lk}</b></div></div>
+            <div class="klein">HF ${esc(s.hf.name)} (Erfahrung ${Math.round(career.hfErfahrungProfil(app.profil) * 100)} %) · ${career.alterText(h.alterMonate)} · Leistungsklasse <b>LK ${s.lk}</b></div></div>
           <div class="woche"><div>Woche ${s.woche}</div><div class="klein">bis Sa., ${career.datumText(s.woche)}</div></div>
         </header>
         <div class="spalten">
@@ -252,9 +287,11 @@
     hundPortrait(app.root.querySelector('.hund-portrait'), h.rasse, h.fell, true);
     app.root.querySelector('.hund-portrait').addEventListener('click', fellAendern);
     app.root.querySelector('.hof').addEventListener('click', (e) => {
-      const z = e.target.closest('[data-training],[data-a],[data-pruefung]');
+      const z = e.target.closest('[data-training],[data-a],[data-pruefung],[data-team]');
       if (!z) return;
       e.preventDefault();
+      if (z.dataset.team !== undefined) { teamWechseln(+z.dataset.team); hof(); return; }
+      if (z.dataset.a === 'hundNeu') { neuesSpiel('hund'); return; }
       if (z.dataset.training) trainingStarten(z.dataset.training);
       const a = z.dataset.a;
       if (a === 'uebung') uebungAuswahl();
@@ -264,7 +301,7 @@
       if (a === 'empfehlung') trainingsEmpfehlung();
       if (a === 'nachbetrachtung') nachbetrachtungAuswahl();
       if (a === 'einfuehrung') einfuehrungAnbieten(true);
-      if (a === 'export') SHS.storage.exportieren(s);
+      if (a === 'export') SHS.storage.exportieren(app.profil);
       if (a === 'import') app.root.querySelector('#importDatei').click();
       if (a === 'start') start();
       if (z.dataset.pruefung) pruefungAnmeldung(s.ausschreibungen.find((x) => x.id === z.dataset.pruefung));
@@ -330,19 +367,27 @@
     dialog(`<h3>${esc(r.text)}</h3><ul>${deltasText(r.deltas)}</ul>${r.deltas.hinweis ? `<p class="hinweis">${r.deltas.hinweis}</p>` : ''}`);
   }
 
+  // Die Woche gilt für alle Hunde des Benutzers gemeinsam.
   function wocheBeenden() {
     const s = app.stand;
-    const verpasst = s.ausschreibungen.filter((a) => a.woche === s.woche && !a.erledigt);
+    const teams = app.profil.teams;
+    const nochOffen = teams.filter((t) => career.darfPruefen(t) && t.ausschreibungen.some((a) => a.woche === t.woche && !a.erledigt)
+      && career.eigeneStarts(app.profil, t.ausschreibungen.find((a) => a.woche === t.woche && !a.erledigt).id).length < career.MAX_HUNDE_JE_PRUEFUNG);
     const weiter = () => {
-      career.wocheBeenden(s);
+      career.wocheBeendenProfil(app.profil);
       speichern();
       hof();
-      if (s.hund.alterMonate >= po.MINDESTALTER_MONATE && s.hund.alterMonate - 7 / 30.44 < po.MINDESTALTER_MONATE) {
-        dialog(`<h3>${esc(s.hund.name)} ist jetzt 15 Monate alt</h3><p>Ab sofort darf er an Prüfungen teilnehmen.</p>`);
+      const neu15 = teams.filter((t) => t.hund.alterMonate >= po.MINDESTALTER_MONATE && t.hund.alterMonate - 7 / 30.44 < po.MINDESTALTER_MONATE);
+      if (neu15.length) {
+        dialog(`<h3>${neu15.map((t) => esc(t.hund.name)).join(' und ')} ${neu15.length > 1 ? 'sind' : 'ist'} jetzt 15 Monate alt</h3><p>Ab sofort sind Prüfungen möglich.</p>`);
       }
     };
-    if (verpasst.length && career.darfPruefen(s)) {
-      dialog('<h3>Prüfung diese Woche</h3><p>Diese Woche findet eine Prüfung statt, für die du noch nicht gestartet bist. Woche trotzdem beenden?</p>',
+    const trainingOffen = teams.filter((t) => t !== s && t.trainingsDieseWoche < career.TRAININGS_JE_WOCHE).map((t) => t.hund.name);
+    const zeilen = [];
+    if (nochOffen.length) zeilen.push(`Diese Woche ist Prüfung – noch nicht gestartet: <b>${nochOffen.map((t) => esc(t.hund.name)).join(', ')}</b>.`);
+    if (trainingOffen.length) zeilen.push(`Noch freie Trainingseinheiten bei: ${trainingOffen.map(esc).join(', ')}.`);
+    if (zeilen.length) {
+      dialog(`<h3>Woche beenden?</h3><p>${zeilen.join('<br>')}</p><p class="hinweis">Die Woche gilt für alle deine Hunde.</p>`,
         [{ text: 'Zurück' }, { text: 'Woche beenden', primaer: true, aktion: weiter }]);
     } else weiter();
   }
@@ -370,7 +415,7 @@
             disziplin: q('#ud').value, lk: +q('#ul').value, seed: SHS.neuerSeed(), hund: s.hund,
             gegenstand: q('#ug').value, ansatzIndex: +q('#ua').value, leine: q('#uleine').checked,
             aussenreize: q('#ureize').checked, modus: 'uebung',
-            auto: q('#uauto').checked, hfErfahrung: career.hfErfahrung(s),
+            auto: q('#uauto').checked, hfErfahrung: career.hfErfahrungProfil(app.profil),
           }, (erg, szene) => {
             if (erg) {
               career.protokolliereSuche(s, { art: 'uebung', disziplin: q('#ud').value, lk: +q('#ul').value, ergebnis: erg });
@@ -442,7 +487,7 @@
           <option value="sofort">Automatisch nach Trainingsstand – sofort auswerten</option>
         </select></label>
         <p class="hinweis">Automatisch: Das Ergebnis ergibt sich aus den Werten von ${esc(s.hund.name)} und deiner HF-Erfahrung
-        (${Math.round(career.hfErfahrung(s) * 100)} %, wächst mit Training, Übungssuchen und Prüfungen).
+        (${Math.round(career.hfErfahrungProfil(app.profil) * 100)} %, wächst mit Training, Übungssuchen und Prüfungen aller deiner Hunde).
         Energie von ${esc(s.hund.name)}: ${Math.round(s.hund.energie * 100)} %.</p>
         <div class="knopfreihe"><button data-a="zurueck">Zurück</button><button class="primaer" data-a="melden">Anmelden und starten</button></div>
       </div>`);
@@ -473,7 +518,7 @@
     const suchOpts = {
       disziplin: schritt.disziplin, lk: p.lk, seed: (p.ausschreibung.seed + p.idx * 7919 + 17) >>> 0,
       hund: s.hund, gegenstand: schritt.gegenstand, ansatzIndex: schritt.ansatzIndex, leine: schritt.leine,
-      modus: 'pruefung', titel, auto: p.vorfuehrung === 'auto', hfErfahrung: career.hfErfahrung(s),
+      modus: 'pruefung', titel, auto: p.vorfuehrung === 'auto', hfErfahrung: career.hfErfahrungProfil(app.profil),
     };
     const verbuchen = (erg, szene) => {
       career.protokolliereSuche(s, { art: 'pruefung', disziplin: schritt.disziplin, lk: p.lk, ergebnis: erg });
@@ -502,12 +547,17 @@
     const eigenes = SHS.competition.auswerten(p.einzelwerte, a.art, p.status);
     zeige('<div class="karte"><h2>Auswertung läuft…</h2><p>Die übrigen Teams werden gerichtet.</p></div>');
     setTimeout(() => {
-      const ki = SHS.competition.kiTeams(a, p.lk, po.MINDEST_TEILNEHMER - 1);
+      // Eigene Hunde, die in derselben LK schon gestartet sind, stehen mit in der Rangliste.
+      const eigeneFrueher = career.eigeneStarts(app.profil, a.id).filter((x) => x.lk === p.lk)
+        .map((x) => Object.assign({}, x, { eigen: true }));
+      const ki = SHS.competition.kiTeams(a, p.lk, Math.max(1, po.MINDEST_TEILNEHMER - 1 - eigeneFrueher.length));
       const teilnehmer = ki.map((t, i) => {
         const r = SHS.competition.simuliereTeam(t, a, p.lk, i + 1);
         return { hf: t.hf, hund: t.hund.name, rasse: t.hund.rasse, einzelwerte: r.einzelwerte, ergebnis: SHS.competition.auswerten(r.einzelwerte, a.art, r.status) };
       });
+      teilnehmer.push(...eigeneFrueher);
       teilnehmer.push({ hf: s.hf.name, hund: s.hund.name, rasse: s.hund.rasse, einzelwerte: p.einzelwerte, ergebnis: eigenes, ich: true });
+      career.startVermerken(app.profil, a.id, { hf: s.hf.name, hund: s.hund.name, rasse: s.hund.rasse, lk: p.lk, einzelwerte: p.einzelwerte, ergebnis: eigenes });
       po.platzierung(teilnehmer);
       teilnehmer.sort((x, y) => (x.platz || 99) - (y.platz || 99) || (y.ergebnis.punkte - x.ergebnis.punkte));
       const ich = teilnehmer.find((t) => t.ich);
@@ -519,7 +569,7 @@
       const { aufstieg } = career.eintragen(s, eintrag);
       speichern();
       const disz = SHS.competition.disziplinenDer(a);
-      const zeilen = teilnehmer.map((t) => `<tr class="${t.ich ? 'ich' : ''}"><td>${t.platz || '–'}</td><td>${esc(t.hf)}<br><span class="klein">${esc(t.hund)} (${esc(t.rasse)})</span></td>
+      const zeilen = teilnehmer.map((t) => `<tr class="${t.ich ? 'ich' : t.eigen ? 'eigen' : ''}"><td>${t.platz || '–'}</td><td>${esc(t.hf)}<br><span class="klein">${esc(t.hund)} (${esc(t.rasse)})</span></td>
         ${disz.map((d) => `<td class="zahl">${t.einzelwerte[d] === null ? '–' : t.einzelwerte[d]}</td>`).join('')}
         <td class="zahl"><b>${t.ergebnis.punkte}</b></td><td>${esc(t.ergebnis.text)}</td></tr>`).join('');
       zeige(`
@@ -529,10 +579,26 @@
           ${aufstieg ? `<div class="erfolg">🎉 Klassenaufstieg! ${esc(s.hund.name)} startet ab jetzt in LK ${s.lk}.</div>` : ''}
           <table class="rangliste"><tr><th>Platz</th><th>Team</th>${disz.map((d) => `<th>${diszName(d)}</th>`).join('')}<th>Gesamt</th><th>Wertnote</th></tr>${zeilen}</table>
           <p class="hinweis">Gleiche Punktzahl = gleicher Platz, der folgende Platz entfällt. Nicht bestandene Teams werden nicht platziert.</p>
-          <div class="knopfreihe"><button class="primaer" data-a="hof">Eingetragen – zurück zum Training</button></div>
+          <div class="knopfreihe">${zweiterHundKnopf(a)}<button class="primaer" data-a="hof">Eingetragen – zurück zum Training</button></div>
         </div>`);
       app.root.querySelector('[data-a=hof]').addEventListener('click', hof);
+      const zweiter = app.root.querySelector('[data-zweiter]');
+      if (zweiter) {
+        zweiter.addEventListener('click', () => {
+          teamWechseln(+zweiter.dataset.zweiter);
+          pruefungAnmeldung(app.stand.ausschreibungen.find((x) => x.id === a.id));
+        });
+      }
     }, 30);
+  }
+
+  // Weiterer eigener Hund für dieselbe Prüfung (PO: max. 2 Hunde je HF)?
+  function zweiterHundKnopf(a) {
+    if (career.eigeneStarts(app.profil, a.id).length >= career.MAX_HUNDE_JE_PRUEFUNG) return '';
+    const i = app.profil.teams.findIndex((t) => t !== app.stand && career.darfPruefen(t)
+      && t.ausschreibungen.some((x) => x.id === a.id && !x.erledigt));
+    if (i < 0) return '';
+    return `<button data-zweiter="${i}">Mit ${esc(app.profil.teams[i].hund.name)} starten</button>`;
   }
 
   // ------------------------------------------------------------------ Leistungsnachweis & Regeln

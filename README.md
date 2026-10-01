@@ -12,7 +12,7 @@ noch Internet.
 **Zum Weitergeben/Herunterladen:** `npm run paket` (oder `powershell -ExecutionPolicy Bypass -File tools\paket.ps1`)
 erzeugt `dist\SHS-Game-v<version>.zip`. Entpacken und `index.html` öffnen.
 
-Der Spielstand liegt im Browser (localStorage). Mit **Spielstand exportieren/importieren**
+Mehrere Benutzer (je mit mehreren Hunden) teilen sich einen Browser; jeder hat seinen eigenen Spielstand im localStorage. Mit **Spielstand exportieren/importieren**
 nimmst du ihn auf einen anderen Rechner oder in einen anderen Browser mit.
 
 ### Steuerung in der Suchlage

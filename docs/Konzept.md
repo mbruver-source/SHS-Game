@@ -194,3 +194,18 @@ Den eigenen Menüpunkt „Trainingsempfehlung“ erreichst du im Hof (💡 neben
   Situationsabhängige Tipps gibt es, wenn der Hund zum HF schaut oder unsicher anzeigt; nach 20 s kommt der Hinweis auf die Geruchsansicht.
 - **Hof-Rundgang:** 9 Sprechblasen mit Markierung des jeweiligen Bereichs: Team, Werte/Energie, Wochenplan, Training, Trainingsempfehlung, Aufstieg, Prüfungen, Woche beenden, Nachbetrachtung/Leistungsnachweis.
 - **Spielstand:** `stand.einfuehrung` merkt sich, was schon angeboten bzw. gesehen wurde.
+
+## Mehrere Benutzer und Hunde (v0.9)
+- **Profil:** Ein Profil (`career.neuesProfil`, Version 2) gehört einem Hundeführer und enthält mehrere **Teams**. Jedes Team ist ein Spielstand der Version 1 je Hund.
+- **Je Hund:** Werte, Energie, Training (Mo/Mi/Fr), LK, Leistungsnachweis, Suchprotokoll und Nachbetrachtungen.
+- **Gemeinsam für alle Hunde:**
+  - Woche und Kalender: `wocheBeendenProfil` schaltet alle Hunde weiter.
+  - Ausschreibungen: gleicher Seed, aber `erledigt` je Hund.
+  - HF-Erfahrung: `hfErfahrungProfil` zählt Training, Übungen und Prüfungen aller Hunde.
+- **Speicher:** `shs-game-profile` (Index) und `shs-game-profil-<id>` (je Profil). Ein alter Einzel-Spielstand (`shs-game-spielstand`) wird beim ersten Start automatisch als Profil übernommen und bleibt als Sicherung liegen. Der Import nimmt Version 1 und Version 2 an und legt immer ein eigenes Profil an.
+- **Startbildschirm:** Er zeigt alle Benutzer mit ihren Hunden. Dort legst du neue Benutzer an oder löschst bestehende, nach Rückfrage und mit dem Angebot, vorher zu exportieren.
+- **Hof:** Die Hundeleiste oben wechselt den aktiven Hund, „+ Hund“ nimmt einen weiteren Hund auf (12 Monate, aktuelle Woche).
+- **Prüfung (PO: höchstens 2 Hunde je HF):**
+  - Nach dem ersten Start bietet die Ergebnisseite „Mit … starten“ für den zweiten Hund an.
+  - Eigene Hunde in derselben LK stehen gemeinsam in der Rangliste, die KI-Teams füllen auf 8 Teilnehmer auf.
+  - Die Starts werden in `profil.pruefungsStarts` vermerkt.

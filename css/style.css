@@ -189,3 +189,13 @@ table { border-collapse: collapse; width: 100%; }
 .coach-blase { position: fixed; z-index: 70; max-width: 360px; }
 .coach-blase .knopfreihe { margin-top: .6em; }
 .coach-ziel { outline: 3px solid #e2b93b; outline-offset: 4px; border-radius: 8px; position: relative; z-index: 1; }
+.profil-liste { list-style: none; padding: 0; margin: 0 auto 1em; max-width: 420px; display: flex; flex-direction: column; gap: 8px; }
+.profil-liste li { display: flex; gap: 6px; }
+.profil-liste li > button:first-child { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.profil-liste .klein { color: rgba(255,255,255,.85); }
+.profil-loeschen { padding: 0 .8em; }
+.hunde-leiste { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.hunde-leiste button { border-radius: 20px; padding: .3em .9em; }
+.hunde-leiste button.aktiv { background: var(--gruen); border-color: var(--gruen); color: #fff; font-weight: 700; }
+.hunde-leiste button.aktiv .klein { color: rgba(255,255,255,.85); }
+.rangliste tr.eigen { background: var(--gruen-hell); }
