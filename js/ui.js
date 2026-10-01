@@ -649,7 +649,7 @@
     const fehlerZeilen = Object.entries(f.summe).sort((a, b) => b[1] - a[1])
       .map(([art, n]) => `<tr><td>${esc(po.ABZUEGE[art] ? po.ABZUEGE[art].text : art)}</td><td class="zahl">${n}×</td></tr>`).join('');
     const ergebnisse = f.liste.slice(-6).map((x) => `${diszName(x.disziplin)} ${x.status === 'ok' ? x.punkte : x.status === 'disq' ? 'DISQ' : 'ABBR'}`).join(' · ');
-    zeige(`
+    zeige(`<div class="empfehlung-seite">
       <div class="karte">
         <h2>Trainingsempfehlung – ${esc(s.hund.name)} <small>LK ${s.lk} · Woche ${s.woche} · ${frei ? `${frei} Einheit(en) frei, nächste am ${tag}` : 'diese Woche keine Einheit mehr frei'}</small></h2>
         <ol class="empf-liste">${karten}</ol>
@@ -671,15 +671,15 @@
             : '<p class="klein">Noch keine Suchen protokolliert. Mach eine Übungssuche – danach wertet die Empfehlung auch die Fehler aus.</p>'}
         </section>
       </div>
-      <div class="knopfreihe"><button class="primaer" data-a="hof">Zurück zum Training</button></div>`);
-    const handler = (ev) => {
+      <div class="knopfreihe"><button class="primaer" data-a="hof">Zurück zum Training</button></div>
+    </div>`);
+    // Empfänger nur am Inhalt dieser Seite: Der Klick, der die Seite geöffnet hat, darf hier nicht ankommen.
+    app.root.querySelector('.empfehlung-seite').addEventListener('click', (ev) => {
       const z = ev.target.closest('[data-training],[data-uebung],[data-a]');
       if (!z) return;
-      app.root.removeEventListener('click', handler);
       if (z.dataset.training) trainingAusfuehren(z.dataset.training, z.dataset.gegenstand || undefined);
       else if (z.dataset.uebung) { hof(); uebungAuswahl({ disziplin: z.dataset.uebung }); } else if (z.dataset.a === 'hof') hof();
-    };
-    app.root.addEventListener('click', handler);
+    });
   }
 
 
