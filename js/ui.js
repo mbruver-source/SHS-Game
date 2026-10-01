@@ -47,6 +47,22 @@
     return bg;
   }
 
+  // Zeichnet den Hund (Draufsicht, auf Gras) in ein Canvas – für Anmeldung und Hof.
+  function hundPortrait(canvas, rasse, liegt) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth || canvas.width; const h = canvas.clientHeight || canvas.height;
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+    const g = canvas.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.fillStyle = '#6c9c47';
+    g.fillRect(0, 0, w, h);
+    const sk = Math.min(w / 1.1, h / 0.5);
+    g.save();
+    g.translate(w / 2 - sk * 0.05, h / 2);
+    SHS.grafik.zeichneHund(g, { sk, t: 0.3, rasse, liegt: !!liegt, rute: 0.6, ruteHoch: true, naseTief: false, kopfW: 0.15 });
+    g.restore();
+  }
+
   // ------------------------------------------------------------------ Start
   function start() {
     const vorhanden = SHS.storage.laden();
@@ -99,6 +115,7 @@
         <label>Dein Name (Hundeführer/in)<input id="hfName" maxlength="30" placeholder="z. B. Alex"></label>
         <label>Name des Hundes<input id="hundName" maxlength="20" placeholder="z. B. Aiko"></label>
         <label>Rasse<select id="rasse">${rassen.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label>
+        <canvas id="vorschau" class="hund-vorschau"></canvas>
         <div id="rassenInfo" class="rassen-info"></div>
         <p class="hinweis">Dein Hund ist 12 Monate alt. Prüfungen sind ab 15 Monaten möglich – nutze die Zeit für die Grundausbildung.
         Den Korken kennt er schon ein wenig.</p>
@@ -110,6 +127,7 @@
       const teile = Object.entries(mod).filter(([k]) => SHS.dog.WERTE[k])
         .map(([k, v]) => `${SHS.dog.WERTE[k]} ${v > 0 ? '+' : ''}${v}`);
       app.root.querySelector('#rassenInfo').textContent = teile.join(' · ');
+      hundPortrait(app.root.querySelector('#vorschau'), r);
     };
     app.root.querySelector('#rasse').addEventListener('change', info);
     info();
@@ -156,7 +174,8 @@
     zeige(`
       <div class="hof">
         <header class="hof-kopf">
-          <div><h1>${esc(h.name)} <small>${esc(h.rasse)}</small></h1>
+          <canvas class="hund-portrait" title="${esc(h.rasse)}"></canvas>
+          <div class="hof-name"><h1>${esc(h.name)} <small>${esc(h.rasse)}</small></h1>
             <div class="klein">HF ${esc(s.hf.name)} · ${career.alterText(h.alterMonate)} · Leistungsklasse <b>LK ${s.lk}</b></div></div>
           <div class="woche"><div>Woche ${s.woche}</div><div class="klein">bis Sa., ${career.datumText(s.woche)}</div></div>
         </header>
@@ -192,6 +211,7 @@
         </section>
       </div>`);
 
+    hundPortrait(app.root.querySelector('.hund-portrait'), h.rasse, true);
     app.root.querySelector('.hof').addEventListener('click', (e) => {
       const z = e.target.closest('[data-training],[data-a],[data-pruefung]');
       if (!z) return;

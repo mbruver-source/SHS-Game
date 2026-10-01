@@ -94,6 +94,7 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 | `js/career.js` | Spielstand, Training, Leistungsnachweis, Aufstieg |
 | `js/competition.js` | KI-Teams, Prüfungssimulation |
 | `js/storage.js` | localStorage, Export/Import |
+| `js/grafik.js` | Zeichenhilfen: Hund mit Fellzeichnung je Rasse, Trümmerteile, Kiesboden |
 | `js/search.js` | Canvas-Darstellung und Eingabe der Suchlage |
 | `js/ui.js` | Menüs und Bildschirme |
 

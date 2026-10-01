@@ -5,7 +5,7 @@
 
   const FARBEN = {
     gras: '#5f8f3e', grasDunkel: '#4d7832', bereich: '#6c9c47', band: '#f4f1e8', mittelweg: '#d8c49a',
-    eimer: '#e8e8e8', eimerRand: '#9aa3ad', kammer: '#33414f', truemmer: ['#8b6b4a', '#9d9d9d', '#6f7a83', '#3d3d3d', '#a5542f', '#7b5b3a', '#b08a5a', '#5d6b78'],
+    eimer: '#e8e8e8', eimerRand: '#9aa3ad', kammer: '#33414f',
     hf: '#2f5d8c', wr: '#7a2f2f', spielzeug: '#d93a3a', futter: '#8a5a2b', ziel: '#ffd23f', diff: '#3fc7ff',
   };
 
@@ -291,6 +291,7 @@
       const b = this.lage.bereich;
       this.rechteck(b.x, b.y, b.w, b.h, FARBEN.bereich);
       this.grasTextur();
+      if (this.lage.disziplin === 'truemmer') this.kiesboden();
       if (this.lage.mittelweg) {
         const m = this.lage.mittelweg;
         this.rechteck(m.x, m.y, m.w, m.h, FARBEN.mittelweg);
@@ -337,6 +338,19 @@
         const [px, py] = this.w2s(x, y);
         g.fillStyle = v < 0.5 ? 'rgba(30,60,20,0.18)' : 'rgba(170,210,120,0.15)';
         g.fillRect(px, py, 2, 2);
+      }
+    }
+
+    // Trümmerfeld auf Schotter-/Kiesuntergrund
+    kiesboden() {
+      const b = this.lage.bereich;
+      this.rechteck(b.x, b.y, b.w, b.h, '#8f8068');
+      if (!this.kies) this.kies = SHS.grafik.kiesPunkte(this.lage);
+      const g = this.g;
+      for (const p of this.kies) {
+        const [px, py] = this.w2s(p.x, p.y);
+        g.fillStyle = p.f;
+        g.beginPath(); g.arc(px, py, Math.max(0.8, p.s * this.skala), 0, Math.PI * 2); g.fill();
       }
     }
 
@@ -394,15 +408,7 @@
           g.save();
           g.translate(px, py);
           g.rotate(this.rot ? Math.PI / 2 - v.rot : v.rot);
-          const w = v.w * this.skala; const h = v.h * this.skala;
-          if (v.hoehe > 0) {
-            g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(-w / 2 + 4, -h / 2 + 4, w, h);
-          }
-          g.fillStyle = FARBEN.truemmer[Math.abs(this.hashTyp(v.typ)) % FARBEN.truemmer.length];
-          g.fillRect(-w / 2, -h / 2, w, h);
-          g.strokeStyle = v.hoehe > 0 ? '#f0e6c8' : 'rgba(0,0,0,0.4)';
-          g.lineWidth = v.hoehe > 0 ? 2 : 1;
-          g.strokeRect(-w / 2, -h / 2, w, h);
+          SHS.grafik.zeichneTruemmer(g, v, v.w * this.skala, v.h * this.skala);
           g.restore();
         }
         if (zeigeEG && v.id === this.lage.eigengeruchVersteck) {
@@ -412,8 +418,6 @@
         }
       }
     }
-
-    hashTyp(s) { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return h; }
 
     zeichneQuellen() {
       for (const q of this.s.quellen) {
@@ -527,33 +531,6 @@
       const t = performance.now() / 1000;
       let w = this.winkel(h.richtung);
       if (h.kopfschlag > 0) w += Math.sin(t * 40) * 0.25;
-      const farbe = this.opts.hund.farbe || '#8a6a50';
-      g.save();
-      g.translate(px, py);
-      g.rotate(w);
-      const laenge = (h.liegt ? 0.55 : 0.62) * sk;
-      const breite = (h.liegt ? 0.3 : 0.24) * sk;
-      // Schatten
-      g.fillStyle = 'rgba(0,0,0,0.25)';
-      g.beginPath(); g.ellipse(3, 3, laenge / 2, breite / 2, 0, 0, Math.PI * 2); g.fill();
-      // Rute
-      const freq = 2 + h.rute * 12;
-      const ausschlag = (h.ruteHoch ? 0.6 : 0.25) * (0.3 + h.rute);
-      const rw = Math.PI + Math.sin(t * freq) * ausschlag;
-      g.strokeStyle = farbe; g.lineWidth = Math.max(2, 0.05 * sk); g.lineCap = 'round';
-      g.beginPath(); g.moveTo(-laenge / 2, 0);
-      g.lineTo(-laenge / 2 + Math.cos(rw) * 0.28 * sk * (h.ruteHoch ? 1 : 0.8), Math.sin(rw) * 0.28 * sk);
-      g.stroke();
-      // Beine (liegend: Vorderpfoten nach vorn)
-      if (h.liegt) {
-        g.fillStyle = farbe;
-        g.fillRect(laenge / 2 - 0.02 * sk, -breite / 2 + 0.02 * sk, 0.16 * sk, 0.06 * sk);
-        g.fillRect(laenge / 2 - 0.02 * sk, breite / 2 - 0.08 * sk, 0.16 * sk, 0.06 * sk);
-      }
-      // Körper
-      g.fillStyle = farbe;
-      g.beginPath(); g.ellipse(0, 0, laenge / 2, breite / 2, 0, 0, Math.PI * 2); g.fill();
-      g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 1; g.stroke();
       // Kopf: dreht sich zum HF, wenn der Hund zurückschaut
       let kopfW = 0;
       if (h.blickZuHF > 0) {
@@ -564,20 +541,13 @@
         kopfW = Math.max(-1.6, Math.min(1.6, kopfW));
       } else if (h.zustand === 'geruch') kopfW = Math.sin(t * 9) * 0.35;
       else if (h.zustand === 'sucht') kopfW = Math.sin(t * 2.5) * 0.25;
-      const hals = laenge / 2;
-      g.translate(hals, 0);
-      g.rotate(kopfW);
-      const kopfR = 0.11 * sk;
-      g.fillStyle = farbe;
-      g.beginPath(); g.ellipse(kopfR * 0.6, 0, kopfR * 1.25, kopfR, 0, 0, Math.PI * 2); g.fill();
-      g.stroke();
-      // Ohren
-      g.fillStyle = 'rgba(0,0,0,0.3)';
-      g.beginPath(); g.ellipse(kopfR * 0.2, -kopfR * 0.9, kopfR * 0.5, kopfR * 0.3, 0, 0, Math.PI * 2); g.fill();
-      g.beginPath(); g.ellipse(kopfR * 0.2, kopfR * 0.9, kopfR * 0.5, kopfR * 0.3, 0, 0, Math.PI * 2); g.fill();
-      // Nase: tief = dunkel/groß
-      g.fillStyle = h.naseTief ? '#111' : '#444';
-      g.beginPath(); g.arc(kopfR * 1.8, 0, kopfR * (h.naseTief ? 0.35 : 0.25), 0, Math.PI * 2); g.fill();
+      g.save();
+      g.translate(px, py);
+      g.rotate(w);
+      SHS.grafik.zeichneHund(g, {
+        sk, t, rasse: this.opts.hund.rasse, liegt: h.liegt, rute: h.rute, ruteHoch: h.ruteHoch,
+        naseTief: h.naseTief, kopfW,
+      });
       g.restore();
 
       // Aktive Anzeige / Verleitung sichtbar machen

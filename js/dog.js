@@ -15,12 +15,12 @@
   };
 
   const RASSEN = {
-    'Labrador Retriever': { nase: 6, impuls: -6, anzeige: 3, konzentration: 2, farbe: '#d9b56c' },
-    'Malinois': { ausdauer: 8, impuls: -8, selbststaendig: 6, konzentration: 2, farbe: '#a8743a' },
-    'Beagle': { nase: 12, impuls: -10, konzentration: -6, selbststaendig: 4, farbe: '#c48a4a' },
-    'Deutscher Schäferhund': { konzentration: 6, anzeige: 4, nase: 2, selbststaendig: -2, farbe: '#6b4a2b' },
-    'Border Collie': { konzentration: 4, praezision: 5, selbststaendig: -4, ausdauer: 4, farbe: '#2b2b2b' },
-    'Mischling': { nase: 2, impuls: 2, anzeige: 2, differenzierung: 2, farbe: '#8a6a50' },
+    'Labrador Retriever': { nase: 6, impuls: -6, anzeige: 3, konzentration: 2 },
+    'Malinois': { ausdauer: 8, impuls: -8, selbststaendig: 6, konzentration: 2 },
+    'Beagle': { nase: 12, impuls: -10, konzentration: -6, selbststaendig: 4 },
+    'Deutscher Schäferhund': { konzentration: 6, anzeige: 4, nase: 2, selbststaendig: -2 },
+    'Border Collie': { konzentration: 4, praezision: 5, selbststaendig: -4, ausdauer: 4 },
+    'Mischling': { nase: 2, impuls: 2, anzeige: 2, differenzierung: 2 },
   };
 
   function neuerHund(name, rasse) {
@@ -29,7 +29,7 @@
     for (const k of Object.keys(WERTE)) werte[k] = Math.max(5, Math.min(95, 30 + (mod[k] || 0)));
     const vertrautheit = {};
     for (const g of po.GEGENSTAENDE) vertrautheit[g.id] = 0.1;
-    return { name, rasse, farbe: mod.farbe, alterMonate: 12, werte, vertrautheit, energie: 1 };
+    return { name, rasse, alterMonate: 12, werte, vertrautheit, energie: 1 };
   }
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
