@@ -1,4 +1,4 @@
-// Regelwerk nach VDH-Spürhundesport-Prüfungsordnung (gültig ab 01.07.2022).
+// Regelwerk nach der Spürhundesport-Prüfungsordnung (gültig ab 01.07.2022).
 // Alles, was die PO konkret festlegt, steht hier als Daten. Wo die PO keine Zahlen
 // nennt (Höhe einzelner Abzüge), stehen markierte Spielannahmen (ANNAHME) - siehe docs/Konzept.md.
 (function (SHS) {

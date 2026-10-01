@@ -170,7 +170,7 @@
           <div class="start-titel">
             <span class="start-kuerzel">SHS</span>
             <h1>Spürhundesport</h1>
-            <p>Training und Prüfungen nach der VDH-Spürhundesport-Prüfungsordnung</p>
+            <p>Training und Prüfungen nach der Spürhundesport-Prüfungsordnung</p>
           </div>
         </header>
 
@@ -1132,7 +1132,7 @@
 
   function regeln() {
     dialog(`
-      <h3>Spürhundesport – Kurzfassung der PO (VDH, gültig ab 01.07.2022)</h3>
+      <h3>Spürhundesport – Kurzfassung der PO (gültig ab 01.07.2022)</h3>
       <div class="regeln">
       <p><b>Disziplinen:</b> Trümmersuche, Flächensuche, Behältnisstrecke – je 100 Punkte (60 Suchleistung + 40 Anzeigeleistung). Dreikampf = alle drei (300 P.), Einzeldisziplin = eine.</p>
       <p><b>Bestanden:</b> mindestens 70 Punkte in jeder Disziplin. Wertnoten Einzeldisziplin: V ≥ 96, SG ≥ 90, G ≥ 80, B ≥ 70. Dreikampf: V ≥ 286, SG ≥ 270, G ≥ 240, B ≥ 210.</p>

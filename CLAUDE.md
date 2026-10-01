@@ -1,6 +1,6 @@
 # SHS-Game – Hinweise für Claude-Sitzungen
 
-Browserspiel zum Spürhundesport (VDH-SHS-PO, gültig ab 01.07.2022) aus Sicht des Hundeführers.
+Browserspiel zum Spürhundesport (SHS-PO, gültig ab 01.07.2022) aus Sicht des Hundeführers.
 Zuerst `docs/Konzept.md` lesen (Aufbau, Spielannahmen, Dateien).
 
 ## Grundregeln
@@ -27,8 +27,5 @@ Zuerst `docs/Konzept.md` lesen (Aufbau, Spielannahmen, Dateien).
   committen, Tag `vX.Y.Z` setzen und `git push origin main --tags` (so abgestimmt am 01.10.2026).
 
 ## Online-Version (Handy)
-- Privates Claude-Artifact: https://claude.ai/artifact/NDUGkSveHWAy8mizMk4f9p
-- Aktualisieren: `node tools/artifact.js` (baut `dist/artifact/index.html` und gibt die Dateiliste aus), dann mit dem
-  Artifact-Tool an diese `url` veröffentlichen (Datei `dist/artifact/index.html`, `files` = ausgegebene Liste).
-- In der Artifact-Umgebung sind Downloads und Pop-ups gesperrt: Export/Import läuft dort über Text kopieren/einfügen,
-  die Urkunde erscheint als Ansicht im Spiel.
+- Läuft ausschließlich über GitHub Pages (siehe oben); ein Push auf `main` aktualisiert die Seite.
+- Der frühere private Claude-Artifact-Link wurde am 01.10.2026 auf Wunsch gelöscht.

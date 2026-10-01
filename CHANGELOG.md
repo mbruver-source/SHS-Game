@@ -2,6 +2,10 @@
 
 Alle Versionen sind im Repository als Tag (`vX.Y.Z`) markiert.
 
+## 1.0.3
+- „VDH-“ aus Titel und Beschreibungen entfernt (Hinweis auf fehlende Verbindung zum VDH bleibt).
+- Private Online-Version über Claude entfernt; online nur noch über GitHub Pages.
+
 ## 1.0.2
 - Neuer Startbildschirm: Szene mit Hund in Platzanzeige (zufällige Rasse), kurze Einführung, Benutzer als Karten mit Hundebild, Hunden, LK und letzter Spielzeit.
 

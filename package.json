@@ -1,8 +1,8 @@
 {
   "name": "shs-game",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
-  "description": "Spürhundesport-Browserspiel nach VDH-SHS-Prüfungsordnung (offline, ohne Abhängigkeiten)",
+  "description": "Spürhundesport-Browserspiel nach der Spürhundesport-Prüfungsordnung (offline, ohne Abhängigkeiten)",
   "scripts": {
     "test": "node --test \"tests/*.test.js\"",
     "start": "node tools/server.js 8123",
