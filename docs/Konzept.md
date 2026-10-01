@@ -94,7 +94,7 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 | `js/career.js` | Spielstand, Training, Leistungsnachweis, Aufstieg |
 | `js/competition.js` | KI-Teams, Prüfungssimulation |
 | `js/storage.js` | localStorage, Export/Import |
-| `js/grafik.js` | Zeichenhilfen: Hund mit Fellzeichnung je Rasse, Trümmerteile, Kiesboden |
+| `js/grafik.js` | Zeichenhilfen: Hund mit Fellzeichnung je Rasse und Farbvariante, Trümmerteile, Kiesboden, 3D-Nahaufnahme der Anzeige |
 | `js/search.js` | Canvas-Darstellung und Eingabe der Suchlage |
 | `js/ui.js` | Menüs und Bildschirme |
 
@@ -105,3 +105,8 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 - Wetter (Regen und Hitze beeinflussen den Geruch)
 - Meisterschaften
 - Trainingsminispiele, z. B. für das Timing der Belohnung beim Anzeigetraining
+
+## Darstellung
+- Suchlage in 2D von oben; die Ausrichtung (quer/hochkant) passt sich der Bildschirmform an.
+- **Fell:** Jede Rasse hat Farbvarianten (z. B. Labrador gelb/schwarz/braun, Border Collie schwarz-weiß/rot-weiß/blue merle). Die Variante wird bei der Anlage gewählt und lässt sich im Hof durch Klick auf das Hundebild ändern (`hund.fell`).
+- **Nahaufnahme der Anzeige (Taste N):** Sobald der Hund anzeigt, erscheint ein Fenster in 3D-Optik (Perspektive, Schattierung). Es zeigt den Hund in passiver Platzanzeige am Versteck, mit Körpersprache: Zurückschauen zum HF, aktives Scharren/Bellen, Rute. In der Übung wird zusätzlich der Abstand Nase–Quelle eingeblendet, rot ab mehr als 20 cm (Hochlagen ausgenommen).

@@ -27,6 +27,7 @@ nimmst du ihn auf einen anderen Rechner oder in einen anderen Browser mit.
 | B | „Bleib!“ während der Anzeige (Unterstützung, Abzug) |
 | E halten | Versteck anfassen (Eigengeruch 3 s) / Antäuschen |
 | G | Geruchsansicht (nur Übungssuche) |
+| N | Nahaufnahme der Anzeige ein/aus |
 | P | Pause |
 
 ## Entwicklung

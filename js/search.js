@@ -23,6 +23,7 @@
       this.rot = false; // wird in groesseAnpassen() passend zur Bildschirmform gesetzt
       this.uebung = opts.modus === 'uebung';
       this.geruchsAnsicht = false;
+      this.nahAn = true; // Nahaufnahme der Anzeige (Taste N)
       this.pause = false;
       this.tasten = new Set();
       this.nachrichtenGezeigt = 0;
@@ -58,6 +59,7 @@
         </div>
         <div class="szene-mitte">
           <canvas class="spielfeld"></canvas>
+          <div class="nahaufnahme versteckt"><div class="nah-titel">Nahaufnahme – Anzeige</div><canvas></canvas></div>
           <div class="szene-overlay versteckt"></div>
         </div>
         <div class="hud-unten">
@@ -75,6 +77,7 @@
             <tr><td>B</td><td>„Bleib!“ während der Anzeige (Unterstützung, Abzug)</td></tr>
             <tr><td>E halten</td><td>Versteck anfassen (Eigengeruch, 3 s) / Antäuschen</td></tr>
             ${this.uebung ? '<tr><td>G</td><td>Geruchsansicht ein/aus (nur Übung)</td></tr>' : ''}
+            <tr><td>N</td><td>Nahaufnahme der Anzeige ein/aus</td></tr>
             <tr><td>P</td><td>Pause</td></tr>
           </table>
           <p><b>Den Hund lesen:</b> Schnelle, hohe Rute und kurze Kopfdrehungen = Hund ist im Geruch.
@@ -88,6 +91,7 @@
         titel: root.querySelector('.hud-titel'), zeit: root.querySelector('.hud-zeit'),
         fa: root.querySelector('.hud-fa'), wind: root.querySelector('.hud-wind'),
         phase: root.querySelector('.hud-phase'), log: root.querySelector('.hud-log'),
+        nah: root.querySelector('.nahaufnahme'), nahCanvas: root.querySelector('.nahaufnahme canvas'),
         overlay: root.querySelector('.szene-overlay'), steuerung: root.querySelector('.steuerung'),
       };
       this.el.titel.textContent = this.opts.titel || `${po.DISZIPLINEN[this.lage.disziplin].name} – LK ${this.lage.lk}`;
@@ -159,6 +163,7 @@
         if (k === 'b') this.s.befehlBleib();
         if (k === 'g' && this.uebung) this.toggleGeruch();
         if (k === 'p') this.togglePause();
+        if (k === 'n') this.nahAn = !this.nahAn;
       };
       this.onKeyUp = (e) => {
         const k = e.key.toLowerCase();
@@ -307,6 +312,7 @@
       this.zeichneHund();
       this.zeichneHF();
       this.zeichneWind(W);
+      this.zeichneNahaufnahme();
       if (this.pause) {
         g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 0, W, H);
         g.fillStyle = '#fff'; g.font = 'bold 28px system-ui, sans-serif'; g.textAlign = 'center';
@@ -545,7 +551,7 @@
       g.translate(px, py);
       g.rotate(w);
       SHS.grafik.zeichneHund(g, {
-        sk, t, rasse: this.opts.hund.rasse, liegt: h.liegt, rute: h.rute, ruteHoch: h.ruteHoch,
+        sk, t, rasse: this.opts.hund.rasse, fell: this.opts.hund.fell, liegt: h.liegt, rute: h.rute, ruteHoch: h.ruteHoch,
         naseTief: h.naseTief, kopfW,
       });
       g.restore();
@@ -555,6 +561,33 @@
         this.text(h.zustand === 'verleitung' ? '*schnapp*' : 'Wuff! *scharr*', h.x, h.y - 0.5, '#ffe0e0', 12);
       }
       if (h.zustand === 'geruch' && this.uebung && this.geruchsAnsicht) this.text('im Geruch', h.x, h.y + 0.5, '#bfe3ff', 10);
+    }
+
+    // Eingeblendete Nahaufnahme (3D-Optik), solange der Hund anzeigt.
+    zeichneNahaufnahme() {
+      const h = this.s.hund;
+      const a = h.anzeige;
+      const sichtbar = this.nahAn && a && (h.zustand === 'anzeige' || h.zustand === 'anzeigeEinnehmen' || this.s.phase === 'ende');
+      this.el.nah.classList.toggle('versteckt', !sichtbar);
+      if (!sichtbar) return;
+      const c = this.el.nahCanvas;
+      const dpr = this.dpr;
+      const w = c.clientWidth; const hh = c.clientHeight;
+      if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(hh * dpr); }
+      const g = c.getContext('2d');
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const q = a.quelle;
+      let v = this.lage.verstecke.find((x) => x.id === q.versteckId);
+      if (!v) v = this.s.naechstesVersteck(q.x, q.y, 0.6);
+      SHS.grafik.zeichneAnzeigeSzene(g, w, hh, {
+        rasse: this.opts.hund.rasse, fell: this.opts.hund.fell,
+        disziplin: this.lage.disziplin, lk: this.lage.lk,
+        versteckTyp: v ? v.typ : null, versteckHoehe: v && v.hoehe ? v.hoehe : 0,
+        quelleHoehe: q.hoehe || 0, quelleTyp: q.typ,
+        abstand: Math.hypot(a.punkt.x - q.x, a.punkt.y - q.y),
+        aktiv: a.aktiv && h.zustand === 'anzeige', blick: h.blickZuHF > 0, rute: h.rute,
+        t: performance.now() / 1000, zeigeAbstand: this.uebung,
+      });
     }
 
     zeichneHF() {

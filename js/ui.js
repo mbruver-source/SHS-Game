@@ -48,19 +48,37 @@
   }
 
   // Zeichnet den Hund (Draufsicht, auf Gras) in ein Canvas – für Anmeldung und Hof.
-  function hundPortrait(canvas, rasse, liegt) {
+  function canvasVorbereiten(canvas) {
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.clientWidth || canvas.width; const h = canvas.clientHeight || canvas.height;
     canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
     const g = canvas.getContext('2d');
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { g, w, h };
+  }
+
+  function hundPortrait(canvas, rasse, fell, liegt) {
+    const { g, w, h } = canvasVorbereiten(canvas);
     g.fillStyle = '#6c9c47';
     g.fillRect(0, 0, w, h);
     const sk = Math.min(w / 1.1, h / 0.5);
     g.save();
     g.translate(w / 2 - sk * 0.05, h / 2);
-    SHS.grafik.zeichneHund(g, { sk, t: 0.3, rasse, liegt: !!liegt, rute: 0.6, ruteHoch: true, naseTief: false, kopfW: 0.15 });
+    SHS.grafik.zeichneHund(g, { sk, t: 0.3, rasse, fell, liegt: !!liegt, rute: 0.6, ruteHoch: true, naseTief: false, kopfW: 0.15 });
     g.restore();
+  }
+
+  // Seitenansicht in Platzanzeige am Mehrkammereimer (wie die Nahaufnahme im Spiel).
+  function hundSeitenansicht(canvas, rasse, fell) {
+    const { g, w, h } = canvasVorbereiten(canvas);
+    SHS.grafik.zeichneAnzeigeSzene(g, w, h, {
+      rasse, fell, disziplin: 'behaeltnis', lk: 1, quelleHoehe: 0.12, quelleTyp: 'ziel', abstand: 0.1, rute: 0.3, t: 0.5,
+    });
+  }
+
+  function fellOptionen(rasse, gewaehlt) {
+    return Object.entries(SHS.grafik.fellVarianten(rasse))
+      .map(([k, v]) => `<option value="${k}" ${k === gewaehlt ? 'selected' : ''}>${esc(v.name)}</option>`).join('');
   }
 
   // ------------------------------------------------------------------ Start
@@ -115,28 +133,37 @@
         <label>Dein Name (Hundeführer/in)<input id="hfName" maxlength="30" placeholder="z. B. Alex"></label>
         <label>Name des Hundes<input id="hundName" maxlength="20" placeholder="z. B. Aiko"></label>
         <label>Rasse<select id="rasse">${rassen.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label>
-        <canvas id="vorschau" class="hund-vorschau"></canvas>
+        <label>Fellfarbe<select id="fell"></select></label>
+        <div class="vorschau-reihe"><canvas id="vorschau" class="hund-vorschau"></canvas><canvas id="vorschauSeite" class="hund-vorschau"></canvas></div>
         <div id="rassenInfo" class="rassen-info"></div>
         <p class="hinweis">Dein Hund ist 12 Monate alt. Prüfungen sind ab 15 Monaten möglich – nutze die Zeit für die Grundausbildung.
         Den Korken kennt er schon ein wenig.</p>
         <div class="knopfreihe"><button data-a="zurueck">Zurück</button><button class="primaer" data-a="los">Los geht's</button></div>
       </div>`);
+    const q = (s) => app.root.querySelector(s);
+    const vorschau = () => {
+      hundPortrait(q('#vorschau'), q('#rasse').value, q('#fell').value);
+      hundSeitenansicht(q('#vorschauSeite'), q('#rasse').value, q('#fell').value);
+    };
     const info = () => {
-      const r = app.root.querySelector('#rasse').value;
+      const r = q('#rasse').value;
       const mod = SHS.dog.RASSEN[r];
       const teile = Object.entries(mod).filter(([k]) => SHS.dog.WERTE[k])
         .map(([k, v]) => `${SHS.dog.WERTE[k]} ${v > 0 ? '+' : ''}${v}`);
-      app.root.querySelector('#rassenInfo').textContent = teile.join(' · ');
-      hundPortrait(app.root.querySelector('#vorschau'), r);
+      q('#rassenInfo').textContent = teile.join(' · ');
+      q('#fell').innerHTML = fellOptionen(r);
+      vorschau();
     };
-    app.root.querySelector('#rasse').addEventListener('change', info);
+    q('#rasse').addEventListener('change', info);
+    q('#fell').addEventListener('change', vorschau);
     info();
     app.root.querySelector('.knopfreihe').addEventListener('click', (e) => {
       if (e.target.dataset.a === 'zurueck') start();
       if (e.target.dataset.a === 'los') {
         const hf = app.root.querySelector('#hfName').value.trim() || 'Hundeführer';
         const hund = app.root.querySelector('#hundName').value.trim() || 'Hund';
-        app.stand = career.neuerSpielstand(hf, hund, app.root.querySelector('#rasse').value, SHS.neuerSeed());
+        app.stand = career.neuerSpielstand(hf, hund, q('#rasse').value, SHS.neuerSeed());
+        app.stand.hund.fell = q('#fell').value;
         speichern();
         hof();
       }
@@ -174,7 +201,7 @@
     zeige(`
       <div class="hof">
         <header class="hof-kopf">
-          <canvas class="hund-portrait" title="${esc(h.rasse)}"></canvas>
+          <canvas class="hund-portrait" title="Fellfarbe ändern"></canvas>
           <div class="hof-name"><h1>${esc(h.name)} <small>${esc(h.rasse)}</small></h1>
             <div class="klein">HF ${esc(s.hf.name)} · ${career.alterText(h.alterMonate)} · Leistungsklasse <b>LK ${s.lk}</b></div></div>
           <div class="woche"><div>Woche ${s.woche}</div><div class="klein">bis Sa., ${career.datumText(s.woche)}</div></div>
@@ -211,7 +238,8 @@
         </section>
       </div>`);
 
-    hundPortrait(app.root.querySelector('.hund-portrait'), h.rasse, true);
+    hundPortrait(app.root.querySelector('.hund-portrait'), h.rasse, h.fell, true);
+    app.root.querySelector('.hund-portrait').addEventListener('click', fellAendern);
     app.root.querySelector('.hof').addEventListener('click', (e) => {
       const z = e.target.closest('[data-training],[data-a],[data-pruefung]');
       if (!z) return;
@@ -228,6 +256,23 @@
       if (z.dataset.pruefung) pruefungAnmeldung(s.ausschreibungen.find((x) => x.id === z.dataset.pruefung));
     });
     app.root.querySelector('#importDatei').addEventListener('change', importAusDatei);
+  }
+
+  function fellAendern() {
+    const h = app.stand.hund;
+    const bg = dialog(`<h3>Fellfarbe von ${esc(h.name)}</h3>
+      <label>Fellfarbe (${esc(h.rasse)})<select id="fellNeu">${fellOptionen(h.rasse, h.fell)}</select></label>
+      <div class="vorschau-reihe"><canvas id="fv1" class="hund-vorschau"></canvas><canvas id="fv2" class="hund-vorschau"></canvas></div>`, [
+      { text: 'Abbrechen' },
+      { text: 'Übernehmen', primaer: true, aktion: (d) => { h.fell = d.querySelector('#fellNeu').value; speichern(); hof(); } },
+    ]);
+    const zeichne = () => {
+      const f = bg.querySelector('#fellNeu').value;
+      hundPortrait(bg.querySelector('#fv1'), h.rasse, f);
+      hundSeitenansicht(bg.querySelector('#fv2'), h.rasse, f);
+    };
+    bg.querySelector('#fellNeu').addEventListener('change', zeichne);
+    zeichne();
   }
 
   function deltasText(d) {
