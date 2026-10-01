@@ -237,6 +237,7 @@
           <table class="ln">${letzte}</table>
           <div class="knopfreihe links">
             <button data-a="empfehlung">Trainingsempfehlung</button>
+            <button data-a="nachbetrachtung">Nachbetrachtung</button>
             <button data-a="regeln">Regeln (PO-Kurzfassung)</button>
             <button data-a="export">Spielstand exportieren</button>
             <button data-a="import">Importieren…</button>
@@ -259,6 +260,7 @@
       if (a === 'ln') leistungsnachweis();
       if (a === 'regeln') regeln();
       if (a === 'empfehlung') trainingsEmpfehlung();
+      if (a === 'nachbetrachtung') nachbetrachtungAuswahl();
       if (a === 'export') SHS.storage.exportieren(s);
       if (a === 'import') app.root.querySelector('#importDatei').click();
       if (a === 'start') start();
@@ -366,9 +368,10 @@
             gegenstand: q('#ug').value, ansatzIndex: +q('#ua').value, leine: q('#uleine').checked,
             aussenreize: q('#ureize').checked, modus: 'uebung',
             auto: q('#uauto').checked, hfErfahrung: career.hfErfahrung(s),
-          }, (erg) => {
+          }, (erg, szene) => {
             if (erg) {
               career.protokolliereSuche(s, { art: 'uebung', disziplin: q('#ud').value, lk: +q('#ul').value, ergebnis: erg });
+              SHS.nachbetrachtung.archivieren(s, szene && szene.s, { art: 'Übungssuche', datum: career.datumText(s.woche) });
               const d = career.uebungssucheVerbuchen(s, erg, q('#ug').value);
               speichern();
               hof();
@@ -393,7 +396,7 @@
     zeige('<div class="szene-host"></div>');
     const host = app.root.querySelector('.szene-host');
     app.szene = new SHS.SuchSzene(host, Object.assign({}, opts, {
-      onEnde: (erg) => { app.szene = null; onEnde(erg); },
+      onEnde: (erg, szene) => { app.szene = null; onEnde(erg, szene); },
     }));
   }
 
@@ -469,8 +472,9 @@
       hund: s.hund, gegenstand: schritt.gegenstand, ansatzIndex: schritt.ansatzIndex, leine: schritt.leine,
       modus: 'pruefung', titel, auto: p.vorfuehrung === 'auto', hfErfahrung: career.hfErfahrung(s),
     };
-    const verbuchen = (erg) => {
+    const verbuchen = (erg, szene) => {
       career.protokolliereSuche(s, { art: 'pruefung', disziplin: schritt.disziplin, lk: p.lk, ergebnis: erg });
+      SHS.nachbetrachtung.archivieren(s, (szene && szene.s) || erg.suchlage, { art: `Prüfung ${p.ausschreibung.verein}`, datum: career.datumText(p.ausschreibung.woche) });
       p.details[schritt.disziplin] = erg;
       if (erg.status === 'disq') p.status = 'disq';
       p.einzelwerte[schritt.disziplin] = erg.status === 'ok' ? erg.punkte : null;
@@ -552,6 +556,31 @@
         <div class="knopfreihe"><button class="primaer" data-a="hof">Zurück</button></div>
       </div>`);
     app.root.querySelector('[data-a=hof]').addEventListener('click', hof);
+  }
+
+  // ------------------------------------------------------------------ Nachbetrachtung (Archiv)
+  function nachbetrachtungAuswahl() {
+    const liste = (app.stand.aufzeichnungen || []).slice().reverse();
+    if (!liste.length) {
+      dialog('<h3>Nachbetrachtung</h3><p>Noch keine Suchen gespeichert. Nach jeder Übungssuche und Prüfung werden die letzten 5 Suchen hier abgelegt.</p>');
+      return;
+    }
+    const zeilen = liste.map((d, i) => {
+      const m = d.meta; const e = m.ergebnis;
+      const erg = !e ? '–' : e.status === 'ok' ? `${e.punkte} P.` : e.status === 'disq' ? 'DISQ' : 'ABBR';
+      return `<tr><td>${esc(m.datum || '')}</td><td>${esc(m.art || '')}</td><td>${diszName(m.disziplin)} LK ${m.lk}</td><td class="zahl">${erg}</td>
+        <td><button data-i="${i}">Ansehen</button></td></tr>`;
+    }).join('');
+    const bg = dialog(`<h3>Nachbetrachtung – die letzten Suchen</h3><table class="ln">${zeilen}</table>`, [{ text: 'Schließen' }]);
+    bg.querySelector('table').addEventListener('click', (ev) => {
+      const i = ev.target.dataset.i;
+      if (i === undefined) return;
+      bg.remove();
+      zeige('<div class="szene-host"></div>');
+      app.szene = new SHS.nachbetrachtung.Nachbetrachtung(app.root.querySelector('.szene-host'), liste[+i], {
+        weiterText: 'Zurück', onEnde: () => { app.szene = null; hof(); },
+      });
+    });
   }
 
   // ------------------------------------------------------------------ Trainingsempfehlung

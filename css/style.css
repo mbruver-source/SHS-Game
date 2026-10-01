@@ -166,3 +166,20 @@ table { border-collapse: collapse; width: 100%; }
 .geruch-liste { list-style: none; padding: 0; }
 .geruch-liste li { padding: 2px 0; }
 .geruch-liste li.ok { color: var(--gruen); font-weight: 600; }
+.nb-haupt { flex: 1; display: grid; grid-template-columns: 1fr minmax(220px, 300px); gap: 8px; min-height: 0; }
+.nb-haupt .szene-mitte { min-height: 300px; }
+@media (max-width: 760px) { .nb-haupt { grid-template-columns: 1fr; } .nb-liste { max-height: 30vh; } }
+.nb-liste { list-style: none; margin: 0; padding: 6px; overflow: auto; background: var(--karte); border: 1px solid var(--linie); border-radius: 10px; font-size: .88em; }
+.nb-liste li { padding: 4px 4px; border-radius: 6px; cursor: pointer; display: flex; gap: 6px; align-items: baseline; }
+.nb-liste li.aktiv { background: var(--gruen-hell); }
+.nb-liste li.nb-bewertung { display: block; cursor: default; border-top: 1px solid var(--linie); margin-top: 6px; padding-top: 8px; }
+.nb-liste li.nb-bewertung ul { padding-left: 1.1em; margin: .3em 0 0; }
+.nb-nr { flex: none; min-width: 1.5em; height: 1.5em; border-radius: 50%; color: #fff; font-weight: 700; font-size: .85em; display: inline-flex; align-items: center; justify-content: center; }
+.nb-t { flex: none; color: var(--leise); font-variant-numeric: tabular-nums; }
+.nb-steuerung { display: flex; gap: 8px; align-items: center; }
+.nb-zeit { flex: 1; }
+.nb-zeitanzeige { font-variant-numeric: tabular-nums; min-width: 6.5em; text-align: center; }
+.nb-legende { display: flex; flex-wrap: wrap; gap: 10px; font-size: .8em; color: var(--leise); }
+.nb-legende i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; margin-right: 4px; vertical-align: middle; border: 1px solid rgba(0,0,0,.2); }
+.nb-legende i.hf { border: none; border-top: 2px dashed #2f5d8c; height: 0; }
+.ergebnis-karte .knopfreihe { margin-top: .8em; }

@@ -191,6 +191,7 @@
     }
 
     aufraeumen() {
+      if (this.nachbetrachtungsSzene) this.nachbetrachtungsSzene.aufraeumen();
       this.laeuft = false;
       window.removeEventListener('keydown', this.onKeyDown);
       window.removeEventListener('keyup', this.onKeyUp);
@@ -291,10 +292,23 @@
         <h3>Begründung des Wertungsrichters</h3>
         <ul>${e.begruendung.filter(Boolean).map((z) => `<li>${z}</li>`).join('')}</ul>
         <p class="hinweis">Der gelbe Ring zeigt, wo der Gegenstand lag.</p>
-        <button class="primaer" data-a="weiter">Weiter</button>
+        <div class="knopfreihe"><button data-a="nachbetrachtung">Nachbetrachtung ansehen</button>
+        <button class="primaer" data-a="weiter">Weiter</button></div>
       </div>`;
       o.classList.remove('versteckt');
       o.querySelector('[data-a=weiter]').addEventListener('click', () => this.beenden(false));
+      o.querySelector('[data-a=nachbetrachtung]').addEventListener('click', () => this.nachbetrachtung());
+    }
+
+    // Suche nochmal abspielen; "Weiter" führt danach wie gewohnt zum Ablauf zurück.
+    nachbetrachtung() {
+      const container = this.root.parentElement;
+      this.aufraeumen();
+      const nb = new SHS.nachbetrachtung.Nachbetrachtung(container, SHS.nachbetrachtung.daten(this.s), {
+        weiterText: 'Weiter',
+        onEnde: () => { if (this.opts.onEnde) this.opts.onEnde(this.s.ergebnis, this); },
+      });
+      this.nachbetrachtungsSzene = nb;
     }
 
     beenden(abgebrochen) {

@@ -98,6 +98,7 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 | `js/storage.js` | localStorage, Export/Import |
 | `js/grafik.js` | Zeichenhilfen: Hund mit Fellzeichnung je Rasse und Farbvariante, Trümmerteile, Kiesboden, 3D-Nahaufnahme der Anzeige |
 | `js/search.js` | Canvas-Darstellung und Eingabe der Suchlage |
+| `js/nachbetrachtung.js` | Aufzeichnung exportieren/archivieren, Wiedergabe mit Laufweg, Ereignissen, Zeitleiste |
 | `js/ui.js` | Menüs und Bildschirme |
 
 ## Ideen für später
@@ -164,3 +165,15 @@ Den eigenen Menüpunkt „Trainingsempfehlung“ erreichst du im Hof (💡 neben
 - **Geruchsbilder:** Stand der für die LK benötigten Gegenstände.
 - **Fehler der letzten Suchen:** Häufigkeit je Fehlerart.
 - **Protokoll:** Grundlage ist `stand.suchprotokoll` mit den letzten 30 eigenen Suchen.
+
+## Nachbetrachtung (v0.7)
+- **Aufzeichnung:** Jede Suche wird aufgezeichnet (`SuchLage.aufzeichnung`).
+  - Alle 0,1 s ein Bild mit Position, Richtung, Zustand und Körpersprache des Hundes sowie Position und Arm des HF.
+  - Ereignisse mit Zeit und Ort: Fehler des WR, Meldungen des WR, Hund im Geruch, Anzeige (richtig/falsch, mit Abstand), Verleitung, Zurückschauen zum HF, Außenreize.
+- **Wiedergabe:** Nach dem Ergebnis über „Nachbetrachtung ansehen“, danach geht es mit „Weiter“ normal weiter. Zusätzlich gibt es im Hof den Punkt „Nachbetrachtung“ mit den letzten 5 Suchen (`stand.aufzeichnungen`, auf ein 0,3-s-Raster verkleinert, ca. 8–20 KB je Suche).
+- **Darstellung:**
+  - Laufweg nach Zustand gefärbt, Weg des HF gestrichelt.
+  - Nummerierte Markierungen; die Ereignisliste springt per Klick an die Stelle.
+  - Bewertung des WR, Geruchsfahne und Nahaufnahme zuschaltbar.
+  - Zeitleiste und Tempo 1–8×; Leertaste = Play/Pause, Pfeile = ±5 s.
+- **Suchlage:** Sie wird aus dem Seed neu erzeugt; verschobene Verstecke und der angebrachte Eigengeruch werden aus der Aufzeichnung übernommen.

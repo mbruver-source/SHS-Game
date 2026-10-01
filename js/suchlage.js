@@ -6,6 +6,8 @@
   const po = SHS.po;
 
   const HF_TEMPO = 1.5;
+  // Reihenfolge der Hundezustände in der Aufzeichnung (Index = Code)
+  const ZUSTAENDE = ['sitzt', 'beiHF', 'sucht', 'geruch', 'verleitung', 'schautHF', 'aussenreiz', 'hier', 'anzeigeEinnehmen', 'anzeige'];
   const HILFE_SPERRE = 2; // s – Mehrfachbefehle kurz hintereinander zählen einmal
 
   class SuchLage {
@@ -44,6 +46,15 @@
       this.nachrichten = [];
       this.armTimer = 0;
       this.ergebnis = null;
+      // Aufzeichnung für die Nachbetrachtung
+      this.aufzeichnung = { frames: [], ereignisse: [] };
+      this.letzterFrame = -1;
+      this.letzterHundZustand = this.hund.zustand;
+      const fehlerOriginal = this.richter.fehler.bind(this.richter);
+      this.richter.fehler = (art, notiz) => {
+        fehlerOriginal(art, notiz);
+        this.ereignis('fehler', notiz || po.ABZUEGE[art].text);
+      };
       this.meldeWR(this.einleitung());
     }
 
@@ -58,8 +69,46 @@
       return teile.join(' ');
     }
 
-    meldeWR(text) { this.nachrichten.push({ t: this.t, von: 'WR', text }); }
-    meldeInfo(text) { this.nachrichten.push({ t: this.t, von: 'info', text }); }
+    meldeWR(text) {
+      this.nachrichten.push({ t: this.t, von: 'WR', text });
+      if (this.aufzeichnung) this.ereignis('wr', text);
+    }
+
+    meldeInfo(text) {
+      this.nachrichten.push({ t: this.t, von: 'info', text });
+      if (this.aufzeichnung) this.ereignis('info', text);
+    }
+
+    ereignis(typ, text, extra) {
+      const h = this.hund;
+      this.aufzeichnung.ereignisse.push(Object.assign({ t: Math.round(this.t * 10) / 10, typ, text, x: h.x, y: h.y }, extra || {}));
+    }
+
+    // Ein Bild der Suche (alle 0,1 s): Hund, Körpersprache und HF.
+    aufzeichnen() {
+      const h = this.hund; const hf = this.hf;
+      const flags = (h.naseTief ? 1 : 0) | (h.ruteHoch ? 2 : 0) | (h.blickZuHF > 0 ? 4 : 0) | (h.aktivAnim ? 8 : 0) | (hf.arm ? 16 : 0);
+      this.aufzeichnung.frames.push([this.t, h.x, h.y, h.richtung, ZUSTAENDE.indexOf(h.zustand), h.liegtAnim, h.sitztAnim,
+        h.v, flags, h.rute, hf.x, hf.y, hf.richtung || 0, h.signal || 0, h.drehRate || 0]);
+    }
+
+    // Zustandswechsel des Hundes als Ereignis (für die Markierungen in der Nachbetrachtung).
+    hundZustandPruefen() {
+      const z = this.hund.zustand;
+      if (z === this.letzterHundZustand) return;
+      this.letzterHundZustand = z;
+      const a = this.hund.anzeige;
+      if (z === 'geruch') this.ereignis('geruch', 'Hund nimmt Geruch auf');
+      else if (z === 'anzeigeEinnehmen' && a) {
+        const q = a.quelle;
+        const text = a.richtig ? 'Hund zeigt am Gegenstand an' : `Hund zeigt falsch an (${q.name})`;
+        this.ereignis(a.richtig ? 'anzeige' : 'fehlanzeige', text, {
+          quelle: { x: q.x, y: q.y, hoehe: q.hoehe || 0, typ: q.typ, name: q.name, versteckId: q.versteckId || null },
+          punkt: { x: a.punkt.x, y: a.punkt.y }, aktiv: a.aktiv, ungenau: a.ungenau, richtig: a.richtig,
+        });
+      } else if (z === 'verleitung') this.ereignis('verleitung', 'Hund geht zur Verleitung');
+      else if (z === 'schautHF') this.ereignis('hinweis', 'Hund bleibt stehen und schaut zum HF');
+    }
 
     get ctx() {
       return {
@@ -296,6 +345,8 @@
       if (this.meldung) this.hf.arm = true;
 
       this.hund.update(dt, this.ctx);
+      this.hundZustandPruefen();
+      if (this.t - this.letzterFrame >= 0.1) { this.aufzeichnen(); this.letzterFrame = this.t; }
 
       if (this.phase !== 'suche') return;
       this.zeit += dt;
@@ -394,6 +445,7 @@
       const anteil = h.suchZeit > 5 ? h.schwachZeit / h.suchZeit : 0;
       this.richter.setzeIntensitaet(anteil);
       this.ergebnis = this.richter.ergebnis();
+      this.aufzeichnen();
     }
 
     // Für Übungssuche: Konzentration des Zielgeruchs an einem Punkt (Geruchsansicht).
@@ -504,10 +556,13 @@
       s.update(dt);
     }
     if (s.phase !== 'ende') s.beenden();
+    // Für die Nachbetrachtung (z. B. "sofort auswerten") die Suchlage am Ergebnis mitgeben, nicht serialisiert.
+    Object.defineProperty(s.ergebnis, 'suchlage', { value: s, enumerable: false });
     return s.ergebnis;
   }
 
   SHS.SuchLage = SuchLage;
+  SHS.ZUSTAENDE = ZUSTAENDE;
   SHS.HFBot = HFBot;
   SHS.simuliereSuche = simuliere;
 })(globalThis.SHS = globalThis.SHS || {});
