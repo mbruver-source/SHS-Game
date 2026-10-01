@@ -2,6 +2,9 @@
 
 Alle Versionen sind im Repository als Tag (`vX.Y.Z`) markiert.
 
+## 1.0.4
+- Nach einem Update lädt der Browser alle Dateien neu (Versionsanhang an jeder Datei); keine Mischung alter und neuer Stände mehr.
+
 ## 1.0.3
 - „VDH-“ aus Titel und Beschreibungen entfernt (Hinweis auf fehlende Verbindung zum VDH bleibt).
 - Private Online-Version über Claude entfernt; online nur noch über GitHub Pages.

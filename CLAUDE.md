@@ -13,7 +13,7 @@ Zuerst `docs/Konzept.md` lesen (Aufbau, Spielannahmen, Dateien).
 - PO-Werte gehören nach `js/po.js`. Wo die PO keine Zahl nennt: als ANNAHME markieren und in
   `docs/Konzept.md` dokumentieren.
 - Wertnoten müssen identisch zu `shs_core.py` im (separaten) SHS-Prüfungsprogramm bleiben.
-- Version nur in `js/version.js` pflegen (und `package.json`).
+- Version nur mit `node tools/version.js X.Y.Z` erhöhen (setzt js/version.js, package.json und die ?v=-Anhänge gegen Browser-Cache).
 - Bei Unklarheiten erst nachfragen, sonst sinnvolle Annahme treffen und dokumentieren.
 
 ## Befehle

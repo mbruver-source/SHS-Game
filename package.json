@@ -1,6 +1,6 @@
 {
   "name": "shs-game",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "description": "Spürhundesport-Browserspiel nach der Spürhundesport-Prüfungsordnung (offline, ohne Abhängigkeiten)",
   "scripts": {
