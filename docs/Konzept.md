@@ -7,7 +7,7 @@ Moment zu melden. Training verbessert die Werte des Hundes. Auf Prüfungen start
 KI-Teams und wirst nach der PO bewertet.
 
 ## Fachliche Grundlage
-VDH-Spürhundesport-Prüfungsordnung, gültig ab 01.07.2022. Alles, was die PO konkret festlegt,
+VDH-Spürhundsport-Prüfungsordnung, gültig ab 01.07.2022. Alles, was die PO konkret festlegt,
 steht als Daten in `js/po.js`:
 - Leistungsklassen
 - Flächengrößen
@@ -100,7 +100,10 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 | `js/storage.js` | localStorage, Export/Import |
 | `js/ton.js` | Töne per WebAudio (synthetisch): Hörzeichen, Glocke, Bellen, Außenreize, Hecheln, Wind |
 | `js/grafik.js` | Zeichenhilfen: Hund mit Fellzeichnung je Rasse und Farbvariante, Trümmerteile, Kiesboden, 3D-Nahaufnahme der Anzeige |
-| `js/search.js` | Canvas-Darstellung und Eingabe der Suchlage |
+| `js/mathe3d.js` | 3D-Mathematik: Matrizen, Kamera, Projektion, Klick → Bodenpunkt (DOM-frei) |
+| `js/modelle3d.js` | 3D-Modelle: Boden, Trümmer, Behältnisse, Hund je Rasse/Fell mit Posen, HF/WR (DOM-frei) |
+| `js/ansicht3d.js` | WebGL-Renderer der 3D-Ansicht |
+| `js/search.js` | Canvas-Darstellung (2D/3D) und Eingabe der Suchlage |
 | `js/nachbetrachtung.js` | Aufzeichnung exportieren/archivieren, Wiedergabe mit Laufweg, Ereignissen, Zeitleiste |
 | `js/einfuehrung.js` | Einstieg: geführte erste Suche (Coach) und Rundgang durch den Hof |
 | `js/ui.js` | Menüs und Bildschirme |
@@ -115,6 +118,7 @@ Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
 
 ## Darstellung
 - Suchlage in 2D von oben; die Ausrichtung (quer/hochkant) passt sich der Bildschirmform an.
+- Alternativ eine **3D-Ansicht** (WebGL, siehe „3D-Ansicht (v1.1)“).
 - **Fell:** Jede Rasse hat Farbvarianten (z. B. Labrador gelb/schwarz/braun, Border Collie schwarz-weiß/rot-weiß/blue merle). Die Variante wird bei der Anlage gewählt und lässt sich im Hof durch Klick auf das Hundebild ändern (`hund.fell`).
 - **Nahaufnahme der Anzeige (Taste N):** Sobald der Hund anzeigt, erscheint ein Fenster in 3D-Optik (Perspektive, Schattierung). Es zeigt den Hund in passiver Platzanzeige am Versteck, mit Körpersprache: Zurückschauen zum HF, aktives Scharren/Bellen, Rute. In der Übung wird zusätzlich der Abstand Nase–Quelle eingeblendet, rot ab mehr als 20 cm (Hochlagen ausgenommen).
 
@@ -278,3 +282,20 @@ Die Meisterschaften stehen mit 🏆 und Qualifikationsstand in den Ausschreibung
 - **Minispiel Anzeigetraining:** 20 Sekunden lang wechselt der Hund zwischen ruhigem Verweisen, Zurückschauen, Scharren und Aufstehen.
   - „Fein!“ im richtigen Moment bringt +10 Punkte, im falschen −8.
   - Die Trainingswirkung liegt je nach Timing zwischen ×0,6 und ×1,5.
+
+## 3D-Ansicht (v1.1)
+- **Umschalten:** Knopf „3D“ oder Taste **V**, in jeder Disziplin und in der Nachbetrachtung. Die Wahl wird im Browser gespeichert; Standard ist 2D.
+- **Kamera:** Sie schaut schräg (50°) auf die Weltmitte und passt Abstand und Ausschnitt so an, dass das ganze Gelände zu sehen ist.
+  - Mit ⟳ oder **Q** dreht sie um 90°, mit **Shift+Q** zurück; der Übergang ist weich.
+  - Lange Felder (Fläche, Behältnisstrecke) stehen zu Beginn quer zur Bildschirmform, wie in 2D.
+- **Steuerung:** W A S D, Pfeiltasten und Steuerkreis richten sich nach der Kamera („vor“ = vom Betrachter weg). Ein Mausklick (Richtungszeichen) wird auf den Boden zurückgerechnet.
+- **Darstellung:**
+  - Per WebGL gezeichnet werden: Boden (Rasen, Kies mit Kieseln, Mittelweg), flach auf dem Boden liegendes Absperrband, Trümmer und Hochlagen auf Betonsockel, Behältnisse mit Kammeröffnungen und sichtbare Verleitungen.
+  - Der Hund hat Rassemaße und Fellfarben; Sitzen, Liegen, Kopfdrehung, Nase am Boden und Rute sind animiert.
+  - **Gang:** Die Beine haben Gelenke (vorn Ellbogen und Vorderfußwurzel, hinten Knie und Sprunggelenk) und werden per inverser Kinematik gestellt. Im Trab wechseln Stütz- und Schwungphase der diagonalen Beinpaare. Der Schrittzyklus folgt der zurückgelegten Strecke (ein Zyklus ≈ 1,9 × Beinlänge), so stehen die Pfoten in der Stützphase fest am Boden. Körperrichtung, Kopfdrehung und Tempo werden für die Anzeige geglättet.
+  - Außerdem: HF und WR mit Handzeichen, Leine bzw. Schleppleine und Kontaktschatten. Die Geruchsansicht liegt als Textur auf dem Boden.
+  - Texte, Ringe, Windrose, Regen, Nahaufnahme und Laufweg der Nachbetrachtung zeichnet weiter das 2D-Canvas darüber.
+- **Technik:** Es gibt keine Bibliothek (offline per `file://`). Auf Handys ist die Pixeldichte auf 1,5 begrenzt.
+  - Ohne WebGL ist der Knopf ausgegraut. Geht der WebGL-Kontext verloren, schaltet das Spiel auf 2D zurück.
+  - Spiellogik und Wertung sind unverändert; die 3D-Ansicht ist reine Darstellung.
+- **ANNAHMEN** (die Lage kennt nur Grundflächen): Höhen der Trümmerteile Brett 3 cm, Palette 12 cm, Kiste 28 cm, Stein bis 20 cm, Reifen 18 cm, Ziegelstapel 13 cm, Eimer 30 cm. Das Rohr liegt mit dem Durchmesser der schmalen Seite. Behältnisse sind rund 42 cm bzw. eckig 32 cm hoch.

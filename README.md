@@ -1,7 +1,7 @@
-# SHS – Spürhundesport
+# SHS – Spürhundsport
 
-Ein Browserspiel zum **Spürhundesport (SHS)**. Du bist Hundeführerin oder Hundeführer und
-bildest deinen Hund aus. Dann startest du auf Prüfungen nach der Spürhundesport-Prüfungsordnung
+Ein Browserspiel zum **Spürhundsport (SHS)**. Du bist Hundeführerin oder Hundeführer und
+bildest deinen Hund aus. Dann startest du auf Prüfungen nach der Spürhundsport-Prüfungsordnung
 (gültig ab 01.07.2022): Trümmersuche, Flächensuche und Behältnisstrecke, Leistungsklassen 1 bis 3,
 Einzeldisziplin und Dreikampf, bis hin zu Landes- und Bundesmeisterschaft.
 

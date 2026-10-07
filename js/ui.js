@@ -169,8 +169,8 @@
           <canvas class="start-szene" aria-hidden="true"></canvas>
           <div class="start-titel">
             <span class="start-kuerzel">SHS</span>
-            <h1>Spürhundesport</h1>
-            <p>Training und Prüfungen nach der Spürhundesport-Prüfungsordnung</p>
+            <h1>Spürhundsport</h1>
+            <p>Training und Prüfungen nach der Spürhundsport-Prüfungsordnung</p>
           </div>
         </header>
 
@@ -936,7 +936,7 @@
       <div class="knopf"><button onclick="window.print()">Drucken</button></div>
       <div class="rahmen">
         <h1>Urkunde</h1>
-        <h2>Spürhundesport – ${e.art === 'DK' ? 'SHS-Dreikampf' : 'SHS-Einzeldisziplin'} · Leistungsklasse ${e.lk}</h2>
+        <h2>Spürhundsport – ${e.art === 'DK' ? 'SHS-Dreikampf' : 'SHS-Einzeldisziplin'} · Leistungsklasse ${e.lk}</h2>
         <p class="gross"><b>${esc(h.name)}</b> (${esc(h.rasse)}, ${esc(h.geschlecht || 'Rüde')})<br>geführt von <b>${esc(s.hf.name)}</b></p>
         <p class="gross">${e.status === 'disq' ? 'Disqualifikation' : `${e.punkte} Punkte – <b>${esc(e.note)}</b>`}${e.platz ? ` · Platz ${e.platz} von ${e.teilnehmer}` : ''}</p>
         <p style="text-align:center">${esc(e.verein)} · ${esc(e.datum)}</p>
@@ -1132,7 +1132,7 @@
 
   function regeln() {
     dialog(`
-      <h3>Spürhundesport – Kurzfassung der PO (gültig ab 01.07.2022)</h3>
+      <h3>Spürhundsport – Kurzfassung der PO (gültig ab 01.07.2022)</h3>
       <div class="regeln">
       <p><b>Disziplinen:</b> Trümmersuche, Flächensuche, Behältnisstrecke – je 100 Punkte (60 Suchleistung + 40 Anzeigeleistung). Dreikampf = alle drei (300 P.), Einzeldisziplin = eine.</p>
       <p><b>Bestanden:</b> mindestens 70 Punkte in jeder Disziplin. Wertnoten Einzeldisziplin: V ≥ 96, SG ≥ 90, G ≥ 80, B ≥ 70. Dreikampf: V ≥ 286, SG ≥ 270, G ≥ 240, B ≥ 210.</p>

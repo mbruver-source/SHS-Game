@@ -122,6 +122,8 @@
             <label class="check"><input type="checkbox" data-o="marker" checked> Ereignisse</label>
             <label class="check"><input type="checkbox" data-o="geruch"> Geruchsfahne</label>
             <label class="check"><input type="checkbox" data-o="nah" checked> Nahaufnahme</label>
+            <button data-a="3d" title="3D-Ansicht ein/aus (V)">3D</button>
+            <button data-a="drehen" class="nur-3d" title="Kamera um 90° drehen (Q)">⟳</button>
           </div>
         </div>
         <div class="nb-haupt">
@@ -161,10 +163,10 @@
       });
       z.g = z.canvas.getContext('2d');
       const nb = this;
-      const leineOriginal = SHS.SuchSzene.prototype.zeichneLeine;
-      z.zeichneLeine = function () { nb.zeichnePfad(this); leineOriginal.call(this); };
+      z.zeichneUnterlage = function () { nb.zeichnePfad(this); };
       this.z = z;
       z.groesseAnpassen();
+      z.init3d();
       this.resizeObs = new ResizeObserver(() => z.groesseAnpassen());
       this.resizeObs.observe(root.querySelector('.szene-mitte'));
 
@@ -209,10 +211,19 @@
         if (o === 'geruch') this.z.geruchsAnsicht = ev.target.checked;
         if (o === 'nah') this.z.nahAn = ev.target.checked;
       });
+      root.querySelector('.hud-knoepfe').addEventListener('click', (ev) => {
+        const a = ev.target.dataset.a;
+        if (a === '3d') this.z.setzeDreiD(!this.z.dreiD);
+        if (a === 'drehen') this.z.kameraDrehen(1);
+        if (a) ev.target.blur();
+      });
       this.onKey = (ev) => {
         if (ev.key === ' ') { ev.preventDefault(); this.spielt = !this.spielt; this.aktualisiereKnopf(); }
         if (ev.key === 'ArrowRight') this.springe(Math.min(this.ende, this.t + 5));
         if (ev.key === 'ArrowLeft') this.springe(Math.max(0, this.t - 5));
+        const k = ev.key.toLowerCase();
+        if (k === 'v' && !root.querySelector('[data-a="3d"]').disabled) this.z.setzeDreiD(!this.z.dreiD);
+        if (k === 'q') this.z.kameraDrehen(ev.shiftKey ? -1 : 1);
       };
       window.addEventListener('keydown', this.onKey);
     }
@@ -337,6 +348,7 @@
       this.laeuft = false;
       window.removeEventListener('keydown', this.onKey);
       if (this.resizeObs) this.resizeObs.disconnect();
+      if (this.z && this.z.r3d) { this.z.r3d.freigeben(); this.z.r3d = null; }
     }
 
     beenden() {

@@ -57,6 +57,8 @@
           <div class="hud-knoepfe">
             ${this.uebung ? '<button data-a="geruch" title="Geruchsansicht (G)">Geruchsansicht</button>' : ''}
             ${this.auto ? '<button data-a="tempo" title="Zeitraffer (T)">Tempo 1×</button>' : ''}
+            <button data-a="3d" title="3D-Ansicht ein/aus (V)">3D</button>
+            <button data-a="drehen" class="nur-3d" title="Kamera um 90° drehen (Q)">⟳</button>
             <button data-a="pause" title="Pause (P)">Pause</button>
             <button data-a="hilfe">Steuerung</button>
             <button data-a="touch" title="Bildschirm-Steuerung für Tablet/Handy ein/aus">Touch</button>
@@ -97,6 +99,8 @@
             <tr><td>E halten</td><td>Versteck anfassen (Eigengeruch, 3 s) / Antäuschen</td></tr>
             ${this.uebung ? '<tr><td>G</td><td>Geruchsansicht ein/aus (nur Übung)</td></tr>' : ''}
             <tr><td>N</td><td>Nahaufnahme der Anzeige ein/aus</td></tr>
+            <tr><td>V</td><td>3D-Ansicht ein/aus</td></tr>
+            <tr><td>Q / Shift+Q</td><td>Kamera in 3D um 90° drehen (Bewegung richtet sich nach der Kamera)</td></tr>
             <tr><td>M</td><td>Töne ein/aus</td></tr>
             <tr><td>P</td><td>Pause</td></tr>
           </table>
@@ -125,10 +129,13 @@
         if (a === 'tempo') this.toggleTempo();
         if (a === 'touch') this.setzeTouch(!this.touchAn);
         if (a === 'ton') this.toggleTon();
+        if (a === '3d') this.setzeDreiD(!this.dreiD);
+        if (a === 'drehen') this.kameraDrehen(1);
         SHS.ton.bereit();
         e.target.blur();
       });
       this.groesseAnpassen();
+      this.init3d();
       this.touchEinrichten();
       this.resizeObs = new ResizeObserver(() => this.groesseAnpassen());
       this.resizeObs.observe(root.querySelector('.szene-mitte'));
@@ -156,22 +163,120 @@
       this.ox = (w - vw * this.skala) / 2;
       this.oy = (h - vh * this.skala) / 2;
       this.geruchCache = null;
+      this.W = w; this.H = h;
+      if (this.canvas3d) {
+        // WebGL mit höchstens 1,5-facher Pixeldichte – spart auf Handys viel Rechenzeit
+        const d3 = Math.min(dpr, 1.5);
+        this.canvas3d.style.width = w + 'px'; this.canvas3d.style.height = h + 'px';
+        if (this.r3d) this.r3d.groesse(Math.round(w * d3), Math.round(h * d3));
+        this.kam = null;
+      }
     }
 
+    // ---------------------------------------------------------------- 3D-Ansicht
+    // Zusätzliches WebGL-Canvas hinter dem 2D-Canvas; das 2D-Canvas trägt im 3D-Modus nur Texte und Hinweise.
+    init3d() {
+      const c = document.createElement('canvas');
+      c.className = 'spielfeld3d versteckt';
+      this.canvas.parentElement.insertBefore(c, this.canvas);
+      this.canvas3d = c;
+      this.r3d = null;
+      // Lange Felder quer zum Bildschirm stellen (wie die gedrehte 2D-Ansicht)
+      const verh = this.lage.welt.h / this.lage.welt.w; const quer = this.W > this.H;
+      this.yawSchritt = (verh > 1.3 && quer) || (verh < 1 / 1.3 && !quer) ? 1 : 0;
+      this.yaw = (this.yawSchritt * Math.PI) / 2; this.kam = null;
+      let an = false;
+      try { an = localStorage.getItem('shs-game-3d') === '1'; } catch (e) { /* ignorieren */ }
+      if (!SHS.Ansicht3D || !SHS.Ansicht3D.verfuegbar()) {
+        an = false;
+        this.root.querySelectorAll('[data-a="3d"]').forEach((b) => { b.disabled = true; b.title = '3D-Ansicht: WebGL wird von diesem Browser nicht unterstützt'; });
+      }
+      this.setzeDreiD(an, true);
+    }
+
+    setzeDreiD(an, ohneSpeichern) {
+      if (an && !this.r3d) {
+        try {
+          this.r3d = new SHS.Ansicht3D(this.canvas3d);
+        } catch (e) {
+          this.r3d = null; an = false;
+        }
+      }
+      this.dreiD = !!an;
+      this.canvas3d.classList.toggle('versteckt', !this.dreiD);
+      this.root.classList.toggle('mit-3d', this.dreiD);
+      this.root.querySelectorAll('[data-a="3d"]').forEach((b) => { b.textContent = this.dreiD ? '2D' : '3D'; });
+      this.hgCache = null;
+      this.groesseAnpassen();
+      if (!ohneSpeichern) { try { localStorage.setItem('shs-game-3d', this.dreiD ? '1' : '0'); } catch (e) { /* ignorieren */ } }
+    }
+
+    kameraDrehen(r) {
+      if (!this.dreiD) return;
+      this.yawSchritt += r;
+    }
+
+    // Kamera weich auf den Zielwinkel nachführen und für die aktuelle Größe berechnen
+    kameraAktualisieren() {
+      const jetzt = performance.now();
+      const dt = Math.min(0.1, (jetzt - (this.kamZeit || jetzt)) / 1000);
+      this.kamZeit = jetzt;
+      const ziel = (this.yawSchritt * Math.PI) / 2;
+      const alt = this.yaw;
+      this.yaw += (ziel - this.yaw) * Math.min(1, dt * 7);
+      if (Math.abs(ziel - this.yaw) < 1e-3) this.yaw = ziel;
+      if (!this.kam || this.yaw !== alt || this.kam.W !== this.W || this.kam.H !== this.H) {
+        this.kam = SHS.mathe3d.kamera(this.lage.welt, this.yaw, this.W, this.H);
+        this.kam.W = this.W; this.kam.H = this.H;
+      }
+    }
+
+    // Kopfdrehung des Hundes relativ zum Körper (Weltwinkel; für 2D und 3D gleich)
+    kopfWinkel(t) {
+      const h = this.s.hund;
+      if (h.blickZuHF > 0) {
+        let k = Math.atan2(this.s.hf.y - h.y, this.s.hf.x - h.x) - h.richtung;
+        while (k > Math.PI) k -= 2 * Math.PI;
+        while (k < -Math.PI) k += 2 * Math.PI;
+        return Math.max(-1.6, Math.min(1.6, k));
+      }
+      if (h.zustand === 'geruch') return Math.sin(t * 6.3) * 0.28 + Math.sin(t * 13.7) * 0.06;
+      if (h.zustand === 'sucht') {
+        // Schnüffeln: langsames Pendeln, im Stand kurze, schnelle Bewegungen
+        const still = h.v < 0.2;
+        return h.naseTief ? Math.sin(t * (still ? 5.2 : 2.6)) * (still ? 0.22 : 0.3) + Math.sin(t * 9.1) * 0.05 : Math.sin(t * 1.3) * 0.15;
+      }
+      return 0;
+    }
+
+    // Für die Nachbetrachtung: Zeichnungen auf dem Boden unter den Figuren (z. B. Laufweg)
+    zeichneUnterlage() {}
+
     // Welt (m) -> Bildschirm (px)
-    w2s(x, y) {
+    w2s(x, y, hoehe) {
+      if (this.dreiD && this.kam) {
+        const p = SHS.mathe3d.projiziere(this.kam.vp, x, y, hoehe || 0, this.W, this.H);
+        return p ? [p[0], p[1]] : [-1e4, -1e4];
+      }
       const vx = this.rot ? y : x;
       const vy = this.rot ? x : y;
       return [this.ox + vx * this.skala, this.oy + vy * this.skala];
     }
 
     s2w(px, py) {
+      if (this.dreiD && this.kam) return SHS.mathe3d.strahlBoden(this.kam.inv, px, py, this.W, this.H) || [NaN, NaN];
       const vx = (px - this.ox) / this.skala;
       const vy = (py - this.oy) / this.skala;
       return this.rot ? [vy, vx] : [vx, vy];
     }
 
     winkel(w) {
+      if (this.dreiD && this.kam) {
+        // Richtung am Bildschirm: Weltmitte und einen Punkt in Richtung w projizieren
+        const cx = this.lage.welt.w / 2; const cy = this.lage.welt.h / 2;
+        const [ax, ay] = this.w2s(cx, cy); const [bx, by] = this.w2s(cx + Math.cos(w) * 0.5, cy + Math.sin(w) * 0.5);
+        return Math.atan2(by - ay, bx - ax);
+      }
       return this.rot ? Math.atan2(Math.cos(w), Math.sin(w)) : w;
     }
 
@@ -184,6 +289,8 @@
         this.tasten.add(k);
         SHS.ton.bereit(); // Audio darf erst nach einer Nutzeraktion starten
         if (k === 'm') this.toggleTon();
+        if (k === 'v' && !this.root.querySelector('[data-a="3d"]').disabled) this.setzeDreiD(!this.dreiD);
+        if (k === 'q') this.kameraDrehen(e.shiftKey ? -1 : 1);
         if (this.pause && k !== 'p') return;
         if (k === 'p') this.togglePause();
         if (k === 'n') this.nahAn = !this.nahAn;
@@ -203,7 +310,7 @@
         if (!this.laeuft || this.pause || this.auto) return;
         const r = this.canvas.getBoundingClientRect();
         const [x, y] = this.s2w(e.clientX - r.left, e.clientY - r.top);
-        this.s.richtungsZeichen(x, y);
+        if (Number.isFinite(x) && Number.isFinite(y)) this.s.richtungsZeichen(x, y);
       };
       this.onBlur = () => this.tasten.clear();
       window.addEventListener('keydown', this.onKeyDown);
@@ -220,6 +327,7 @@
       window.removeEventListener('keyup', this.onKeyUp);
       window.removeEventListener('blur', this.onBlur);
       if (this.resizeObs) this.resizeObs.disconnect();
+      if (this.r3d) { this.r3d.freigeben(); this.r3d = null; }
     }
 
     // ---------------------------------------------------------------- Touch-Steuerung
@@ -338,7 +446,7 @@
       if (t.has('a') || t.has('arrowleft')) sx -= 1;
       if (t.has('d') || t.has('arrowright')) sx += 1;
       if (sx || sy) {
-        const [dx, dy] = this.rot ? [sy, sx] : [sx, sy];
+        const [dx, dy] = this.dreiD ? SHS.mathe3d.eingabeRichtung(sx, sy, (this.yawSchritt * Math.PI) / 2) : this.rot ? [sy, sx] : [sx, sy];
         this.s.hfBewegen(dx, dy, dt);
       }
       if (t.has('e')) this.s.anfassen(dt);
@@ -459,6 +567,8 @@
 
     // ------------------------------------------------------------------ Zeichnen
     zeichne() {
+      if (this.dreiD && this.r3d && this.r3d.verloren) this.setzeDreiD(false, true); // WebGL-Kontext verloren → 2D
+      if (this.dreiD) { this.zeichne3D(); return; }
       const g = this.g;
       const W = this.canvas.width / this.dpr; const H = this.canvas.height / this.dpr;
       // Unveränderlicher Hintergrund (Gras, Kies, Mittelweg, Band) einmal vorzeichnen – entlastet Tablets/Handys
@@ -478,6 +588,61 @@
       g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
       const b = this.lage.bereich;
       this.zeichneVordergrund(W, H, b);
+    }
+
+    // 3D: Welt per WebGL, darüber im 2D-Canvas nur Markierungen, Texte, Windrose, Regen, Nahaufnahme
+    zeichne3D() {
+      const W = this.W; const H = this.H;
+      this.kameraAktualisieren();
+      this.r3d.zeichne(this);
+      const g = this.g;
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      this.zeichneUnterlage();
+      for (const a of this.lage.ansatzOptionen) {
+        const aktiv = a === this.s.ansatz;
+        this.kreis(a.x, a.y, 0.22, aktiv ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.12)', aktiv ? '#fff' : null);
+      }
+      this.textPx('Ansatz', this.s.ansatz.x, this.s.ansatz.y, 0, -14, '#fff', 10);
+      this.zeichneEigengeruch();
+      this.zeichneAufloesung();
+      this.zeichneReize();
+      const t = performance.now() / 1000;
+      const wr = { x: 0.45, y: this.lage.welt.h - 0.55 };
+      this.textPx('WR', wr.x, wr.y, 1.9, -4, '#fff', 10);
+      if (this.wrArm > 0) this.textPx('✋', wr.x, wr.y, 1.9, -22, 'rgba(255,255,255,0.95)', 18);
+      const hf = this.s.hf;
+      if (hf.arm) this.textPx('✋', hf.x, hf.y, 1.9, -8, 'rgba(255,255,255,0.95)', 18);
+      if (hf.anfassen > 0) {
+        const a = Math.min(1, hf.anfassen / 3);
+        const [px, py] = this.w2s(hf.x, hf.y, 1.0);
+        g.strokeStyle = '#ff7bd5'; g.lineWidth = 3;
+        g.beginPath(); g.arc(px, py, 20, -Math.PI / 2, -Math.PI / 2 + a * Math.PI * 2); g.stroke();
+      }
+      const h = this.s.hund;
+      if (h.aktivAnim && Math.sin(t * 6) > 0) this.textPx(h.zustand === 'verleitung' ? '*schnapp*' : 'Wuff! *scharr*', h.x, h.y, 0.7, -6, '#ffe0e0', 12);
+      if (h.zustand === 'geruch' && this.uebung && this.geruchsAnsicht) this.textPx('im Geruch', h.x, h.y, 0, 16, '#bfe3ff', 10);
+      this.zeichneWind(W);
+      this.zeichneRegen(W, H);
+      this.zeichneNahaufnahme();
+      if (this.pause) {
+        g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 0, W, H);
+        g.fillStyle = '#fff'; g.font = 'bold 28px system-ui, sans-serif'; g.textAlign = 'center';
+        g.fillText('Pause', W / 2, H / 2);
+      }
+    }
+
+    // Text über einem Weltpunkt in gegebener Höhe (m), um dy Pixel versetzt
+    textPx(t, x, y, hoehe, dy, farbe, groesse) {
+      const [px, py] = this.w2s(x, y, hoehe);
+      const g = this.g;
+      g.font = `${groesse || 11}px system-ui, sans-serif`;
+      g.textAlign = 'center';
+      g.fillStyle = 'rgba(0,0,0,0.45)';
+      g.fillText(t, px + 1, py + dy + 1);
+      g.fillStyle = farbe || '#fff';
+      g.fillText(t, px, py + dy);
     }
 
     zeichneHintergrund(W, H) {
@@ -510,9 +675,11 @@
       if (this.geruchsAnsicht) this.zeichneGeruch();
       this.zeichneAnsatz();
       this.zeichneVerstecke();
+      this.zeichneEigengeruch();
       this.zeichneQuellen();
       this.zeichneReize();
       this.zeichneWR();
+      this.zeichneUnterlage();
       this.zeichneLeine();
       this.zeichneHund();
       this.zeichneHF();
@@ -600,9 +767,19 @@
     }
 
     kreis(x, y, rM, farbe, rand) {
-      const [px, py] = this.w2s(x, y);
       const g = this.g;
-      g.beginPath(); g.arc(px, py, Math.max(1, rM * this.skala), 0, Math.PI * 2);
+      if (this.dreiD) {
+        // perspektivisch auf dem Boden liegender Kreis
+        g.beginPath();
+        for (let i = 0; i <= 28; i++) {
+          const a = (i / 28) * Math.PI * 2;
+          const [px, py] = this.w2s(x + Math.cos(a) * rM, y + Math.sin(a) * rM);
+          if (i) g.lineTo(px, py); else g.moveTo(px, py);
+        }
+      } else {
+        const [px, py] = this.w2s(x, y);
+        g.beginPath(); g.arc(px, py, Math.max(1, rM * this.skala), 0, Math.PI * 2);
+      }
       if (farbe) { g.fillStyle = farbe; g.fill(); }
       if (rand) { g.strokeStyle = rand; g.lineWidth = 1.5; g.stroke(); }
     }
@@ -628,9 +805,6 @@
 
     zeichneVerstecke() {
       const g = this.g;
-      const s = this.s;
-      const zeigeEG = s.phase === 'vorbereitung' && s.eigengeruchNoetig && !s.eigengeruchErledigt;
-      const t = performance.now() / 1000;
       for (const v of this.lage.verstecke) {
         if (this.lage.disziplin === 'behaeltnis') {
           if (v.form === 'eckig') {
@@ -656,12 +830,19 @@
           SHS.grafik.zeichneTruemmer(g, v, v.w * this.skala, v.h * this.skala);
           g.restore();
         }
-        if (zeigeEG && v.id === this.lage.eigengeruchVersteck) {
-          const r = 0.45 + Math.sin(t * 4) * 0.05;
-          this.kreis(v.x, v.y, r, null, '#ff7bd5');
-          this.text('Eigengeruch hier', v.x, v.y - 0.55, '#ff9be0', 11);
-        }
       }
+    }
+
+    // Markierung des Verstecks, an dem der HF seinen Eigengeruch anbringen soll
+    zeichneEigengeruch() {
+      const s = this.s;
+      if (!(s.phase === 'vorbereitung' && s.eigengeruchNoetig && !s.eigengeruchErledigt)) return;
+      const v = this.lage.verstecke.find((x) => x.id === this.lage.eigengeruchVersteck);
+      if (!v) return;
+      const r = 0.45 + Math.sin((performance.now() / 1000) * 4) * 0.05;
+      this.kreis(v.x, v.y, r, null, '#ff7bd5');
+      if (this.dreiD) this.textPx('Eigengeruch hier', v.x, v.y, 0.6, -8, '#ff9be0', 11);
+      else this.text('Eigengeruch hier', v.x, v.y - 0.55, '#ff9be0', 11);
     }
 
     zeichneQuellen() {
@@ -674,7 +855,11 @@
           this.g.fillRect(px - 0.08 * this.skala, py - 0.05 * this.skala, 0.16 * this.skala, 0.1 * this.skala);
         }
       }
-      // Auflösung nach dem Ende bzw. in der Übung mit Geruchsansicht
+      this.zeichneAufloesung();
+    }
+
+    // Auflösung nach dem Ende bzw. in der Übung mit Geruchsansicht
+    zeichneAufloesung() {
       const zeigen = this.s.phase === 'ende' || (this.uebung && this.geruchsAnsicht);
       if (!zeigen) return;
       for (const q of this.s.quellen) {
@@ -783,20 +968,8 @@
       const t = performance.now() / 1000;
       let w = this.winkel(h.richtung);
       if (h.kopfschlag > 0) w += Math.sin(t * 40) * 0.25;
-      // Kopf: dreht sich zum HF, wenn der Hund zurückschaut
-      let kopfW = 0;
-      if (h.blickZuHF > 0) {
-        const hfW = Math.atan2(this.s.hf.y - h.y, this.s.hf.x - h.x);
-        kopfW = this.winkel(hfW) - w;
-        while (kopfW > Math.PI) kopfW -= 2 * Math.PI;
-        while (kopfW < -Math.PI) kopfW += 2 * Math.PI;
-        kopfW = Math.max(-1.6, Math.min(1.6, kopfW));
-      } else if (h.zustand === 'geruch') kopfW = Math.sin(t * 6.3) * 0.28 + Math.sin(t * 13.7) * 0.06;
-      else if (h.zustand === 'sucht') {
-        // Schnüffeln: langsames Pendeln, im Stand kurze, schnelle Bewegungen
-        const still = h.v < 0.2;
-        kopfW = h.naseTief ? Math.sin(t * (still ? 5.2 : 2.6)) * (still ? 0.22 : 0.3) + Math.sin(t * 9.1) * 0.05 : Math.sin(t * 1.3) * 0.15;
-      }
+      // Kopf: dreht sich zum HF, wenn der Hund zurückschaut (die gedrehte Ansicht spiegelt den Winkel)
+      const kopfW = this.kopfWinkel(t) * (this.rot ? -1 : 1);
       g.save();
       g.translate(px, py);
       g.rotate(w);

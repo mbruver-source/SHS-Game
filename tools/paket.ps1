@@ -22,7 +22,7 @@ Copy-Item (Join-Path $root 'css') $stage -Recurse
 Copy-Item (Join-Path $root 'js') $stage -Recurse
 
 @"
-SHS - Spürhundesport (Version $version)
+SHS - Spürhundsport (Version $version)
 =======================================
 
 Spielen:  index.html doppelklicken (öffnet sich im Browser).

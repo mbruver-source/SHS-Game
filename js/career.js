@@ -385,8 +385,8 @@
   //  - LM: in LK 3 einen Dreikampf mit mindestens "Gut" (240 Punkte) bestanden
   //  - BM: bei einer Landesmeisterschaft Platz 1–3 oder mindestens 270 Punkte
   const MEISTERSCHAFTEN = {
-    LM: { name: 'Landesmeisterschaft Spürhundesport', kurz: 'Landesmeister', abstand: 20, versatz: 12, teilnehmer: 16, niveau: 3 },
-    BM: { name: 'Bundesmeisterschaft Spürhundesport', kurz: 'Bundessieger', abstand: 40, versatz: 32, teilnehmer: 20, niveau: 7 },
+    LM: { name: 'Landesmeisterschaft Spürhundsport', kurz: 'Landesmeister', abstand: 20, versatz: 12, teilnehmer: 16, niveau: 3 },
+    BM: { name: 'Bundesmeisterschaft Spürhundsport', kurz: 'Bundessieger', abstand: 40, versatz: 32, teilnehmer: 20, niveau: 7 },
   };
 
   function meisterschaftsQualifikation(stand, typ) {

@@ -1,6 +1,6 @@
 # SHS-Game – Hinweise für Claude-Sitzungen
 
-Browserspiel zum Spürhundesport (SHS-PO, gültig ab 01.07.2022) aus Sicht des Hundeführers.
+Browserspiel zum Spürhundsport (SHS-PO, gültig ab 01.07.2022) aus Sicht des Hundeführers.
 Zuerst `docs/Konzept.md` lesen (Aufbau, Spielannahmen, Dateien).
 
 ## Grundregeln
