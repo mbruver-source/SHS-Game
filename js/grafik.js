@@ -14,6 +14,21 @@
     if (rand) { g.strokeStyle = rand; g.lineWidth = 1; g.stroke(); }
   }
 
+  // Das Licht kommt in der 2D-Ansicht immer von links oben. Liefert den Schattenversatz (d Pixel nach rechts unten)
+  // im lokalen System einer um `drehung` gedrehten Zeichnung.
+  function schattenVersatz(drehung, d) {
+    const c = Math.cos(drehung || 0); const s = Math.sin(drehung || 0);
+    return [(c + s) * d, (c - s) * d];
+  }
+
+  // Abgerundetes Rechteck als Pfad
+  function rundRechteck(g, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    g.beginPath();
+    g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+  }
+
   // Rumpfprofil eines Labradors von oben (Meter): [x, halbe Breite], vom Rutenansatz zum Hals.
   const RUMPF = [[-0.35, 0.045], [-0.31, 0.1], [-0.24, 0.118], [-0.15, 0.104], [-0.05, 0.098],
     [0.05, 0.12], [0.13, 0.125], [0.2, 0.108], [0.25, 0.078], [0.3, 0.058]];
@@ -74,10 +89,13 @@
     const P = (x, y) => [x * k, (y + versatz(x)) * k]; // Punkt im Hundekoordinatensystem
 
     // Schatten
-    g.save(); g.translate(0.03 * k, 0.03 * k);
-    g.fillStyle = 'rgba(0,0,0,0.22)';
-    glattPfad(g, umriss); g.fill();
-    g.restore();
+    for (const [d, a] of [[0.05, 0.1], [0.032, 0.14]]) {
+      const [sx, sy] = schattenVersatz(z.drehung, d * k * (1 - 0.45 * liegt));
+      g.save(); g.translate(sx, sy);
+      g.fillStyle = `rgba(0,0,0,${a})`;
+      glattPfad(g, umriss); g.fill();
+      g.restore();
+    }
 
     const beinFarbe = ton(f.grund, -0.12);
     const pfote = f.pfoten || ton(f.grund, -0.18);
@@ -239,7 +257,10 @@
     const schwung = Math.sin(z.gang || 0) * 0.13 * tempo;
     const haut = z.haut || '#e8bf98';
     // Schatten
-    ellipse(g, 0.04 * k, 0.04 * k, 0.17 * k, 0.26 * k, 'rgba(0,0,0,0.25)');
+    for (const [d, a] of [[0.13, 0.1], [0.07, 0.16]]) {
+      const [sx, sy] = schattenVersatz(z.drehung, d * k);
+      ellipse(g, sx, sy, 0.17 * k, 0.26 * k, `rgba(0,0,0,${a})`);
+    }
     // Beine/Schuhe: beim Gehen abwechselnd vor und zurück
     for (const s of [-1, 1]) {
       const x = s * schwung;
@@ -294,24 +315,29 @@
   }
 
   // Zeichnet ein Trümmerteil am Ursprung (bereits translatiert/rotiert), w/h in px.
-  function zeichneTruemmer(g, v, w, h) {
+  // drehung: Drehung der Zeichenfläche (rad), damit der Schatten immer in dieselbe Richtung fällt.
+  function zeichneTruemmer(g, v, w, h, drehung) {
     const hoch = v.hoehe > 0;
-    // Schatten: Hochlagen werfen einen größeren, weiter versetzten Schatten
-    const so = hoch ? 4 + v.hoehe * 22 : 3;
-    g.fillStyle = hoch ? 'rgba(0,0,0,0.28)' : 'rgba(0,0,0,0.3)';
-    g.save(); g.translate(so, so);
-    umriss(g, v, w, h); g.fill();
-    g.restore();
+    // Schatten: weich (zwei Lagen); Hochlagen werfen einen größeren, weiter versetzten Schatten
+    const so = hoch ? 4 + v.hoehe * 22 : Math.max(2.5, Math.min(w, h) * 0.14);
+    for (const [f, a] of [[1, 0.13], [0.55, 0.2]]) {
+      const [sx, sy] = schattenVersatz(drehung, so * f);
+      g.fillStyle = `rgba(0,0,0,${a})`;
+      g.save(); g.translate(sx, sy);
+      umriss(g, v, w, h); g.fill();
+      g.restore();
+    }
+    const r = SHS.rng(hash(v.id + v.typ + 'o'));
 
     switch (v.typ) {
-      case 'Brett': brett(g, w, h, '#a8794a', '#7d5632'); break;
-      case 'Palette': palette(g, w, h); break;
-      case 'Kiste': kiste(g, w, h); break;
-      case 'Stein': stein(g, v, w, h); break;
+      case 'Brett': brett(g, w, h, '#a8794a', '#7d5632', r); break;
+      case 'Palette': palette(g, w, h, r); break;
+      case 'Kiste': kiste(g, w, h, r); break;
+      case 'Stein': stein(g, v, w, h, r); break;
       case 'Rohr': rohr(g, w, h); break;
       case 'Reifen': reifen(g, w, h); break;
-      case 'Ziegel': ziegel(g, w, h); break;
-      case 'Eimer': eimer(g, w, h); break;
+      case 'Ziegel': ziegel(g, w, h, r); break;
+      case 'Eimer': eimer(g, w, h, drehung); break;
       default: g.fillStyle = '#888'; g.fillRect(-w / 2, -h / 2, w, h);
     }
     if (hoch) {
@@ -335,83 +361,213 @@
     } else g.rect(-w / 2, -h / 2, w, h);
   }
 
-  function brett(g, w, h, hell, dunkel) {
-    g.fillStyle = hell; g.fillRect(-w / 2, -h / 2, w, h);
-    g.strokeStyle = dunkel; g.lineWidth = 0.8;
-    for (let i = 1; i < 4; i++) {
-      const y = -h / 2 + (h * i) / 4;
-      g.beginPath(); g.moveTo(-w / 2 + 2, y); g.bezierCurveTo(-w / 6, y - 1.5, w / 6, y + 1.5, w / 2 - 2, y); g.stroke();
+  // Holzfläche mit Maserung: Bretter liegen längs (x), n Bretter nebeneinander
+  function holz(g, x, y, w, h, hell, dunkel, r, n) {
+    n = n || 1;
+    for (let i = 0; i < n; i++) {
+      const y0 = y + (h * i) / n; const bh = h / n;
+      const t = r ? (r() - 0.5) * 0.16 : 0;
+      const grad = g.createLinearGradient(0, y0, 0, y0 + bh);
+      grad.addColorStop(0, ton(hell, 0.1 + t)); grad.addColorStop(0.5, ton(hell, t)); grad.addColorStop(1, ton(hell, -0.14 + t));
+      g.fillStyle = grad; g.fillRect(x, y0, w, bh);
+      // Maserung: feine, leicht geschwungene Linien, vereinzelt ein Astloch
+      g.strokeStyle = dunkel; g.lineWidth = 0.6; g.globalAlpha = 0.45;
+      const linien = Math.max(1, Math.round(bh / 3.2));
+      for (let j = 1; j <= linien; j++) {
+        const yy = y0 + (bh * j) / (linien + 1); const d = r ? (r() - 0.5) * 2.4 : 1;
+        g.beginPath(); g.moveTo(x + 1, yy); g.bezierCurveTo(x + w * 0.3, yy - d, x + w * 0.7, yy + d, x + w - 1, yy); g.stroke();
+      }
+      g.globalAlpha = 1;
+      if (r && bh > 5 && r() < 0.6) {
+        const ax = x + w * (0.2 + r() * 0.6); const ay = y0 + bh * (0.3 + r() * 0.4);
+        ellipse(g, ax, ay, Math.min(2.2, bh * 0.22), Math.min(1.4, bh * 0.14), dunkel);
+      }
+      g.strokeStyle = 'rgba(40,25,10,0.55)'; g.lineWidth = 0.8; g.strokeRect(x, y0, w, bh);
     }
-    g.fillStyle = dunkel;
-    for (const x of [-w / 2 + 3, w / 2 - 3]) for (const y of [-h / 4, h / 4]) { g.beginPath(); g.arc(x, y, 0.9, 0, Math.PI * 2); g.fill(); }
-    g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = 1; g.strokeRect(-w / 2, -h / 2, w, h);
   }
 
-  function palette(g, w, h) {
-    g.fillStyle = '#6d5236';
+  function brett(g, w, h, hell, dunkel, r) {
+    holz(g, -w / 2, -h / 2, w, h, hell, dunkel, r, h > 14 ? 3 : 2);
+    g.fillStyle = 'rgba(30,20,10,0.8)';
+    for (const x of [-w / 2 + 3, w / 2 - 3]) for (const y of [-h / 4, h / 4]) { g.beginPath(); g.arc(x, y, 0.9, 0, Math.PI * 2); g.fill(); }
+    g.strokeStyle = 'rgba(255,240,210,0.35)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(-w / 2, -h / 2 + 0.5); g.lineTo(w / 2, -h / 2 + 0.5); g.stroke();
+    g.strokeStyle = 'rgba(0,0,0,0.45)'; g.strokeRect(-w / 2, -h / 2, w, h);
+  }
+
+  function palette(g, w, h, r) {
+    // Blick durch die Lücken auf die Kufen und den dunklen Boden darunter
+    g.fillStyle = 'rgba(25,18,10,0.55)'; g.fillRect(-w / 2, -h / 2, w, h);
+    g.fillStyle = '#5a4329';
     for (const x of [-w / 2, -w / 12, w / 2 - w / 6]) g.fillRect(x, -h / 2, w / 6, h);
     const latten = 4; const lh = h / (latten * 1.6);
     for (let i = 0; i < latten; i++) {
       const y = -h / 2 + (i * (h - lh)) / (latten - 1);
-      g.fillStyle = '#c29a63'; g.fillRect(-w / 2, y, w, lh);
-      g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 0.8; g.strokeRect(-w / 2, y, w, lh);
+      holz(g, -w / 2, y, w, lh, '#c29a63', '#8a6638', r, 1);
+      g.fillStyle = 'rgba(40,30,20,0.75)';
+      for (const x of [-w / 2 + w / 12, 0, w / 2 - w / 12]) { g.beginPath(); g.arc(x, y + lh / 2, 0.8, 0, Math.PI * 2); g.fill(); }
     }
   }
 
-  function kiste(g, w, h) {
-    brett(g, w, h, '#b48a57', '#82603a');
-    g.strokeStyle = '#6b4c2c'; g.lineWidth = 2;
-    g.strokeRect(-w / 2 + 1.5, -h / 2 + 1.5, w - 3, h - 3);
-    g.beginPath(); g.moveTo(-w / 2 + 2, -h / 2 + 2); g.lineTo(w / 2 - 2, h / 2 - 2); g.stroke();
+  function kiste(g, w, h, r) {
+    holz(g, -w / 2, -h / 2, w, h, '#b48a57', '#82603a', r, 4);
+    // Rahmenleisten und Querstrebe mit Lichtkante
+    g.strokeStyle = '#6b4c2c'; g.lineWidth = Math.max(2, Math.min(w, h) * 0.09);
+    const lw = g.lineWidth;
+    g.strokeRect(-w / 2 + lw / 2, -h / 2 + lw / 2, w - lw, h - lw);
+    g.beginPath(); g.moveTo(-w / 2 + lw, -h / 2 + lw); g.lineTo(w / 2 - lw, h / 2 - lw); g.stroke();
+    g.strokeStyle = 'rgba(255,230,190,0.3)'; g.lineWidth = 1;
+    g.strokeRect(-w / 2 + 0.5, -h / 2 + 0.5, w - 1, h - 1);
+    g.strokeStyle = 'rgba(0,0,0,0.5)'; g.strokeRect(-w / 2, -h / 2, w, h);
   }
 
-  function stein(g, v, w, h) {
-    const grad = g.createRadialGradient(-w * 0.15, -h * 0.2, 1, 0, 0, Math.max(w, h) / 1.6);
-    grad.addColorStop(0, '#b9b6ae'); grad.addColorStop(1, '#6f6c66');
+  function stein(g, v, w, h, r) {
+    const grad = g.createRadialGradient(-w * 0.18, -h * 0.22, 1, 0, 0, Math.max(w, h) / 1.5);
+    grad.addColorStop(0, '#c9c6be'); grad.addColorStop(0.55, '#96938b'); grad.addColorStop(1, '#5d5a55');
     g.fillStyle = grad;
     umriss(g, v, w, h); g.fill();
-    g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 1; g.stroke();
-    g.strokeStyle = 'rgba(60,58,54,0.5)'; g.lineWidth = 0.7;
+    g.save(); g.clip();
+    // Körnung und Flechten
+    for (let i = 0; i < 26; i++) {
+      const x = (r() - 0.5) * w; const y = (r() - 0.5) * h;
+      g.fillStyle = r() < 0.5 ? 'rgba(40,38,35,0.28)' : 'rgba(235,232,222,0.3)';
+      g.fillRect(x, y, 1 + r() * 1.2, 1 + r() * 1.2);
+    }
+    ellipse(g, w * 0.12, h * 0.1, w * 0.12, h * 0.09, 'rgba(120,135,90,0.22)');
+    g.restore();
+    umriss(g, v, w, h);
+    g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = 1; g.stroke();
+    g.strokeStyle = 'rgba(50,48,44,0.5)'; g.lineWidth = 0.7;
     g.beginPath(); g.moveTo(-w * 0.2, -h * 0.1); g.lineTo(w * 0.05, h * 0.12); g.lineTo(w * 0.22, h * 0.05); g.stroke();
   }
 
   function rohr(g, w, h) {
     const grad = g.createLinearGradient(0, -h / 2, 0, h / 2);
-    grad.addColorStop(0, '#5b6670'); grad.addColorStop(0.35, '#b9c3cc'); grad.addColorStop(1, '#45505a');
+    grad.addColorStop(0, '#4d5861'); grad.addColorStop(0.3, '#c9d2da'); grad.addColorStop(0.45, '#aab4bd'); grad.addColorStop(1, '#3a444d');
     g.fillStyle = grad; g.fillRect(-w / 2, -h / 2, w, h);
+    g.strokeStyle = 'rgba(0,0,0,0.18)'; g.lineWidth = 1;
+    for (const x of [-w * 0.3, 0, w * 0.3]) { g.beginPath(); g.moveTo(x, -h / 2); g.lineTo(x, h / 2); g.stroke(); }
     ellipse(g, w / 2, 0, h * 0.18, h / 2, '#55606a');
-    ellipse(g, w / 2, 0, h * 0.11, h * 0.36, '#1e2328');
+    ellipse(g, w / 2, 0, h * 0.11, h * 0.36, '#14181c');
     ellipse(g, -w / 2, 0, h * 0.18, h / 2, '#6c7782', 'rgba(0,0,0,0.4)');
   }
 
   function reifen(g, w, h) {
     const r = Math.max(w, h) / 2;
-    g.fillStyle = '#262626'; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = '#3d3d3d'; g.lineWidth = 1;
-    for (let i = 0; i < 16; i++) {
-      const a = (i / 16) * Math.PI * 2;
-      g.beginPath(); g.moveTo(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72); g.lineTo(Math.cos(a) * r * 0.97, Math.sin(a) * r * 0.97); g.stroke();
+    const grad = g.createRadialGradient(0, 0, r * 0.5, 0, 0, r);
+    grad.addColorStop(0, '#161616'); grad.addColorStop(0.45, '#3c3c3c'); grad.addColorStop(0.8, '#2a2a2a'); grad.addColorStop(1, '#101010');
+    g.fillStyle = grad; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.6)'; g.lineWidth = Math.max(1, r * 0.06);
+    for (let i = 0; i < 22; i++) {
+      const a = (i / 22) * Math.PI * 2;
+      g.beginPath(); g.moveTo(Math.cos(a) * r * 0.8, Math.sin(a) * r * 0.8); g.lineTo(Math.cos(a + 0.1) * r * 0.99, Math.sin(a + 0.1) * r * 0.99); g.stroke();
     }
-    g.fillStyle = 'rgba(70,58,40,0.95)'; g.beginPath(); g.arc(0, 0, r * 0.5, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = '#111'; g.lineWidth = 1.2; g.beginPath(); g.arc(0, 0, r * 0.5, 0, Math.PI * 2); g.stroke();
+    // Lichtreflex auf der Flanke, Boden im Inneren mit Schlagschatten
+    g.strokeStyle = 'rgba(255,255,255,0.14)'; g.lineWidth = r * 0.1;
+    g.beginPath(); g.arc(0, 0, r * 0.68, Math.PI * 1.05, Math.PI * 1.55); g.stroke();
+    const innen = g.createRadialGradient(r * 0.12, r * 0.12, r * 0.1, 0, 0, r * 0.5);
+    innen.addColorStop(0, '#6f6249'); innen.addColorStop(1, '#2b2418');
+    g.fillStyle = innen; g.beginPath(); g.arc(0, 0, r * 0.5, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#0c0c0c'; g.lineWidth = 1.2; g.stroke();
   }
 
-  function ziegel(g, w, h) {
-    g.fillStyle = '#b6553a'; g.fillRect(-w / 2, -h / 2, w, h);
-    g.strokeStyle = '#d9c7b0'; g.lineWidth = 1.2;
-    g.beginPath(); g.moveTo(-w / 2, 0); g.lineTo(w / 2, 0);
-    g.moveTo(-w / 6, -h / 2); g.lineTo(-w / 6, 0);
-    g.moveTo(w / 6, 0); g.lineTo(w / 6, h / 2);
-    g.stroke();
-    g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 1; g.strokeRect(-w / 2, -h / 2, w, h);
+  function ziegel(g, w, h, r) {
+    g.fillStyle = '#cdbba2'; g.fillRect(-w / 2, -h / 2, w, h); // Mörtel/Fugen
+    const steine = [[-w / 2, -h / 2, w / 3, h / 2], [-w / 6, -h / 2, (w * 2) / 3, h / 2], [-w / 2, 0, (w * 2) / 3, h / 2], [w / 6, 0, w / 3, h / 2]];
+    for (const [x, y, bw, bh] of steine) {
+      const f = ton('#b6553a', (r() - 0.5) * 0.3);
+      const grad = g.createLinearGradient(0, y, 0, y + bh);
+      grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.18)');
+      g.fillStyle = f; g.fillRect(x + 0.6, y + 0.6, bw - 1.2, bh - 1.2);
+      g.fillStyle = grad; g.fillRect(x + 0.6, y + 0.6, bw - 1.2, bh - 1.2);
+      g.fillStyle = 'rgba(60,20,10,0.35)';
+      for (let i = 0; i < 4; i++) g.fillRect(x + 1 + r() * (bw - 3), y + 1 + r() * (bh - 3), 1, 1);
+    }
+    g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = 1; g.strokeRect(-w / 2, -h / 2, w, h);
   }
 
-  function eimer(g, w, h) {
+  function eimer(g, w, h, drehung) {
     const r = Math.max(w, h) / 2;
-    ellipse(g, 0, 0, r, r, '#3e7cb1', 'rgba(0,0,0,0.45)');
-    ellipse(g, 0, 0, r * 0.78, r * 0.78, '#2c5e88');
-    g.strokeStyle = '#9aa3ad'; g.lineWidth = 1.2;
-    g.beginPath(); g.arc(0, 0, r * 0.95, -0.4, Math.PI + 0.4, true); g.stroke();
+    ellipse(g, 0, 0, r, r, '#4a8ac2', 'rgba(0,0,0,0.5)');
+    // Innenwand: zur Lichtseite hin im Schatten, gegenüber beleuchtet
+    const [sx, sy] = schattenVersatz(drehung, r * 0.3);
+    const innen = g.createRadialGradient(sx, sy, r * 0.1, 0, 0, r * 0.84);
+    innen.addColorStop(0, '#3f7fb5'); innen.addColorStop(0.6, '#2c5e88'); innen.addColorStop(1, '#173a57');
+    g.fillStyle = innen; g.beginPath(); g.arc(0, 0, r * 0.84, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 1;
+    g.beginPath(); g.arc(0, 0, r * 0.92, Math.PI * 0.95, Math.PI * 1.6); g.stroke();
+    g.strokeStyle = '#aab2bb'; g.lineWidth = 1.3;
+    g.beginPath(); g.arc(0, 0, r * 1.02, -0.4, Math.PI + 0.4, true); g.stroke();
+  }
+
+  // Behältnis der Behältnisstrecke von oben am Ursprung; r = Radius in px (eckig: 2r × 1,5r)
+  function zeichneBehaeltnis(g, v, r, drehung) {
+    const eckig = v.form === 'eckig';
+    const form = () => { if (eckig) rundRechteck(g, -r, -r * 0.75, r * 2, r * 1.5, r * 0.16); else { g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); } };
+    for (const [f, a] of [[0.34, 0.13], [0.18, 0.2]]) {
+      const [sx, sy] = schattenVersatz(drehung, r * f);
+      g.save(); g.translate(sx, sy); g.fillStyle = `rgba(0,0,0,${a})`; form(); g.fill(); g.restore();
+    }
+    const [lx, ly] = schattenVersatz(drehung, -r * 0.4); // Lichtseite
+    if (eckig) {
+      const col = BEHAELTNIS_FARBEN[v.typ] || '#7d5a3c';
+      const grad = g.createLinearGradient(lx * 2, ly * 2, -lx * 2, -ly * 2);
+      grad.addColorStop(0, ton(col, 0.24)); grad.addColorStop(0.5, col); grad.addColorStop(1, ton(col, -0.3));
+      form(); g.fillStyle = grad; g.fill();
+      g.strokeStyle = ton(col, -0.5); g.lineWidth = 1.5; g.stroke();
+      // Deckelkante und Griff
+      rundRechteck(g, -r * 0.86, -r * 0.61, r * 1.72, r * 1.22, r * 0.1);
+      g.strokeStyle = 'rgba(255,255,255,0.22)'; g.lineWidth = 1; g.stroke();
+      rundRechteck(g, -r * 0.32, -r * 0.09, r * 0.64, r * 0.18, r * 0.08);
+      g.fillStyle = ton(col, -0.55); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,0.3)'; g.stroke();
+    } else {
+      const grad = g.createRadialGradient(lx, ly, r * 0.1, 0, 0, r);
+      const col = BEHAELTNIS_FARBEN[v.typ] || '#e4e6e8';
+      grad.addColorStop(0, ton(col, 0.55)); grad.addColorStop(0.6, col); grad.addColorStop(1, ton(col, -0.28));
+      form(); g.fillStyle = grad; g.fill();
+      g.strokeStyle = 'rgba(40,48,58,0.6)'; g.lineWidth = 1.5; g.stroke();
+      // Deckel mit Rand und Knauf
+      g.beginPath(); g.arc(0, 0, r * 0.78, 0, Math.PI * 2);
+      g.strokeStyle = 'rgba(40,48,58,0.35)'; g.lineWidth = 1; g.stroke();
+      const kn = g.createRadialGradient(lx * 0.2, ly * 0.2, 0.5, 0, 0, r * 0.16);
+      kn.addColorStop(0, '#f4f6f8'); kn.addColorStop(1, '#8f98a3');
+      g.beginPath(); g.arc(0, 0, r * 0.14, 0, Math.PI * 2); g.fillStyle = kn; g.fill();
+    }
+  }
+
+  // Rasenstruktur über die ganze Zeichenfläche: helle/dunkle Flecken und einzelne Halme
+  function zeichneRasen(g, W, H, seed) {
+    const r = SHS.rng((seed || 1) + 3);
+    for (let i = 0; i < 46; i++) {
+      const x = r() * W; const y = r() * H; const rad = 50 + r() * 170;
+      const hell = r() < 0.5;
+      const grad = g.createRadialGradient(x, y, 0, x, y, rad);
+      grad.addColorStop(0, hell ? 'rgba(196,214,110,0.13)' : 'rgba(18,48,14,0.13)');
+      grad.addColorStop(1, hell ? 'rgba(196,214,110,0)' : 'rgba(18,48,14,0)');
+      g.fillStyle = grad; g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+    }
+    const farben = ['rgba(28,62,18,0.3)', 'rgba(52,96,30,0.3)', 'rgba(150,196,96,0.26)', 'rgba(196,222,130,0.2)'];
+    const n = Math.min(16000, Math.round((W * H) / 40));
+    g.lineWidth = 1; g.lineCap = 'round';
+    for (const f of farben) {
+      g.strokeStyle = f; g.beginPath();
+      for (let i = 0; i < n / farben.length; i++) {
+        const x = r() * W; const y = r() * H; const l = 2.5 + r() * 4; const a = -Math.PI / 2 + (r() - 0.5) * 1.2;
+        g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l);
+      }
+      g.stroke();
+    }
+  }
+
+  // Körnige Fläche (Sand, feiner Schotter) in einem Bildschirm-Rechteck
+  function zeichneKoernung(g, x, y, w, h, seed, hell, dunkel) {
+    const r = SHS.rng((seed || 1) + 17);
+    const n = Math.min(9000, Math.round((w * h) / 28));
+    for (const f of [hell, dunkel]) {
+      g.fillStyle = f;
+      for (let i = 0; i < n / 2; i++) g.fillRect(x + r() * w, y + r() * h, 1 + r(), 1 + r());
+    }
   }
 
   // Kies-/Schotteruntergrund für das Trümmerfeld (einmal je Suchlage erzeugt).
@@ -689,7 +845,20 @@
     const himmel = g.createLinearGradient(0, 0, 0, horizont);
     himmel.addColorStop(0, '#cfe3f1'); himmel.addColorStop(1, '#eef5ea');
     g.fillStyle = himmel; g.fillRect(0, 0, W, horizont);
-    g.fillStyle = '#4f7a3a'; g.fillRect(0, horizont - H * 0.06, W, H * 0.06);
+    const hr = SHS.rng(5);
+    for (let i = 0; i < 4; i++) {
+      const cx = W * (0.1 + i * 0.27 + hr() * 0.08); const cy = horizont * (0.25 + hr() * 0.3); const cb = W * (0.07 + hr() * 0.05);
+      for (let j = 0; j < 5; j++) ellipse(g, cx + (j - 2) * cb * 0.45, cy + Math.sin(j * 2.1) * cb * 0.08, cb * 0.42, cb * (0.16 + 0.05 * (j % 2)), 'rgba(255,255,255,0.5)');
+    }
+    // Baumreihe und Hecke am Horizont (dunstig, zwei Tiefenlagen)
+    for (const [farbe, hoehe, n] of [['#7fa07c', 0.13, 16], ['#4f7a3a', 0.075, 26]]) {
+      g.fillStyle = farbe;
+      for (let i = 0; i <= n; i++) {
+        const rr = H * hoehe * (0.6 + hr() * 0.6);
+        g.beginPath(); g.arc((i / n) * W + (hr() - 0.5) * 10, horizont - rr * 0.55, rr, 0, Math.PI * 2); g.fill();
+      }
+      g.fillRect(0, horizont - H * hoehe * 0.5, W, H * hoehe * 0.5);
+    }
     const kies = z.disziplin === 'truemmer';
     const bodenGrad = g.createLinearGradient(0, horizont, 0, H);
     bodenGrad.addColorStop(0, kies ? '#a3967f' : '#7fa95c');
@@ -813,5 +982,5 @@
     }
   }
 
-  SHS.grafik = { zeichneMensch, fellVarianten, fellFuer, zeichneHund, zeichneTruemmer, kiesPunkte, zeichneAnzeigeSzene };
+  SHS.grafik = { zeichneMensch, fellVarianten, fellFuer, zeichneHund, zeichneTruemmer, zeichneBehaeltnis, zeichneRasen, zeichneKoernung, kiesPunkte, zeichneAnzeigeSzene };
 })(globalThis.SHS = globalThis.SHS || {});

@@ -2,6 +2,12 @@
 
 Alle Versionen sind im Repository als Tag (`vX.Y.Z`) markiert.
 
+## 1.2.0
+- 3D-Ansicht realistischer: Sonnenschatten für Verstecke, Hund, HF, WR und Leine; wärmeres Licht; Gras, Kies, Sand, Holz und Fell mit Struktur.
+- 3D-Hund mit weichem Körperbau (Brustkorb, Lende, Hals, Kopf mit Stop und Fang, kräftige Oberschenkel, verjüngte Rute); HF und WR mit Schultern, Hals und Schuhen.
+- 2D-Ansicht: Rasen mit Halmen, Kies mit Schatten, körniger Mittelweg, Holzmaserung, Behältnisse in ihrer Farbe mit Deckel und Griff, einheitliche weiche Schatten.
+- Nahaufnahme: Baumreihe und Wolken im Hintergrund.
+
 ## 1.0.4
 - Nach einem Update lädt der Browser alle Dateien neu (Versionsanhang an jeder Datei); keine Mischung alter und neuer Stände mehr.
 

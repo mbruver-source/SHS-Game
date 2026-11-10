@@ -8,21 +8,58 @@
   const VS = `
     attribute vec3 aPos; attribute vec3 aNorm; attribute vec4 aFarbe;
     uniform mat4 uVP; uniform mat4 uM; uniform mat3 uN;
-    varying vec3 vNorm; varying vec4 vFarbe;
+    varying vec3 vNorm; varying vec4 vFarbe; varying vec3 vLokal; varying vec3 vWelt;
     void main() {
+      vec4 w = uM * vec4(aPos, 1.0);
       vNorm = normalize(uN * aNorm);
-      vFarbe = aFarbe;
-      gl_Position = uVP * uM * vec4(aPos, 1.0);
+      // Modellkoordinaten in Metern (Skalierung der Teile herausgerechnet), damit die Körnung überall gleich fein ist
+      vLokal = aPos * vec3(length(uM[0].xyz), length(uM[1].xyz), length(uM[2].xyz));
+      vFarbe = aFarbe; vWelt = w.xyz;
+      gl_Position = uVP * w;
     }`;
+  // Licht: warme Sonne + Himmelslicht von oben/Bodenreflex von unten. Die Oberflächenstruktur (Gras, Kies,
+  // Holz, Fell) entsteht als Rauschen im Modellraum – ohne Texturdateien, also auch offline.
   const FS = `
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+    #else
     precision mediump float;
-    varying vec3 vNorm; varying vec4 vFarbe;
+    #endif
+    varying vec3 vNorm; varying vec4 vFarbe; varying vec3 vLokal; varying vec3 vWelt;
     uniform vec3 uLicht; uniform float uUnbeleuchtet; uniform float uAlpha;
+    uniform float uKoernung; uniform float uMaserung; uniform float uBoden; uniform vec4 uSchatten;
+    uniform vec3 uMitte; uniform float uRadius; uniform vec3 uDunst;
+    float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+    float rausch(vec2 p) {
+      vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+    }
     void main() {
-      float diffus = max(dot(normalize(vNorm), uLicht), 0.0);
-      float himmel = 0.5 + 0.5 * normalize(vNorm).y;
-      float l = mix(0.42 + 0.18 * himmel + 0.55 * diffus, 1.0, uUnbeleuchtet);
-      gl_FragColor = vec4(vFarbe.rgb * l, vFarbe.a * uAlpha);
+      if (uSchatten.a > 0.0) { gl_FragColor = uSchatten; return; }
+      vec3 n = normalize(vNorm);
+      vec3 c = vFarbe.rgb;
+      if (uUnbeleuchtet < 0.5) {
+        vec2 q = vLokal.xz + vLokal.y * vec2(0.37, 0.61);
+        if (uBoden > 0.5) {
+          float gras = smoothstep(0.02, 0.1, c.g - max(c.r, c.b));
+          float flecken = rausch(q * 0.55) * 0.6 + rausch(q * 1.9) * 0.4;
+          float halme = rausch(vec2(q.x * 150.0 + q.y * 20.0, q.y * 34.0)) * 0.6 + rausch(q * 70.0) * 0.4;
+          float koerner = rausch(q * 55.0) * 0.55 + rausch(q * 140.0) * 0.45;
+          float fein = mix(koerner, halme, gras);
+          c *= 0.8 + 0.4 * fein * mix(1.25, 1.0, gras);
+          c *= 0.93 + 0.14 * flecken;
+          c = mix(c, c * vec3(1.16, 1.06, 0.72), gras * smoothstep(0.5, 0.9, flecken) * 0.3);
+        } else if (uKoernung > 0.0) {
+          float k = mix(rausch(q * 85.0) * 0.6 + rausch(q * 22.0) * 0.4, rausch(q * 85.0) * 0.4 + rausch(vec2(q.x * 240.0, q.y * 30.0)) * 0.4 + rausch(q * 14.0) * 0.2, uMaserung);
+          c *= 1.0 + (k - 0.5) * uKoernung;
+        }
+        float diffus = max(dot(n, uLicht), 0.0);
+        vec3 himmel = mix(vec3(0.34, 0.36, 0.3), vec3(0.6, 0.66, 0.74), 0.5 + 0.5 * n.y);
+        c *= himmel + vec3(1.0, 0.94, 0.82) * 0.62 * diffus;
+        float weit = smoothstep(uRadius, uRadius + 9.0, length(vWelt.xz - uMitte.xz));
+        c = mix(c, uDunst, weit * 0.85);
+      }
+      gl_FragColor = vec4(c, vFarbe.a * uAlpha);
     }`;
   const VS_TEX = `
     attribute vec3 aPos; attribute vec2 aUV;
@@ -33,8 +70,11 @@
     varying vec2 vUV; uniform sampler2D uTex;
     void main() { gl_FragColor = texture2D(uTex, vUV); }`;
 
-  const LICHT = M.normiere([-0.45, 0.85, 0.35]);
-  const HIMMEL = [0x4d / 255, 0x78 / 255, 0x32 / 255]; // wie der äußere Rasen
+  const LICHT = M.normiere([-0.55, 0.8, 0.3]);
+  const DUNST = [0.3, 0.42, 0.26]; // Rasen in der Ferne: gedämpft, zugleich Hintergrundfarbe
+  // Schattenwurf: flacht jedes Modell entlang der Lichtrichtung auf den Boden ab (Höhe knapp über dem Absperrband)
+  const SCHATTEN_M = [1, 0, 0, 0, -LICHT[0] / LICHT[1], 0, -LICHT[2] / LICHT[1], 0, 0, 0, 1, 0, 0, 0.016, 0, 1];
+  const SCHATTEN_FARBE = [0.03, 0.07, 0.03, 0.4];
 
   function programm(gl, vs, fs) {
     const sh = (typ, src) => {
@@ -67,7 +107,7 @@
 
     constructor(canvas) {
       this.canvas = canvas;
-      const opts = { antialias: true, alpha: false, preserveDrawingBuffer: false };
+      const opts = { antialias: true, alpha: false, stencil: true, preserveDrawingBuffer: false };
       const gl = canvas.getContext('webgl', opts) || canvas.getContext('experimental-webgl', opts);
       if (!gl) throw new Error('WebGL nicht verfügbar');
       this.gl = gl;
@@ -77,7 +117,7 @@
       this.p = programm(gl, VS, FS);
       this.a = { pos: gl.getAttribLocation(this.p, 'aPos'), norm: gl.getAttribLocation(this.p, 'aNorm'), farbe: gl.getAttribLocation(this.p, 'aFarbe') };
       this.u = {};
-      for (const n of ['uVP', 'uM', 'uN', 'uLicht', 'uUnbeleuchtet', 'uAlpha']) this.u[n] = gl.getUniformLocation(this.p, n);
+      for (const n of ['uVP', 'uM', 'uN', 'uLicht', 'uUnbeleuchtet', 'uAlpha', 'uKoernung', 'uMaserung', 'uBoden', 'uSchatten', 'uMitte', 'uRadius', 'uDunst']) this.u[n] = gl.getUniformLocation(this.p, n);
       this.pt = programm(gl, VS_TEX, FS_TEX);
       this.at = { pos: gl.getAttribLocation(this.pt, 'aPos'), uv: gl.getAttribLocation(this.pt, 'aUV') };
       this.ut = { uVP: gl.getUniformLocation(this.pt, 'uVP'), uTex: gl.getUniformLocation(this.pt, 'uTex') };
@@ -127,8 +167,9 @@
     setzeLage(lage) {
       if (this.lage === lage) return;
       this.lage = lage;
-      if (this.statisch) this.gl.deleteBuffer(this.statisch.buf);
-      this.statisch = this.netzPuffer(MO.statisch(lage));
+      for (const k of ['bodenNetz', 'objekteNetz']) if (this[k]) this.gl.deleteBuffer(this[k].buf);
+      this.bodenNetz = this.netzPuffer(MO.boden(lage));
+      this.objekteNetz = this.netzPuffer(MO.objekte(lage));
       if (this.geruch) this.gl.deleteTexture(this.geruch.tex);
       this.hv = null;
       this.geruch = null;
@@ -169,8 +210,9 @@
       const lage = sz.lage; const s = sz.s; const kam = sz.kam;
       this.setzeLage(lage);
       gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-      gl.clearColor(HIMMEL[0], HIMMEL[1], HIMMEL[2], 1);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.clearColor(DUNST[0], DUNST[1], DUNST[2], 1);
+      gl.clearStencil(0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
       gl.enable(gl.DEPTH_TEST);
       gl.disable(gl.CULL_FACE);
       gl.disable(gl.BLEND);
@@ -181,34 +223,33 @@
       gl.uniformMatrix4fv(this.u.uVP, false, kam.vp);
       gl.uniform3fv(this.u.uLicht, LICHT);
       gl.uniform1f(this.u.uUnbeleuchtet, 0);
-      this.zeichneNetz(this.statisch, M.ident());
+      gl.uniform4f(this.u.uSchatten, 0, 0, 0, 0);
+      gl.uniform3f(this.u.uMitte, lage.welt.w / 2, 0, lage.welt.h / 2);
+      gl.uniform1f(this.u.uRadius, Math.hypot(lage.welt.w, lage.welt.h) / 2 + 1.5);
+      gl.uniform3fv(this.u.uDunst, DUNST);
+      gl.uniform1f(this.u.uBoden, 1); gl.uniform1f(this.u.uKoernung, 0);
+      this.zeichneNetz(this.bodenNetz, M.ident());
+      gl.uniform1f(this.u.uBoden, 0);
 
-      // Geruchsansicht als Bodentextur
-      if (sz.geruchsAnsicht) this.zeichneGeruch(sz);
-
-      // Kontaktschatten
-      gl.useProgram(this.p);
-      gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-      gl.depthMask(false);
-      gl.uniform1f(this.u.uUnbeleuchtet, 1);
+      // Alles, was einen Schatten wirft, wird gesammelt und danach ein zweites Mal flach auf den Boden gezeichnet
+      const werfer = [];
+      const netz = (p, m, koernung) => {
+        gl.uniform1f(this.u.uKoernung, koernung);
+        this.zeichneNetz(p, m);
+        werfer.push([p, m]);
+      };
+      gl.uniform1f(this.u.uMaserung, 1);
+      netz(this.objekteNetz, M.ident(), 0.3);
+      gl.uniform1f(this.u.uMaserung, 0);
       const h = s.hund;
-      const G = SHS.rassen.form(sz.opts.hund.rasse).groesse;
-      const schatten = (x, y, sx, sz2, w) => this.zeichneNetz(this.einfach.schatten,
-        M.kette(M.verschiebe(x, 0.012, y), M.drehBoden(w || 0), M.skaliere(sx, 1, sz2)));
-      schatten(h.x, h.y, 0.85 * G, 0.42 * G * (1 + 0.3 * (h.liegtAnim || 0)), h.richtung);
-      schatten(s.hf.x, s.hf.y, 0.6, 0.6);
       const wr = { x: 0.45, y: lage.welt.h - 0.55 };
-      schatten(wr.x, wr.y, 0.6, 0.6);
-      gl.depthMask(true);
-      gl.disable(gl.BLEND);
-      gl.uniform1f(this.u.uUnbeleuchtet, 0);
 
       // Sichtbare Verleitungen
       for (const q of s.quellen) {
         if (q.typ !== 'spielzeug' && q.typ !== 'futter') continue;
         const v = q.versteckId ? lage.verstecke.find((x) => x.id === q.versteckId) : null;
         const y = MO.versteckOberkante(lage, v);
-        this.zeichneNetz(this.einfach[q.typ], M.verschiebe(q.x, y + (q.typ === 'spielzeug' ? 0.07 : 0.02), q.y));
+        netz(this.einfach[q.typ], M.verschiebe(q.x, y + (q.typ === 'spielzeug' ? 0.07 : 0.02), q.y), 0.1);
       }
 
       // Hund
@@ -221,19 +262,48 @@
         t, liegtAnteil: h.liegtAnim, sitztAnteil: h.sitztAnim, weg: hv.weg, tempo: hv.v,
         kopfW: hv.kopfW + (h.kopfschlag > 0 ? Math.sin(t * 40) * 0.25 : 0), naseTief: h.naseTief, rute: h.rute, ruteHoch: h.ruteHoch,
       });
-      for (const teil of pose) this.zeichneNetz(hm.p[teil.teil], M.mul(basis, teil.m));
+      for (const teil of pose) netz(hm.p[teil.teil], M.mul(basis, teil.m), 0.34);
 
       // Hundeführer und Wertungsrichter
       const hf = s.hf;
       const hfm = this.menschModell('hf', { jacke: '#2f5d8c', hose: '#30343d', haare: '#5a3b24' });
       const hfBasis = M.kette(M.verschiebe(hf.x, 0, hf.y), M.drehBoden(hf.richtung || 0));
-      for (const teil of MO.menschPose({ gang: hf.gang || 0, tempo: hf.tempo || 0, arm: hf.arm })) this.zeichneNetz(hfm[teil.teil], M.mul(hfBasis, teil.m));
+      for (const teil of MO.menschPose({ gang: hf.gang || 0, tempo: hf.tempo || 0, arm: hf.arm })) netz(hfm[teil.teil], M.mul(hfBasis, teil.m), 0.12);
       const wrm = this.menschModell('wr', { jacke: '#7a2f2f', hose: '#2b2b2b', haare: '#9a9a9a', muetze: '#2b2b2b', klemmbrett: true });
       const wrBasis = M.kette(M.verschiebe(wr.x, 0, wr.y), M.drehBoden(Math.atan2(h.y - wr.y, h.x - wr.x)));
-      for (const teil of MO.menschPose({ arm: sz.wrArm > 0 })) this.zeichneNetz(wrm[teil.teil], M.mul(wrBasis, teil.m));
+      for (const teil of MO.menschPose({ arm: sz.wrArm > 0 })) netz(wrm[teil.teil], M.mul(wrBasis, teil.m), 0.12);
 
       // Leine
-      if (s.leine || s.schleppleine) this.zeichneLeine(sz, hm, w);
+      gl.uniform1f(this.u.uKoernung, 0);
+      if (s.leine || s.schleppleine) { this.zeichneLeine(sz, hm, w); werfer.push([this.leinePuffer, M.ident()]); }
+
+      this.zeichneSchatten(werfer, h, sz);
+
+      // Geruchsansicht als Bodentextur
+      if (sz.geruchsAnsicht) this.zeichneGeruch(sz);
+    }
+
+    // Schattenwurf der Sonne: die Modelle flach auf den Boden projiziert. Der Stencil-Puffer sorgt dafür,
+    // dass sich überlagernde Schatten nicht doppelt abdunkeln. Dazu ein weicher Kontaktschatten unter dem Hund.
+    zeichneSchatten(werfer, h, sz) {
+      const gl = this.gl;
+      gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.depthMask(false);
+      gl.uniform1f(this.u.uUnbeleuchtet, 1);
+      const G = SHS.rassen.form(sz.opts.hund.rasse).groesse;
+      this.zeichneNetz(this.einfach.schatten, M.kette(M.verschiebe(h.x, 0.014, h.y), M.drehBoden(h.richtung), M.skaliere(0.8 * G, 1, 0.4 * G * (1 + 0.3 * (h.liegtAnim || 0)))), 0.6);
+      gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-1, -2);
+      gl.enable(gl.STENCIL_TEST);
+      gl.stencilFunc(gl.NOTEQUAL, 1, 0xff);
+      gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
+      gl.uniform4fv(this.u.uSchatten, SCHATTEN_FARBE);
+      for (const [p, m] of werfer) this.zeichneNetz(p, M.mul(SCHATTEN_M, m));
+      gl.uniform4f(this.u.uSchatten, 0, 0, 0, 0);
+      gl.disable(gl.STENCIL_TEST);
+      gl.disable(gl.POLYGON_OFFSET_FILL);
+      gl.depthMask(true);
+      gl.disable(gl.BLEND);
+      gl.uniform1f(this.u.uUnbeleuchtet, 0);
     }
 
     // Darstellungswerte des Hundes weich nachführen: Körperrichtung, Kopfdrehung, Tempo und

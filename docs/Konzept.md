@@ -298,4 +298,11 @@ Die Meisterschaften stehen mit 🏆 und Qualifikationsstand in den Ausschreibung
 - **Technik:** Es gibt keine Bibliothek (offline per `file://`). Auf Handys ist die Pixeldichte auf 1,5 begrenzt.
   - Ohne WebGL ist der Knopf ausgegraut. Geht der WebGL-Kontext verloren, schaltet das Spiel auf 2D zurück.
   - Spiellogik und Wertung sind unverändert; die 3D-Ansicht ist reine Darstellung.
+- **Realistischere Darstellung (v1.2):**
+  - **Schattenwurf:** Verstecke, Hund, HF, WR und Leine werfen einen Sonnenschatten auf den Boden (Modelle flach projiziert; der Stencil-Puffer verhindert doppeltes Abdunkeln). Unter dem Hund liegt zusätzlich ein weicher Kontaktschatten.
+  - **Licht:** warme Sonne plus Himmelslicht von oben und Bodenreflex von unten; der Rasen verblasst in der Ferne.
+  - **Oberflächen:** Gras (Halme, helle und dunkle Flecken), Kies, Sandweg, Holz und Fell bekommen ihre Struktur als Rauschen im Shader – ohne Bilddateien, also weiter offline.
+  - **Hund:** Rumpf, Hals, Kopf, Oberschenkel und Rute sind weiche Formen (`modelle3d.schlauch`) mit Kruppe, aufgezogener Lende, tiefem Brustkorb, Stop und Fang statt Kugeln und Zylindern.
+  - **Mensch:** Oberkörper mit Schultern und Hals, schlankere Beine, Schuhe mit Kappe.
+  - **2D-Ansicht:** Rasen mit Halmen, Kies mit Schatten und Lichtkante, körniger Sandweg, Holzmaserung, Behältnisse in Typfarbe mit Deckel und Griff. Das Licht kommt immer von links oben; alle Schatten fallen unabhängig von der Drehung eines Teils nach rechts unten.
 - **ANNAHMEN** (die Lage kennt nur Grundflächen): Höhen der Trümmerteile Brett 3 cm, Palette 12 cm, Kiste 28 cm, Stein bis 20 cm, Reifen 18 cm, Ziegelstapel 13 cm, Eimer 30 cm. Das Rohr liegt mit dem Durchmesser der schmalen Seite. Behältnisse sind rund 42 cm bzw. eckig 32 cm hoch.

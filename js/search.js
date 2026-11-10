@@ -653,21 +653,34 @@
       this.rechteck(0, 0, welt.w, welt.h, FARBEN.gras);
       const b = this.lage.bereich;
       this.rechteck(b.x, b.y, b.w, b.h, FARBEN.bereich);
-      this.grasTextur();
+      SHS.grafik.zeichneRasen(g, W, H, this.lage.seed);
       if (this.lage.disziplin === 'truemmer') this.kiesboden();
       if (this.lage.mittelweg) {
         const m = this.lage.mittelweg;
         this.rechteck(m.x, m.y, m.w, m.h, FARBEN.mittelweg);
+        // festgetretener Sandweg: körnig, zu den Rändern hin etwas dunkler
+        const [ax, ay] = this.w2s(m.x, m.y); const [bx, by] = this.w2s(m.x + m.w, m.y + m.h);
+        const x0 = Math.min(ax, bx); const y0 = Math.min(ay, by); const mw = Math.abs(bx - ax); const mh = Math.abs(by - ay);
+        SHS.grafik.zeichneKoernung(g, x0, y0, mw, mh, this.lage.seed, 'rgba(255,246,220,0.35)', 'rgba(120,96,58,0.28)');
+        const quer = mw < mh ? g.createLinearGradient(x0, 0, x0 + mw, 0) : g.createLinearGradient(0, y0, 0, y0 + mh);
+        quer.addColorStop(0, 'rgba(90,70,40,0.28)'); quer.addColorStop(0.25, 'rgba(90,70,40,0)');
+        quer.addColorStop(0.75, 'rgba(90,70,40,0)'); quer.addColorStop(1, 'rgba(90,70,40,0.28)');
+        g.fillStyle = quer; g.fillRect(x0, y0, mw, mh);
         // Markierung (Sägemehl/Kreide) – der HF darf den Mittelweg nicht verlassen
-        const g2 = this.g;
-        g2.save(); g2.setLineDash([6, 4]); g2.strokeStyle = 'rgba(255,255,255,0.9)'; g2.lineWidth = 2;
+        g.save(); g.setLineDash([6, 4]); g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 2;
         for (const x of [m.x, m.x + m.w]) {
-          const [ax, ay] = this.w2s(x, m.y); const [bx, by] = this.w2s(x, m.y + m.h);
-          g2.beginPath(); g2.moveTo(ax, ay); g2.lineTo(bx, by); g2.stroke();
+          const [px, py] = this.w2s(x, m.y); const [qx, qy] = this.w2s(x, m.y + m.h);
+          g.beginPath(); g.moveTo(px, py); g.lineTo(qx, qy); g.stroke();
         }
-        g2.restore();
+        g.restore();
       }
-      this.rahmen(b.x, b.y, b.w, b.h, FARBEN.band, 2);
+      // Absperrband mit Schlagschatten
+      g.save(); g.translate(1.5, 1.5); this.rahmen(b.x, b.y, b.w, b.h, 'rgba(0,0,0,0.3)', 3); g.restore();
+      this.rahmen(b.x, b.y, b.w, b.h, FARBEN.band, 2.5);
+      // Ränder leicht abdunkeln: lenkt den Blick auf den Vorführplatz
+      const vig = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.hypot(W, H) * 0.62);
+      vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.3)');
+      g.fillStyle = vig; g.fillRect(0, 0, W, H);
     }
 
     zeichneVordergrund(W, H) {
@@ -738,32 +751,37 @@
       this.g.strokeRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay));
     }
 
-    grasTextur() {
-      if (!this.grasPunkte) {
-        const r = SHS.rng(this.lage.seed + 3);
-        this.grasPunkte = [];
-        const n = Math.round(this.lage.welt.w * this.lage.welt.h * 6);
-        for (let i = 0; i < n; i++) this.grasPunkte.push([r() * this.lage.welt.w, r() * this.lage.welt.h, r()]);
-      }
-      const g = this.g;
-      for (const [x, y, v] of this.grasPunkte) {
-        const [px, py] = this.w2s(x, y);
-        g.fillStyle = v < 0.5 ? 'rgba(30,60,20,0.18)' : 'rgba(170,210,120,0.15)';
-        g.fillRect(px, py, 2, 2);
-      }
-    }
-
-    // Trümmerfeld auf Schotter-/Kiesuntergrund
+    // Trümmerfeld auf Schotter-/Kiesuntergrund: Sand, darauf Kiesel mit Schatten und Lichtkante
     kiesboden() {
       const b = this.lage.bereich;
       this.rechteck(b.x, b.y, b.w, b.h, '#8f8068');
-      if (!this.kies) this.kies = SHS.grafik.kiesPunkte(this.lage);
       const g = this.g;
-      for (const p of this.kies) {
-        const [px, py] = this.w2s(p.x, p.y);
-        g.fillStyle = p.f;
-        g.beginPath(); g.arc(px, py, Math.max(0.8, p.s * this.skala), 0, Math.PI * 2); g.fill();
+      const [ax, ay] = this.w2s(b.x, b.y); const [bx, by] = this.w2s(b.x + b.w, b.y + b.h);
+      const x0 = Math.min(ax, bx); const y0 = Math.min(ay, by); const bw = Math.abs(bx - ax); const bh = Math.abs(by - ay);
+      const r = SHS.rng(this.lage.seed + 23);
+      g.save(); g.beginPath(); g.rect(x0, y0, bw, bh); g.clip();
+      for (let i = 0; i < 14; i++) {
+        const x = x0 + r() * bw; const y = y0 + r() * bh; const rad = 30 + r() * 90;
+        const grad = g.createRadialGradient(x, y, 0, x, y, rad);
+        const hell = r() < 0.5;
+        grad.addColorStop(0, hell ? 'rgba(200,186,160,0.2)' : 'rgba(70,58,42,0.2)'); grad.addColorStop(1, hell ? 'rgba(200,186,160,0)' : 'rgba(70,58,42,0)');
+        g.fillStyle = grad; g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
       }
+      g.restore();
+      SHS.grafik.zeichneKoernung(g, x0, y0, bw, bh, this.lage.seed, 'rgba(226,214,190,0.4)', 'rgba(62,52,38,0.4)');
+      if (!this.kies) this.kies = SHS.grafik.kiesPunkte(this.lage);
+      this.kies.forEach((p, i) => {
+        const [px, py] = this.w2s(p.x, p.y);
+        const rad = Math.max(0.9, p.s * this.skala); const w = (i * 2.399) % Math.PI;
+        g.fillStyle = 'rgba(0,0,0,0.3)';
+        g.beginPath(); g.ellipse(px + rad * 0.35, py + rad * 0.4, rad, rad * 0.72, w, 0, Math.PI * 2); g.fill();
+        g.fillStyle = p.f;
+        g.beginPath(); g.ellipse(px, py, rad, rad * 0.72, w, 0, Math.PI * 2); g.fill();
+        if (rad > 1.5) {
+          g.fillStyle = 'rgba(255,250,235,0.3)';
+          g.beginPath(); g.arc(px - rad * 0.3, py - rad * 0.25, rad * 0.4, 0, Math.PI * 2); g.fill();
+        }
+      });
     }
 
     kreis(x, y, rM, farbe, rand) {
@@ -807,16 +825,12 @@
       const g = this.g;
       for (const v of this.lage.verstecke) {
         if (this.lage.disziplin === 'behaeltnis') {
-          if (v.form === 'eckig') {
-            const [px, py] = this.w2s(v.x, v.y);
-            const r = v.r * this.skala;
-            g.fillStyle = '#7d5a3c'; g.fillRect(px - r, py - r * 0.75, r * 2, r * 1.5);
-            g.strokeStyle = '#4a3422'; g.lineWidth = 1.5; g.strokeRect(px - r, py - r * 0.75, r * 2, r * 1.5);
-          } else {
-            this.kreis(v.x, v.y, v.r, FARBEN.eimer, FARBEN.eimerRand);
-            this.kreis(v.x, v.y, v.r * 0.75, null, '#c4cbd3');
-          }
-          for (const k of v.kammern) this.kreis(k.x, k.y, 0.035, FARBEN.kammer);
+          const [px, py] = this.w2s(v.x, v.y);
+          const dreh = this.rot ? Math.PI / 2 : 0; // die gedrehte Ansicht vertauscht die Achsen
+          g.save(); g.translate(px, py); g.rotate(dreh);
+          SHS.grafik.zeichneBehaeltnis(g, v, v.r * this.skala, dreh);
+          g.restore();
+          for (const k of v.kammern) this.kreis(k.x, k.y, 0.035, FARBEN.kammer, 'rgba(255,255,255,0.35)');
           if (this.lage.lk === 3 && this.skala > 28) {
             const idx = this.lage.verstecke.indexOf(v);
             const dy = idx % 2 ? v.r + 0.3 : -(v.r + 0.18);
@@ -826,8 +840,9 @@
           const [px, py] = this.w2s(v.x, v.y);
           g.save();
           g.translate(px, py);
-          g.rotate(this.rot ? Math.PI / 2 - v.rot : v.rot);
-          SHS.grafik.zeichneTruemmer(g, v, v.w * this.skala, v.h * this.skala);
+          const dreh = this.rot ? Math.PI / 2 - v.rot : v.rot;
+          g.rotate(dreh);
+          SHS.grafik.zeichneTruemmer(g, v, v.w * this.skala, v.h * this.skala, dreh);
           g.restore();
         }
       }
@@ -929,7 +944,7 @@
       const blick = this.winkel(Math.atan2(h.y - y, h.x - x));
       g.save();
       g.translate(px, py); g.rotate(blick);
-      SHS.grafik.zeichneMensch(g, { sk: this.skala, arm: this.wrArm > 0, jacke: FARBEN.wr, hose: '#2b2b2b', haare: '#9a9a9a', muetze: '#2b2b2b', klemmbrett: true });
+      SHS.grafik.zeichneMensch(g, { sk: this.skala, drehung: blick, arm: this.wrArm > 0, jacke: FARBEN.wr, hose: '#2b2b2b', haare: '#9a9a9a', muetze: '#2b2b2b', klemmbrett: true });
       g.restore();
       this.text('WR', x, y + 0.5, '#fff', 10);
       if (this.wrArm > 0) {
@@ -945,8 +960,7 @@
       const [ax, ay] = this.w2s(s.hf.x, s.hf.y);
       const [bx, by] = this.w2s(h.x, h.y);
       const g = this.g;
-      g.strokeStyle = s.schleppleine ? 'rgba(250,120,40,0.8)' : 'rgba(30,30,30,0.85)';
-      g.lineWidth = 1.5;
+      g.lineWidth = 1.5; g.lineCap = 'round';
       g.beginPath();
       if (s.schleppleine) {
         // Schleppleine hängt hinter dem Hund (nicht in der Hand)
@@ -957,6 +971,8 @@
         const d = Math.hypot(bx - ax, by - ay); const durchhang = Math.max(0, 2 * this.skala - d) * 0.4;
         g.moveTo(ax, ay); g.quadraticCurveTo((ax + bx) / 2, (ay + by) / 2 + durchhang, bx, by);
       }
+      g.save(); g.translate(1.5, 2); g.strokeStyle = 'rgba(0,0,0,0.22)'; g.stroke(); g.restore();
+      g.strokeStyle = s.schleppleine ? 'rgba(250,120,40,0.9)' : 'rgba(30,30,30,0.9)';
       g.stroke();
     }
 
@@ -974,7 +990,7 @@
       g.translate(px, py);
       g.rotate(w);
       SHS.grafik.zeichneHund(g, {
-        sk, t, rasse: this.opts.hund.rasse, fell: this.opts.hund.fell,
+        sk, t, drehung: w, rasse: this.opts.hund.rasse, fell: this.opts.hund.fell,
         liegtAnteil: h.liegtAnim, sitztAnteil: h.sitztAnim, gang: h.gangPhase, tempo: h.v, biegung: h.drehRate,
         rute: h.rute, ruteHoch: h.ruteHoch,
         naseTief: h.naseTief, kopfW,
@@ -1024,7 +1040,7 @@
       g.save();
       g.translate(px, py);
       g.rotate(w);
-      SHS.grafik.zeichneMensch(g, { sk, gang: hf.gang || 0, tempo: hf.tempo || 0, arm: hf.arm, jacke: FARBEN.hf, hose: '#30343d', haare: '#5a3b24' });
+      SHS.grafik.zeichneMensch(g, { sk, drehung: w, gang: hf.gang || 0, tempo: hf.tempo || 0, arm: hf.arm, jacke: FARBEN.hf, hose: '#30343d', haare: '#5a3b24' });
       g.restore();
       if (hf.arm) {
         // Handzeichen deutlich sichtbar: Hand über dem Kopf

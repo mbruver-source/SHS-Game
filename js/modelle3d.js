@@ -151,6 +151,46 @@
     }
   }
 
+  // Schlauch entlang x mit elliptischen Querschnitten: ringe = [{ x, y (Mitte), ry, rz (Halbachsen) }].
+  // Glatt schattiert, beide Enden geschlossen – für organische Formen (Rumpf, Kopf, Rute, Oberkörper).
+  function schlauch(nz, m, ringe, col, seg) {
+    seg = seg || 12;
+    const nm = M.normalenMatrix(m);
+    const n = ringe.length;
+    const dir = ringe[n - 1].x >= ringe[0].x ? 1 : -1;
+    const P = [];
+    for (let i = 0; i < n; i++) {
+      const r = ringe[i]; const v = ringe[Math.max(0, i - 1)]; const w = ringe[Math.min(n - 1, i + 1)];
+      const dx = (w.x - v.x) || 1e-6;
+      const dcy = ((w.y || 0) - (v.y || 0)) / dx; const dry = (w.ry - v.ry) / dx; const drz = (w.rz - v.rz) / dx;
+      const ring = [];
+      for (let j = 0; j < seg; j++) {
+        const a = (j / seg) * Math.PI * 2; const c = Math.cos(a); const s = Math.sin(a);
+        // Fläche F(x, a) = [x, y + ry·sin a, rz·cos a]; Normale = −(dF/da × dF/dx)
+        let nx = -(r.ry * drz * c * c + r.rz * s * (dcy + dry * s)); let ny = r.rz * s; let nzz = r.ry * c;
+        const l = Math.hypot(nx, ny, nzz);
+        if (l < 1e-9) { nx = i < n / 2 ? -dir : dir; ny = 0; nzz = 0; } else { nx /= l; ny /= l; nzz /= l; }
+        ring.push([r.x, (r.y || 0) + r.ry * s, r.rz * c, nx, ny, nzz]);
+      }
+      P.push(ring);
+    }
+    const eck = (q) => ecke(nz, m, nm, q[0], q[1], q[2], q[3], q[4], q[5], farbeBei(col, q[0], q[1], q[2], q[3], q[4], q[5]));
+    for (let i = 0; i < n - 1; i++) {
+      for (let j = 0; j < seg; j++) {
+        const a = P[i][j]; const b = P[i][(j + 1) % seg]; const c = P[i + 1][(j + 1) % seg]; const d = P[i + 1][j];
+        for (const q of [a, b, c, a, c, d]) eck(q);
+      }
+    }
+    for (const [i, s] of [[0, -dir], [n - 1, dir]]) {
+      const r = ringe[i];
+      const mitte = [r.x, r.y || 0, 0, s, 0, 0];
+      for (let j = 0; j < seg; j++) {
+        const a = P[i][j]; const b = P[i][(j + 1) % seg];
+        eck(mitte); eck([a[0], a[1], a[2], s, 0, 0]); eck([b[0], b[1], b[2], s, 0, 0]);
+      }
+    }
+  }
+
   // Flaches Rechteck auf Höhe y (Boden), mit Farbrauschen über ein Raster
   function bodenFlaeche(nz, x, z, w, t, y, col, raster, rauschen, seed) {
     const r = SHS.rng ? SHS.rng(seed || 1) : Math.random;
@@ -206,7 +246,16 @@
       }
       case 'Kiste': {
         const kh = HOEHEN.Kiste;
-        quader(nz, M.kette(T, M.verschiebe(0, kh / 2, 0), M.skaliere(w, kh, h)), { oben: '#b48a57', seite: '#a07a4c' });
+        // Drei Brettlagen mit leicht wechselndem Holzton und feinen Fugen, dazu Eckleisten
+        for (let i = 0; i < 3; i++) {
+          const t = (r() - 0.5) * 0.14;
+          quader(nz, M.kette(T, M.verschiebe(0, (kh / 3) * (i + 0.5), 0), M.skaliere(w - (i % 2) * 0.006, kh / 3 - 0.004, h - (i % 2) * 0.006)),
+            { oben: ton('#b48a57', t), seite: ton('#a07a4c', t) });
+        }
+        quader(nz, M.kette(T, M.verschiebe(0, kh / 2, 0), M.skaliere(w - 0.012, kh - 0.004, h - 0.012)), '#5e4429');
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+          quader(nz, M.kette(T, M.verschiebe(sx * (w / 2 - 0.012), kh / 2, sz * (h / 2 - 0.012)), M.skaliere(0.034, kh + 0.004, 0.034)), '#7d5a36');
+        }
         // Rahmenleisten
         for (const [x, z, sx, sz] of [[0, -h / 2, w + 0.01, 0.03], [0, h / 2, w + 0.01, 0.03], [-w / 2, 0, 0.03, h + 0.01], [w / 2, 0, 0.03, h + 0.01]]) {
           quader(nz, M.kette(T, M.verschiebe(x, kh + 0.004, z), M.skaliere(sx, 0.012, sz)), '#6b4c2c');
@@ -268,7 +317,8 @@
     if (v.form === 'eckig') {
       const bx = v.r * 2; const bz = v.r * 1.5;
       quader(nz, M.kette(T, M.verschiebe(0, hh / 2, 0), M.skaliere(bx, hh, bz)), { oben: ton(col, 0.08), seite: col });
-      quader(nz, M.kette(T, M.verschiebe(0, hh + 0.006, 0), M.skaliere(bx * 0.3, 0.012, 0.04)), ton(col, -0.4)); // Griff
+      quader(nz, M.kette(T, M.verschiebe(0, hh * 0.8, 0), M.skaliere(bx + 0.008, 0.012, bz + 0.008)), ton(col, -0.3)); // Deckelfuge
+      quader(nz, M.kette(T, M.verschiebe(0, hh + 0.012, 0), M.skaliere(bx * 0.3, 0.024, 0.03)), ton(col, -0.45)); // Griff
       for (const k of v.kammern) {
         // Öffnung dort, wo die Richtung zur Kammer die Wand trifft
         const dx = k.x - v.x; const dz = k.y - v.y;
@@ -314,7 +364,7 @@
       const n = Math.round(b.w * b.h * 90);
       for (let i = 0; i < n; i++) {
         const x = b.x + r() * b.w; const z = b.y + r() * b.h; const s = r.range(0.012, 0.035); const f = r.pick(farben);
-        quader(nz, M.kette(M.verschiebe(x, 0.003 + s * 0.3, z), M.drehY(r() * 3), M.skaliere(s * 2, s * 0.8, s * 1.6)), f);
+        kugel(nz, M.kette(M.verschiebe(x, 0.003 + s * 0.2, z), M.drehY(r() * 3), M.skaliere(s * 2.2, s * 1.1, s * 1.7)), f, 6, 3);
       }
     } else {
       bodenFlaeche(nz, b.x, b.y, b.w, b.h, 0.003, '#6c9c47', 0.25, 0.06, lage.seed + 7);
@@ -344,13 +394,20 @@
     }
   }
 
-  // Alle unbeweglichen Teile einer Suchlage (Boden + Verstecke)
-  function statisch(lage) {
-    const nz = boden(lage);
+  // Verstecke einer Suchlage (alles, was einen Schatten wirft)
+  function objekte(lage) {
+    const nz = netz();
     for (const v of lage.verstecke) {
       if (lage.disziplin === 'behaeltnis') behaeltnis(nz, v);
       else truemmer(nz, v);
     }
+    return nz;
+  }
+
+  // Alle unbeweglichen Teile einer Suchlage (Boden + Verstecke)
+  function statisch(lage) {
+    const nz = boden(lage); const o = objekte(lage);
+    for (const k of ['p', 'n', 'f']) for (const v of o[k]) nz[k].push(v);
     return nz;
   }
 
@@ -384,6 +441,13 @@
     };
   }
 
+  // Rumpfprofil von hinten nach vorn: [Anteil der Rumpflänge, Mitte y, halbe Höhe, halbe Breite] (in Hundegrößen)
+  const RUMPF_PROFIL = [
+    [-0.5, 0.045, 0.03, 0.03], [-0.46, 0.03, 0.085, 0.075], [-0.38, 0.01, 0.125, 0.115], [-0.25, 0.012, 0.125, 0.12],
+    [-0.1, 0.022, 0.118, 0.112], [0.05, 0.005, 0.14, 0.128], [0.2, -0.012, 0.158, 0.138], [0.33, -0.01, 0.155, 0.132],
+    [0.43, 0, 0.13, 0.11], [0.5, 0.02, 0.085, 0.075], [0.54, 0.03, 0.03, 0.03],
+  ];
+
   function hundTeile(F, f) {
     const g = hundMasse(F);
     const grund = farbe(f.grund);
@@ -396,22 +460,42 @@
       return grund;
     };
     const teile = {};
-    // Rumpf (Ellipsoid) – Mittelpunkt im Ursprung
-    teile.rumpf = netz(); kugel(teile.rumpf, M.skaliere(g.rumpfL, g.rumpfH, g.rumpfB), fell, 14, 9);
-    // Brust (vorne etwas tiefer, Kragen hell)
-    teile.brust = netz(); kugel(teile.brust, M.skaliere(0.26 * g.G, 0.27 * g.G, g.rumpfB * 1.02),
-      (x, y, z, nx, ny) => (f.kragen && nx > 0.4 && ny < 0.3 ? f.kragen : fell(x, y, z, nx, ny)), 12, 8);
-    // Hals: von unten (Ursprung) nach oben/vorne
-    teile.hals = netz(); zylinder(teile.hals, M.kette(M.verschiebe(0, 0.1 * g.G, 0), M.skaliere(0.13 * g.G, 0.2 * g.G, 0.12 * g.G)), (x, y, z, nx) => (f.kragen && nx > 0.5 ? f.kragen : fell(x, y, z, nx, 0)), 10, 0.85);
-    // Kopf mit Fang, Nase, Augen und Ohren – Drehpunkt am Hinterkopf
+    const G = g.G;
+    // Rumpf als Schlauch mit Hundeprofil: Kruppe, aufgezogene Lende, tiefer Brustkorb, Vorbrust.
+    // Mittelpunkt im Ursprung; Kragen/Brustfleck vorn unten.
+    teile.rumpf = netz();
+    schlauch(teile.rumpf, M.ident(),
+      RUMPF_PROFIL.map(([u, cy, ry, rz]) => ({ x: u * g.rumpfL, y: cy * G, ry: ry * G, rz: rz * G * F.breit })),
+      (x, y, z, nx, ny) => (f.kragen && x > 0.34 * g.rumpfL && ny < 0.45 ? f.kragen : fell(x, y, z, nx, ny)), 14);
+    // Hals: von unten (Ursprung, im Rumpf verankert) nach oben/vorne, zum Kopf hin schlanker
+    teile.hals = netz();
+    const hb = Math.pow(F.breit, 0.5);
+    schlauch(teile.hals, M.drehZ(Math.PI / 2), [
+      { x: -0.06 * G, ry: 0.07 * G, rz: 0.06 * G * hb }, { x: -0.01 * G, ry: 0.112 * G, rz: 0.092 * G * hb }, { x: 0.07 * G, ry: 0.098 * G, rz: 0.08 * G * hb },
+      { x: 0.15 * G, ry: 0.082 * G, rz: 0.07 * G * hb }, { x: 0.2 * G, ry: 0.06 * G, rz: 0.055 * G }, { x: 0.225 * G, ry: 0.02 * G, rz: 0.02 * G },
+    ], (x, y, z, nx, ny) => (f.kragen && ny < -0.5 ? f.kragen : fell(x, y, z, nx, ny)), 12);
+    // Kopf mit Schädel, Stop, Fang, Nase, Augen und Ohren – Drehpunkt am Hinterkopf
     const kopf = netz();
     const kopfF = f.kopf || f.grund;
-    kugel(kopf, M.kette(M.verschiebe(0.07 * g.G, 0, 0), M.skaliere(g.kopf * 1.25, g.kopf, g.kopf * 0.95)), kopfF, 12, 8);
     const fangF = f.maske || kopfF;
-    kugel(kopf, M.kette(M.verschiebe(0.07 * g.G + g.kopf * 0.55 + g.fang * 0.35, -0.03 * g.G, 0), M.skaliere(g.fang * 1.3, g.kopf * 0.55, g.kopf * 0.55)), (x, y, z, nx, ny) => (f.blesse && ny > 0.4 ? f.blesse : fangF), 10, 6);
-    kugel(kopf, M.kette(M.verschiebe(0.07 * g.G + g.kopf * 0.55 + g.fang * 0.95, -0.015 * g.G, 0), M.skaliere(0.035 * g.G)), f.nase || '#141010', 8, 5);
+    const xm = 0.155 * G; const fl = g.fang;
+    schlauch(kopf, M.ident(), [
+      { x: -0.03 * G, y: 0, ry: 0.02 * G, rz: 0.02 * G },
+      { x: -0.015 * G, y: 0, ry: 0.06 * G, rz: 0.06 * G },
+      { x: 0.04 * G, y: 0.005 * G, ry: 0.083 * G, rz: 0.082 * G },
+      { x: 0.09 * G, y: 0.005 * G, ry: 0.08 * G, rz: 0.078 * G },
+      { x: 0.135 * G, y: -0.005 * G, ry: 0.062 * G, rz: 0.062 * G },
+      { x: xm, y: -0.022 * G, ry: 0.042 * G, rz: 0.045 * G },
+      { x: xm + fl * 0.5, y: -0.027 * G, ry: 0.037 * G, rz: 0.04 * G },
+      { x: xm + fl * 0.9, y: -0.03 * G, ry: 0.032 * G, rz: 0.034 * G },
+      { x: xm + fl, y: -0.03 * G, ry: 0.018 * G, rz: 0.02 * G },
+    ], (x, y, z, nx, ny) => {
+      if (f.blesse && ny > 0.3 && Math.abs(z) < 0.02 * G && x > 0.02 * G) return f.blesse;
+      return x > 0.142 * G ? fangF : kopfF;
+    }, 12);
+    kugel(kopf, M.kette(M.verschiebe(xm + fl, -0.018 * G, 0), M.skaliere(0.04 * G, 0.034 * G, 0.042 * G)), f.nase || '#141010', 8, 5);
     for (const s of [-1, 1]) {
-      kugel(kopf, M.kette(M.verschiebe(0.07 * g.G + g.kopf * 0.5, 0.025 * g.G, s * g.kopf * 0.3), M.skaliere(0.022 * g.G)), '#1a120c', 6, 4);
+      kugel(kopf, M.kette(M.verschiebe(0.118 * G, 0.03 * G, s * 0.052 * G), M.skaliere(0.024 * G)), '#1a120c', 6, 4);
       const ohrF = f.ohren || kopfF;
       const og = F.ohrGr || 1;
       if (F.ohr === 'steh') {
@@ -427,7 +511,10 @@
     // sie werden zwischen zwei Gelenkpunkten ausgerichtet. Gelenkkugeln verdecken die Übergänge.
     const pfote = f.pfoten || null;
     const segment = (d, oben, col) => { const nz = netz(); zylinder(nz, M.kette(M.verschiebe(0, -0.5, 0), M.skaliere(d, 1, d)), col, 8, oben); return nz; };
-    teile.beinOben = segment(0.1 * g.G, 1.3, (x, y, z) => fell(x, y, z, 0, 0));
+    // Oberarm/Keule: oben rund und muskulös, zum Gelenk hin schlanker (Schlauch nach unten)
+    teile.beinOben = netz();
+    schlauch(teile.beinOben, M.drehZ(-Math.PI / 2), [[-0.1, 0.3], [0, 0.64], [0.28, 0.7], [0.65, 0.56], [1, 0.5]]
+      .map(([x, r]) => ({ x, ry: r * 0.125 * g.G, rz: r * 0.09 * g.G })), (x, y, z) => fell(x, y, z, 0, 0), 8);
     teile.beinMitte = segment(0.058 * g.G, 1.2, (x, y, z) => (pfote && y < -0.3 ? pfote : fell(x, y, z, 0, 0)));
     teile.beinUnten = segment(0.048 * g.G, 1.1, pfote || f.grund);
     teile.gelenk = netz(); kugel(teile.gelenk, M.ident(), (x, y, z) => fell(x, y, z, 0, 0), 8, 5);
@@ -437,9 +524,13 @@
     // Rute: Drehpunkt am Ansatz, zeigt nach −x
     const rute = netz();
     const ruteF = f.rute || f.grund;
-    const dicke = F.rute === 'otter' ? 0.075 : F.rute === 'buschig' ? 0.08 : F.rute === 'kurz' ? 0.05 : 0.045;
-    zylinder(rute, M.kette(M.verschiebe(-0.5, 0, 0), M.drehZ(Math.PI / 2), M.skaliere(dicke, 1, dicke)),
-      (x, y) => (f.rutenspitze && y > 0.3 ? f.rutenspitze : ruteF), 8, F.rute === 'buschig' ? 0.6 : 0.3);
+    const dicke = (F.rute === 'otter' ? 0.075 : F.rute === 'buschig' ? 0.08 : F.rute === 'kurz' ? 0.05 : 0.045) * Math.max(0.6, G);
+    // Verjüngt sich zur Spitze; die buschige Rute ist in der Mitte am dicksten
+    const ruteRadius = (u) => (F.rute === 'buschig' ? 0.5 * dicke * (0.75 + 0.55 * Math.sin(Math.PI * Math.min(1, u * 1.15))) * (1 - 0.35 * u)
+      : 0.5 * dicke * (1 - 0.72 * u));
+    const ruteRinge = [];
+    for (let i = 0; i <= 6; i++) { const u = i / 6; const rr = ruteRadius(u) * (i === 6 ? 0.45 : 1); ruteRinge.push({ x: -u, y: 0, ry: rr, rz: rr }); }
+    schlauch(rute, M.ident(), ruteRinge, (x) => (f.rutenspitze && x < -0.78 ? f.rutenspitze : ruteF), 8);
     teile.rute = rute;
     return { teile, masse: g };
   }
@@ -482,7 +573,7 @@
     const lauf = Math.max(0, Math.min(1, (z.tempo || 0) / 0.15)) * (1 - liegt) * (1 - sitzt);
     const atem = Math.sin(t * 2.6) * 0.004 * g.G;
     const stehH = g.bein + g.rumpfH * 0.32;
-    const liegH = g.rumpfH * 0.5;
+    const liegH = g.rumpfH * 0.6;
     const wippen = -0.008 * g.G * lauf * (0.5 + 0.5 * Math.cos((4 * Math.PI * weg) / schritt));
     const rumpfY = stehH + (liegH - stehH) * liegt + atem + wippen - sitzt * 0.02 * g.G;
     // Sitzen: Rumpf hinten absenken (Drehung um die Schultern)
@@ -495,15 +586,13 @@
     const liste = [];
     const rumpfMitte = R(-0.03 * g.G, rumpfY);
     liste.push({ teil: 'rumpf', m: M.kette(M.verschiebe(rumpfMitte[0], rumpfMitte[1], 0), M.drehZ(kipp)) });
-    const brust = R(g.hueftX * 0.95, rumpfY + 0.01 * g.G);
-    liste.push({ teil: 'brust', m: M.kette(M.verschiebe(brust[0], brust[1], 0), M.drehZ(kipp)) });
     // Hals und Kopf
     const nase = z.naseTief ? 1 : 0;
     const halsBasis = [g.hueftX + 0.07 * g.G * F.lang, rumpfY + 0.06 * g.G];
     const halsNeig = 0.55 + nase * 1.0 - sitzt * 0.2; // Neigung des Halses nach vorn (rad)
     liste.push({ teil: 'hals', m: M.kette(M.verschiebe(halsBasis[0], halsBasis[1], 0), M.drehY(-(z.kopfW || 0) * 0.4), M.drehZ(-halsNeig)) });
     const halsL = 0.2 * g.G;
-    const kopfP = [halsBasis[0] + Math.sin(halsNeig) * halsL * 0.9, halsBasis[1] + Math.cos(halsNeig) * halsL * 0.9];
+    const kopfP = [halsBasis[0] + Math.sin(halsNeig) * halsL * 0.8, halsBasis[1] + Math.cos(halsNeig) * halsL * 0.8];
     const kw = z.kopfW || 0;
     const kx = halsBasis[0] + (kopfP[0] - halsBasis[0]) * Math.cos(kw * 0.4);
     const kz = (kopfP[0] - halsBasis[0]) * Math.sin(kw * 0.4);
@@ -565,12 +654,23 @@
   // ------------------------------------------------------------------ Mensch (HF/WR)
   function menschTeile(z) {
     const t = {};
-    t.bein = netz(); zylinder(t.bein, M.kette(M.verschiebe(0, -0.45, 0), M.skaliere(0.13, 0.9, 0.13)), z.hose || '#30343d', 8, 1.1);
-    quader(t.bein, M.kette(M.verschiebe(0.04, -0.88, 0), M.skaliere(0.25, 0.07, 0.11)), '#2a2522');
-    t.rumpf = netz(); zylinder(t.rumpf, M.kette(M.verschiebe(0, 0.3, 0), M.skaliere(0.26, 0.6, 0.42)), z.jacke, 12, 1.1);
+    const haut = z.haut || '#e8bf98';
+    // Bein: zum Knöchel hin schlanker, Schuh mit runder Kappe
+    t.bein = netz(); zylinder(t.bein, M.kette(M.verschiebe(0, -0.45, 0), M.skaliere(0.115, 0.9, 0.115)), z.hose || '#30343d', 10, 1.4);
+    quader(t.bein, M.kette(M.verschiebe(0.03, -0.875, 0), M.skaliere(0.2, 0.06, 0.1)), '#2a2522');
+    kugel(t.bein, M.kette(M.verschiebe(0.13, -0.875, 0), M.skaliere(0.1, 0.07, 0.1)), '#2a2522', 8, 5);
+    // Oberkörper: Jackensaum, Brust, Schultern, Halsansatz (Schlauch entlang der Hochachse)
+    t.rumpf = netz();
+    schlauch(t.rumpf, M.drehZ(Math.PI / 2), [
+      { x: -0.04, ry: 0.06, rz: 0.1 }, { x: -0.02, ry: 0.105, rz: 0.175 }, { x: 0.15, ry: 0.105, rz: 0.175 },
+      { x: 0.3, ry: 0.11, rz: 0.185 }, { x: 0.45, ry: 0.115, rz: 0.21 }, { x: 0.55, ry: 0.105, rz: 0.225 },
+      { x: 0.6, ry: 0.075, rz: 0.15 }, { x: 0.62, ry: 0.048, rz: 0.052 }, { x: 0.7, ry: 0.045, rz: 0.048 },
+    ], (x) => (x > 0.61 ? haut : x < 0.0 ? ton(z.jacke, -0.25) : z.jacke), 14);
     for (const k of ['arm', 'armL']) {
-      t[k] = netz(); zylinder(t[k], M.kette(M.verschiebe(0, -0.3, 0), M.skaliere(0.09, 0.6, 0.09)), ton(z.jacke, -0.1), 8, 1.1);
-      kugel(t[k], M.kette(M.verschiebe(0, -0.62, 0), M.skaliere(0.08)), z.haut || '#e8bf98', 6, 4);
+      t[k] = netz();
+      kugel(t[k], M.kette(M.verschiebe(0, -0.02, 0), M.skaliere(0.105)), ton(z.jacke, -0.05), 8, 6); // Schulter
+      zylinder(t[k], M.kette(M.verschiebe(0, -0.3, 0), M.skaliere(0.08, 0.6, 0.08)), ton(z.jacke, -0.1), 8, 1.35);
+      kugel(t[k], M.kette(M.verschiebe(0, -0.63, 0), M.skaliere(0.075, 0.1, 0.06)), haut, 6, 4);
     }
     // Klemmbrett des WR in der linken Hand
     if (z.klemmbrett) quader(t.armL, M.kette(M.verschiebe(0.1, -0.6, 0), M.skaliere(0.2, 0.26, 0.015)), { oben: '#f4f1e8', seite: '#f4f1e8' });
@@ -596,7 +696,7 @@
 
   SHS.modelle3d = {
     HOEHEN, BEHAELTNIS_HOEHE, BEHAELTNIS_FARBEN, farbe, ton, mische, netz, anzahl,
-    quader, zylinder, kugel, torus, truemmer, behaeltnis, boden, statisch, oberkante, versteckOberkante,
+    quader, zylinder, kugel, torus, schlauch, truemmer, behaeltnis, boden, objekte, statisch, oberkante, versteckOberkante,
     spielzeug, futter, scheibe, einheitsQuader, hundMasse, hundTeile, hundPose, menschTeile, menschPose,
   };
 })(globalThis.SHS = globalThis.SHS || {});
