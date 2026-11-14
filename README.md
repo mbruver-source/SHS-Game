@@ -44,6 +44,8 @@ Auf dem anderen Gerät unter „Importieren“ wieder einlesen.
 | Mausklick | Richtungszeichen (Führen, kostet Punkte) |
 | R | „Hier!“ |
 | B | „Bleib!“ während der Anzeige (Unterstützung, kostet Punkte) |
+| X | „Platz!“ – Hund ablegen (Ablegen durch Führung, kostet Punkte) |
+| L | Hund loben (einzeln frei, Dauerlob kostet Punkte) |
 | E halten | Versteck anfassen (Eigengeruch, 3 s) bzw. antäuschen |
 | G | Geruchsansicht (nur in der Übungssuche) |
 | N | Nahaufnahme der Anzeige ein/aus |

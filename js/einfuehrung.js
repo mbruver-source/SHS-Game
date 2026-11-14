@@ -40,7 +40,8 @@
           if (h.zustand !== 'sitzt') weiter('lesen');
           return {
             titel: '3 · „Such!“',
-            text: 'Schick deinen Hund mit der <b>Leertaste</b> bzw. <b>Such!</b> los. Das erste „Such!“ ist frei.<br>Jedes weitere Hörzeichen zählt als Hilfe und kostet Punkte.',
+            text: 'Schick deinen Hund mit der <b>Leertaste</b> bzw. <b>Such!</b> los. Das erste „Such!“ ist frei.<br>Jedes weitere Hörzeichen zählt als Hilfe und kostet Punkte.<br>'
+              + 'Weitere Kommandos: <b>R</b> Hier!, <b>X</b> Platz! (Ablegen durch Führung, −5), <b>L</b> Lob und der <b>Mausklick</b> als Richtungszeichen. Dazu gleich mehr.',
           };
         case 'lesen':
           if (h.zustand === 'geruch') weiter('geruch');
@@ -55,7 +56,8 @@
             titel: '4 · Mitgehen und den Hund lesen',
             text: `Geh an der Leine mit an den Eimern entlang. Achte auf die <b>Körpersprache</b>:
               tiefe Nase heißt suchen; wird die Rute schnell und der Kopf pendelt kurz hin und her, hat er Geruch.<br>
-              Der <b>Wind-Pfeil</b> oben rechts zeigt, wohin der Geruch weht.${t.seit > 20 ? '<br><i>Kleiner Trick für die Übung: Mit <b>G</b> blendest du die Geruchsfahne ein.</i>' : ''}`,
+              Der <b>Wind-Pfeil</b> oben rechts zeigt, wohin der Geruch weht.<br>
+              <b>Besser nicht:</b> den Hund zum Gegenstand <b>führen</b> (Mausklick). Zeigt er danach an, gilt das als „Anzeige durch Führung“ und die Suchleistung ist höchstens „Gut“. Auch <b>Platz!</b> und <b>Dauerlob</b> (viermal in 20 s) werden abgezogen.${t.seit > 20 ? '<br><i>Kleiner Trick für die Übung: Mit <b>G</b> blendest du die Geruchsfahne ein.</i>' : ''}`,
           };
         case 'geruch':
           if (h.zustand === 'anzeige' || h.zustand === 'anzeigeEinnehmen') weiter('anzeige');
@@ -88,7 +90,7 @@
         default:
           return {
             titel: '8 · Geschafft!',
-            text: 'Der WR gibt seine Bewertung: 60 Punkte Such- und 40 Punkte Anzeigeleistung, ab 70 ist die Disziplin bestanden.<br>Schau dir mit <b>„Nachbetrachtung ansehen“</b> deinen Laufweg, die Geruchsfahne und alle Fehler an.',
+            text: 'Der WR gibt seine Bewertung: 60 Punkte Such- und 40 Punkte Anzeigeleistung, ab 70 ist die Disziplin bestanden.<br>Das <b>Richterblatt</b> zeigt je Teilleistung die Note, jeden Abzug und Deckel wie „höchstens Sehr Gut“. Schau dir mit <b>„Nachbetrachtung ansehen“</b> deinen Laufweg, die Geruchsfahne und alle Fehler an.',
           };
       }
     };
@@ -101,7 +103,7 @@
     { ziel: '.werte', titel: 'Werte und Energie', text: 'Die Werte bestimmen, wie dein Hund sucht und anzeigt. Die Energie sinkt mit jedem Training und erholt sich an freien Tagen.' },
     { ziel: '.wochenplan', titel: 'Wochenplan Mo – Mi – Fr', text: 'Drei Trainings pro Woche, dazwischen Erholung. Ein ausgeruhter Hund lernt mehr.' },
     { ziel: '.trainings', titel: 'Training', text: 'Jede Trainingsart verbessert bestimmte Werte. Mit der Übungssuche übst du ganze Suchlagen, auch automatisch zum Zuschauen.' },
-    { ziel: '.empf-knopf', titel: 'Trainingsempfehlung', text: 'Hier steht, wo dein Hund Schwächen hat und was du als Nächstes trainieren solltest. Dafür werden auch die Fehler deiner letzten Suchen ausgewertet.' },
+    { ziel: '.empf-knopf', titel: 'Trainingsempfehlung', text: 'Hier steht, wo dein Hund Schwächen hat und was du als Nächstes trainieren solltest. Dafür werden auch die Fehler deiner letzten Suchen ausgewertet, mit dem Punktverlust je Disziplin.' },
     { ziel: '.aufstieg', titel: 'Aufstieg', text: 'In jeder Disziplin mindestens 70 Punkte in der aktuellen Leistungsklasse, dann geht es eine LK höher.' },
     { ziel: '.ausschreibungen', titel: 'Prüfungen', text: 'Ab 15 Monaten darf dein Hund starten. In der Woche der Prüfung erscheint hier „Starten“. Du kannst selbst führen oder automatisch vorführen lassen.' },
     { ziel: '[data-a=woche]', titel: 'Woche beenden', text: 'Damit geht es in die nächste Woche: Der Hund erholt sich am Wochenende und wird älter.' },

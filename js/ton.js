@@ -58,6 +58,8 @@
     such: (t) => { ton(1500, t, 0.09, 'sine', 0.25, 2300); ton(1700, t + 0.12, 0.12, 'sine', 0.25, 2600); },
     hier: (t) => { ton(2200, t, 0.12, 'sine', 0.25, 1500); ton(2200, t + 0.16, 0.12, 'sine', 0.25, 1500); },
     bleib: (t) => { ton(520, t, 0.18, 'triangle', 0.25); },
+    platz: (t) => { ton(1800, t, 0.16, 'sine', 0.25, 900); },
+    lob: (t) => { ton(700, t, 0.08, 'triangle', 0.18, 900); ton(900, t + 0.09, 0.1, 'triangle', 0.18, 1100); },
     arm: (t) => { rauschStoss(t, 0.06, 2500, 1.5, 0.15); },
     erwidert: (t) => { ton(880, t, 0.9, 'sine', 0.28); ton(1320, t, 0.6, 'sine', 0.12); },
     fund: (t) => { ton(660, t, 0.18, 'triangle', 0.25); ton(880, t + 0.16, 0.18, 'triangle', 0.25); ton(1320, t + 0.32, 0.45, 'triangle', 0.25); },

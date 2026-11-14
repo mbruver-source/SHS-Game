@@ -64,7 +64,7 @@
     return profil.teams[Math.min(profil.aktiv || 0, profil.teams.length - 1)];
   }
 
-  // Weiteren Hund aufnehmen: startet mit 12 Monaten in der aktuellen Woche des Profils.
+  // Weiteren Hund aufnehmen: startet mit 10 Monaten in der aktuellen Woche des Profils.
   function hundAufnehmen(profil, hundName, rasse, fell, geschlecht) {
     const vorlage = profil.teams[0];
     const team = neuerSpielstand(profil.hfName, hundName, rasse, profil.seed);
@@ -77,6 +77,7 @@
     aktualisiereAusschreibungen(team);
     // bereits gelaufene Prüfungen dieses Profils bleiben für den neuen Hund unberührt (eigene erledigt-Flags)
     team.schwierigkeit = profil.schwierigkeit || 'normal';
+    startwerteAnpassen(team);
     profil.teams.push(team);
     profil.aktiv = profil.teams.length - 1;
     return team;
@@ -172,10 +173,20 @@
 
   // Schwierigkeitsgrad je Benutzer: Lerntempo und Stärke der KI-Konkurrenz
   const SCHWIERIGKEIT = {
-    einsteiger: { name: 'Einsteiger', lernen: 1.25, kiNiveau: -8 },
-    normal: { name: 'Normal', lernen: 1, kiNiveau: 0 },
-    profi: { name: 'Profi', lernen: 0.85, kiNiveau: 6 },
+    einsteiger: { name: 'Einsteiger', lernen: 1.25, kiNiveau: -8, startBonus: 8 },
+    normal: { name: 'Normal', lernen: 1, kiNiveau: 0, startBonus: 0 },
+    profi: { name: 'Profi', lernen: 0.85, kiNiveau: 6, startBonus: 0 },
   };
+
+  // Einsteiger starten mit einem etwas besseren Hund (+8 auf alle Werte). Wirkt nur einmal beim Anlegen des Hundes.
+  function startwerteAnpassen(stand) {
+    if (stand.startAngepasst) return;
+    stand.startAngepasst = true;
+    const bonus = (SCHWIERIGKEIT[stand.schwierigkeit] || SCHWIERIGKEIT.normal).startBonus || 0;
+    if (!bonus) return;
+    for (const k of Object.keys(stand.hund.werte)) stand.hund.werte[k] = clamp(stand.hund.werte[k] + bonus, 5, 95);
+    verlaufMerken(stand);
+  }
   function schwierigkeit(stand) {
     return SCHWIERIGKEIT[stand.schwierigkeit] || SCHWIERIGKEIT.normal;
   }
@@ -435,7 +446,7 @@
     MAX_HUNDE_JE_PRUEFUNG, neuesProfil, ausAltemStand, aktivesTeam, hundAufnehmen, wocheBeendenProfil,
     hfErfahrungProfil, eigeneStarts, startVermerken,
     neuerSpielstand, trainieren, uebungssucheVerbuchen, wocheBeenden, eintragen, klasseBestanden,
-    SCHWIERIGKEIT, schwierigkeit, istVerletzt, verletzungsRisiko, altersPhase, altersLernFaktor,
+    SCHWIERIGKEIT, schwierigkeit, startwerteAnpassen, istVerletzt, verletzungsRisiko, altersPhase, altersLernFaktor,
     MEISTERSCHAFTEN, meisterschaftsQualifikation, darfPruefen, istLaeufig, pronomen, datumText, monatDerWoche, alterText, aktualisiereAusschreibungen,
   };
 })(globalThis.SHS = globalThis.SHS || {});

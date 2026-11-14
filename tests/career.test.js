@@ -3,12 +3,26 @@ const assert = require('node:assert/strict');
 const { SHS } = require('./helfer');
 const career = SHS.career;
 
-test('Hund startet mit 12 Monaten und darf erst ab 15 Monaten prüfen', () => {
+test('Hund startet mit 10 Monaten und darf erst ab 15 Monaten prüfen (rund 5 Monate Training)', () => {
   const s = career.neuerSpielstand('HF', 'Hund', 'Mischling', 1);
+  assert.equal(s.hund.alterMonate, 10);
   assert.equal(career.darfPruefen(s), false);
-  for (let i = 0; i < 14; i++) career.wocheBeenden(s); // 3 Monate ≈ 13,05 Wochen
+  for (let i = 0; i < 21; i++) career.wocheBeenden(s);
+  assert.equal(career.darfPruefen(s), false); // 21 Wochen ≈ 4,8 Monate
+  career.wocheBeenden(s); career.wocheBeenden(s); // 23 Wochen ≈ 5,3 Monate
   assert.ok(s.hund.alterMonate >= 15);
   assert.equal(career.darfPruefen(s), true);
+});
+
+test('Ein frischer Hund ist schwächer; Training zeigt Lerneffekt (Wert und Suchergebnis)', () => {
+  const s = career.neuerSpielstand('HF', 'Hund', 'Mischling', 4);
+  const start = Object.values(s.hund.werte).reduce((a, b) => a + b, 0) / 8;
+  assert.ok(start < 25, `Startwert ${start}`);
+  const arten = ['geruch', 'anzeige', 'impuls', 'kondition', 'umwelt', 'differenzierung'];
+  let k = 0;
+  for (let w = 0; w < 22; w++) { for (let t = 0; t < 3; t++) career.trainieren(s, arten[k++ % 6], 'korken', 1); career.wocheBeenden(s); }
+  const ende = Object.values(s.hund.werte).reduce((a, b) => a + b, 0) / 8;
+  assert.ok(ende > start + 30, `Ø Wert ${start.toFixed(0)} → ${ende.toFixed(0)}`);
 });
 
 test('Training steigert Werte, höchstens drei Einheiten je Woche', () => {

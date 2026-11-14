@@ -18,13 +18,18 @@
   const RASSEN = {};
   for (const name of SHS.rassen.liste) RASSEN[name] = SHS.rassen.RASSEN[name].werte;
 
+  // Ein junger Hund ist am Anfang noch schwach, damit der Lerneffekt durch das Training sichtbar wird.
+  // Alter beim Start: Bis zum Mindestalter (15 Monate) bleiben rund 5 Monate (ca. 22 Wochen) Grundausbildung.
+  const START_WERT = 18;
+  const START_ALTER_MONATE = 10;
+
   function neuerHund(name, rasse) {
     const mod = RASSEN[rasse] || RASSEN.Mischling;
     const werte = {};
-    for (const k of Object.keys(WERTE)) werte[k] = Math.max(5, Math.min(95, 30 + (mod[k] || 0)));
+    for (const k of Object.keys(WERTE)) werte[k] = Math.max(5, Math.min(95, START_WERT + (mod[k] || 0)));
     const vertrautheit = {};
     for (const g of po.GEGENSTAENDE) vertrautheit[g.id] = 0.1;
-    return { name, rasse, alterMonate: 12, werte, vertrautheit, energie: 1 };
+    return { name, rasse, alterMonate: START_ALTER_MONATE, werte, vertrautheit, energie: 1 };
   }
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -34,8 +39,20 @@
   // SuchHund: der Hund während einer Suchlage. Gibt über ctx.melde(ereignis) Ereignisse
   // an die Suchlage (Wertungsrichter) weiter.
   class SuchHund {
-    constructor(hund, gegenstandId, lage, rnd) {
+    // rndZusatz: eigener Zufallsstrom für die Richterhilfe-Fehler (Seeds der übrigen Simulation bleiben stabil).
+    constructor(hund, gegenstandId, lage, rnd, rndZusatz) {
       this.hund = hund;
+      this.rz = rndZusatz || SHS.rng(0x1234abcd);
+      this.gestartet = false; // erstes „Such!“ schon gegeben
+      this.markiert = false; // hat schon markiert/gelöst
+      this.zielGesehen = false; // erstes Auffinden des Gegenstands schon geschehen
+      this.geruchSperre = 0; // s: nach übersehenem Fund keine Geruchsaufnahme
+      this.nahZeit = 0; // s in unmittelbarer Nähe des Gegenstands ohne Anzeige
+      this.lokalisiertGemeldet = false;
+      this.letzteLeine = -99;
+      this.abgelegtRest = 0; // s: vom HF abgelegt („Platz!“)
+      this.besuchtB = new Set(); // Behältnisstrecke: besuchte Behältnisse
+      this.weitestIdx = -1; // Behältnisstrecke: weitester erreichter Platz (vom Ansatz aus)
       this.w = {};
       for (const k of Object.keys(WERTE)) this.w[k] = clamp(hund.werte[k], 0, 100) / 100;
       this.vertraut = clamp(hund.vertrautheit[gegenstandId] ?? 0.3, 0.05, 1);
@@ -91,6 +108,12 @@
 
     setzePosition(x, y) { this.x = x; this.y = y; }
 
+    // Höhere Leistungsklassen fordern mehr: Die wirksamen Werte sinken mit dem Faktor der LK.
+    setzeSchwierigkeit(lk) {
+      const f = po.LK_SCHWIERIGKEIT[lk] || 1;
+      for (const k of Object.keys(this.w)) this.w[k] *= f;
+    }
+
     setzeZustand(z) {
       this.zustand = z;
       this.zustandSeit = 0;
@@ -134,11 +157,33 @@
     }
 
     // ---- Befehle des HF --------------------------------------------------------
-    such() {
+    // „Platz!“: Der Hund legt sich ab, unterbricht die Suche und sucht nach kurzer Zeit weiter.
+    ablegen() {
+      if (!['sucht', 'geruch', 'schautHF', 'beiHF'].includes(this.zustand)) return false;
+      this.setzeZustand('sucht');
+      this.ziel = null;
+      this.umrundung = null;
+      this.abgelegtRest = 3;
+      return true;
+    }
+
+    // Lob während der Suche: etwas Motivation, bei Dauerlob aber Abzug (Wertung in der Suchlage).
+    lob() { this.motivation = clamp(this.motivation + 0.03, 0, 1); }
+
+    such(ctx) {
+      this.abgelegtRest = 0;
       if (this.zustand === 'anzeige' || this.zustand === 'anzeigeEinnehmen') this.anzeigeAufloesen(false);
       this.setzeZustand('sucht');
       this.ziel = null;
       this.motivation = clamp(this.motivation + 0.08, 0, 1);
+      // Beim ersten Schicken beginnt nicht jeder Hund sofort mit der Suche.
+      if (!this.gestartet) {
+        this.gestartet = true;
+        if (ctx && this.rz() < 0.04 + 0.1 * (1 - this.w.selbststaendig) + 0.05 * (1 - this.w.impuls)) {
+          this.pause = this.rz.range(2.5, 4.5);
+          ctx.melde({ typ: 'startzoegern' });
+        }
+      }
     }
 
     // Liefert false, wenn ein entlaufener Hund das Hörzeichen ignoriert.
@@ -194,6 +239,7 @@
       if (this.stabil > 0) this.stabil -= dt;
       if (this.hinweis) { this.hinweis.rest -= dt; if (this.hinweis.rest <= 0) this.hinweis = null; }
       if (this.kopfschlag > 0) this.kopfschlag -= dt;
+      if (this.geruchSperre > 0) this.geruchSperre -= dt;
 
       const sucht = ['sucht', 'geruch', 'verleitung', 'schautHF', 'aussenreiz', 'entlaufen'].includes(this.zustand);
       if (sucht && ctx.suchePhase) {
@@ -207,6 +253,14 @@
         }
       }
       this.markiereBesuch(dt);
+      if (this.lage.disziplin === 'behaeltnis') this.verfolgeStrecke();
+      // Selten: Markieren/Lösen während der Suche (höchstens einmal).
+      if (sucht && ctx.suchePhase && !this.markiert && this.zustand === 'sucht' && this.suchZeit > 20
+        && this.rz() < dt * 0.0007 * (1.1 - this.w.konzentration) * (1.3 - this.w.impuls)) {
+        this.markiert = true;
+        this.pause = 2.5;
+        ctx.melde({ typ: 'markieren' });
+      }
 
       switch (this.zustand) {
         case 'sitzt': this.liegt = false; this.rute = 0.6; break;
@@ -235,8 +289,38 @@
         this.drehRate += (dw / dt - this.drehRate) * Math.min(1, dt * 6);
       }
       const sitzZiel = (this.zustand === 'sitzt' || this.zustand === 'beiHF') ? 1 : 0;
-      this.liegtAnim += clamp((this.liegt ? 1 : 0) - this.liegtAnim, -dt * 2.5, dt * 2.5);
+      const liegZiel = this.liegt ? (this.anzeige && this.anzeige.halb ? 0.65 : 1) : 0; // halb liegend: hinten stehend
+      this.liegtAnim += clamp(liegZiel - this.liegtAnim, -dt * 2.5, dt * 2.5);
       this.sitztAnim += clamp(sitzZiel - this.sitztAnim, -dt * 3, dt * 3);
+    }
+
+    // Behältnisstrecke: Hinweg = vom Ansatz bis zum letzten Behältnis, danach Rückweg.
+    platzAufStrecke(i) {
+      if (this.streckeLinks === undefined) this.streckeLinks = this.x < this.lage.welt.w / 2;
+      return this.streckeLinks ? i : this.lage.verstecke.length - 1 - i;
+    }
+
+    verfolgeStrecke() {
+      const vs = this.lage.verstecke;
+      if (this.streckeLinks === undefined) this.streckeLinks = this.x < this.lage.welt.w / 2;
+      for (let i = 0; i < vs.length; i++) {
+        const v = vs[i];
+        if (this.besuchtB.has(v.id)) continue;
+        // besucht = der Hund war langsam an einer Kammer (Nase dran), nicht nur im Vorbeilaufen
+        if (this.v > 0.75 || Math.hypot(v.x - this.x, v.y - this.y) > 0.9 || !v.kammern.some((k) => Math.hypot(k.x - this.x, k.y - this.y) < 0.3)) continue;
+        this.besuchtB.add(v.id);
+        this.weitestIdx = Math.max(this.weitestIdx, this.platzAufStrecke(i));
+      }
+    }
+
+    // Behältnisse, die der Hund auf seinem Weg bis zum weitesten Punkt nicht abgesucht hat.
+    ausgelasseneBehaeltnisse() {
+      if (this.lage.disziplin !== 'behaeltnis') return 0;
+      let n = 0;
+      this.lage.verstecke.forEach((v, i) => {
+        if (this.platzAufStrecke(i) < this.weitestIdx && !this.besuchtB.has(v.id)) n += 1;
+      });
+      return n;
     }
 
     markiereBesuch(dt) {
@@ -330,10 +414,29 @@
         if (this.hinweis) score -= Math.hypot(c.x - this.hinweis.x, c.y - this.hinweis.y) * 0.8;
         if (score > bestScore) { bestScore = score; best = c; }
       }
+      // Behältnisstrecke: Ein unkonzentrierter Hund springt manchmal über das nächste Behältnis hinweg
+      // (aus dem Zusatzstrom, damit die übrige Simulation je Seed unverändert bleibt).
+      if (lage.disziplin === 'behaeltnis' && best && best.versteck && this.streckeLinks !== undefined) {
+        const pSprung = 0.03 + 0.14 * Math.pow(1 - this.ausbildung, 1.5) + 0.05 * (1 - this.w.konzentration);
+        if (this.rz() < pSprung) {
+          const vs = lage.verstecke;
+          const platz = this.platzAufStrecke(vs.indexOf(best.versteck));
+          const naechster = vs.find((v, i) => this.platzAufStrecke(i) === platz + 1);
+          if (naechster && this.platzAufStrecke(vs.indexOf(naechster)) > this.weitestIdx && !this.besuchtB.has(best.versteck.id)) {
+            const k = naechster.kammern[0];
+            best = { x: naechster.x + (k.x - naechster.x) * 1.5, y: naechster.y + (k.y - naechster.y) * 1.5, versteck: naechster };
+          }
+        }
+      }
       return best;
     }
 
     updateSucht(dt, ctx) {
+      if (this.abgelegtRest > 0) {
+        this.abgelegtRest -= dt;
+        this.liegt = true; this.naseTief = false; this.rute = 0.5; this.ruteHoch = false;
+        return;
+      }
       this.liegt = false;
       this.naseTief = this.motivation > 0.45;
       this.rute = 0.35 + 0.35 * this.motivation;
@@ -341,7 +444,7 @@
       this.signal = this.zielSignal(this.x, this.y, ctx);
       // Wahrnehmung ist nicht garantiert: je schwächer Signal und Nase, desto eher läuft der Hund drüber.
       const pWahrnehmung = clamp((this.signal - 0.1) / 0.3, 0, 1) * (0.35 + 0.65 * this.w.nase);
-      if (ctx.suchePhase && this.rnd() < pWahrnehmung * dt * 4) {
+      if (ctx.suchePhase && this.geruchSperre <= 0 && this.rnd() < pWahrnehmung * dt * 4) {
         this.setzeZustand('geruch');
         this.kopfschlag = 0.5;
         this.geruchSeit = 0;
@@ -405,6 +508,11 @@
         this.ankunftAnQuelle(n.q, ctx);
         return;
       }
+      // Gegenstand lokalisiert, aber nicht gefunden: lange dicht dran, ohne anzuzeigen.
+      if (n && n.q.typ === 'ziel' && n.d < 1.0) {
+        this.nahZeit += dt;
+        if (this.nahZeit > 6 && !this.lokalisiertGemeldet) { this.lokalisiertGemeldet = true; ctx.melde({ typ: 'lokalisiert' }); }
+      }
       // Gradient: 8 Richtungen abtasten, beste mit Rauschen wählen.
       const r = 0.35;
       let best = { s: this.zielSignal(this.x, this.y, ctx), x: this.x, y: this.y };
@@ -412,6 +520,8 @@
       for (let i = 0; i < 8; i++) {
         const w = (i / 8) * Math.PI * 2;
         const px = this.x + Math.cos(w) * r; const py = this.y + Math.sin(w) * r;
+        // Ein ausgebildeter Hund folgt der Fahne nicht über den Vorführplatz hinaus (sonst unfairer Abbruch).
+        if (px < 0.3 || py < 0.3 || px > this.lage.welt.w - 0.3 || py > this.lage.welt.h - 0.3) continue;
         const s = this.zielSignal(px, py, ctx) * (1 + this.rnd.gauss() * rausch * 0.3);
         if (s > best.s) best = { s, x: px, y: py };
       }
@@ -428,6 +538,17 @@
 
     ankunftAnQuelle(q, ctx) {
       if (q.typ === 'ziel') {
+        // Selten: Der Hund läuft beim ersten Auffinden über den Gegenstand hinweg, ohne anzuzeigen.
+        if (!this.zielGesehen) {
+          this.zielGesehen = true;
+          if (this.rz() < 0.08 * (1 - this.w.anzeige)) {
+            this.geruchSperre = 4;
+            this.setzeZustand('sucht');
+            this.ziel = null;
+            ctx.melde({ typ: 'ueberlaufen' });
+            return;
+          }
+        }
         this.starteAnzeige(q, true, ctx);
         return;
       }
@@ -447,11 +568,23 @@
       const winkel = Math.atan2(this.y - q.y, this.x - q.x);
       const aktiv = this.rnd() < 0.35 * (1 - this.w.anzeige);
       // Art der aktiven Anzeige aus der Lage der Quelle abgeleitet (kein weiterer Zufallswurf: Seeds bleiben stabil).
-      const aktivArt = aktiv
-        ? ['aktivKratzen', 'aktivLecken', 'aktivBellen'][Math.floor(Math.abs(q.x * 13.7 + q.y * 7.3) * 10) % 3]
-        : null;
+      const ARTEN = ['aktivKratzen', 'aktivLecken', 'aktivBellen', 'aktivBellen', 'kratzenLeicht', 'anstossen', 'aufnehmen', 'apportieren'];
+      const aktivArt = aktiv ? ARTEN[Math.floor(Math.abs(q.x * 13.7 + q.y * 7.3) * 10) % ARTEN.length] : null;
+      // Weitere Anzeigefehler (Richterhilfe) aus dem eigenen Zufallsstrom.
+      const halb = richtig && this.rz() < 0.22 * (1 - this.w.anzeige);
+      const kinn = richtig && this.lage.disziplin === 'flaeche' && this.rz() < 0.2 * (1 - this.w.anzeige);
+      const unsauber = richtig && this.lage.disziplin === 'behaeltnis' && this.rz() < 0.25 * (1 - this.w.praezision);
+      // Führung: Der HF hat den Hund mit einem Richtungszeichen direkt auf den Gegenstand geschickt.
+      const gefuehrt = richtig && !!this.hinweis && Math.hypot(this.hinweis.x - q.x, this.hinweis.y - q.y) < 1.5;
+      // Behältnisstrecke: Fund erst auf dem Rückweg (das Ende wurde schon erreicht, das Behältnis liegt davor).
+      let rueckweg = false;
+      if (richtig && this.lage.disziplin === 'behaeltnis' && q.versteckId) {
+        const i = this.lage.verstecke.findIndex((v) => v.id === q.versteckId);
+        const n = this.lage.verstecke.length;
+        rueckweg = i >= 0 && this.weitestIdx >= n - 1 && this.platzAufStrecke(i) < n - 1;
+      }
       this.anzeige = {
-        quelle: q, richtig, ungenau, aktiv, aktivArt,
+        quelle: q, richtig, ungenau, aktiv, aktivArt, halb, kinn, unsauber, gefuehrt, rueckweg,
         punkt: { x: q.x + Math.cos(winkel) * abstand, y: q.y + Math.sin(winkel) * abstand },
         unsicher: !richtig,
       };
@@ -589,9 +722,21 @@
       if (d > max) {
         this.x = ctx.hf.x + ((this.x - ctx.hf.x) / d) * max;
         this.y = ctx.hf.y + ((this.y - ctx.hf.y) / d) * max;
+        // Leineneinwirkung: der Hund läuft in die Leine (nicht öfter als alle 5 s gewertet).
+        if (ctx.t - this.letzteLeine > 5) { this.letzteLeine = ctx.t; ctx.melde({ typ: 'leine' }); }
       }
     }
   }
 
-  SHS.dog = { WERTE, RASSEN, neuerHund, SuchHund, clamp, dist };
+  // Einblendtext zur aktiven Anzeige (Darstellung).
+  const AKTIV_TEXT = {
+    aktivKratzen: '*scharr*', kratzenLeicht: '*kratz*', aktivLecken: '*schleck*', aktivBellen: 'Wuff!',
+    anstossen: '*stups*', aufnehmen: '*schnapp*', apportieren: '*trägt*',
+  };
+  function aktivText(h) {
+    if (h.zustand === 'verleitung') return '*schnapp*';
+    return AKTIV_TEXT[h.anzeige && h.anzeige.aktivArt] || 'Wuff! *scharr*';
+  }
+
+  SHS.dog = { WERTE, RASSEN, neuerHund, SuchHund, clamp, dist, aktivText };
 })(globalThis.SHS = globalThis.SHS || {});

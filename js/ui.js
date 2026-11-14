@@ -287,7 +287,7 @@
         <label>Fellfarbe<select id="fell"></select></label>
         <div class="vorschau-reihe"><canvas id="vorschau" class="hund-vorschau"></canvas><canvas id="vorschauSeite" class="hund-vorschau"></canvas></div>
         <div id="rassenInfo" class="rassen-info"></div>
-        <p class="hinweis">Dein Hund ist 12 Monate alt. Prüfungen sind ab 15 Monaten möglich – nutze die Zeit für die Grundausbildung.
+        <p class="hinweis">Dein Hund ist 10 Monate alt. Prüfungen sind ab 15 Monaten möglich – wie im echten Leben bleiben dir rund fünf Monate Grundausbildung, bevor es zum ersten Turnier geht.
         Den Korken kennt dein Hund schon ein wenig.</p>
         <div class="knopfreihe"><button data-a="zurueck">Zurück</button><button class="primaer" data-a="los">Los geht's</button></div>
       </div>`);
@@ -322,6 +322,7 @@
         const hf = app.root.querySelector('#hfName').value.trim() || 'Hundeführer';
         profilOeffnen(career.neuesProfil(hf, hund, q('#rasse').value, q('#fell').value, SHS.neuerSeed(), q('#geschlecht').value));
         schwierigkeitSetzen(q('#schwierigkeit').value);
+        career.startwerteAnpassen(app.stand);
         speichern();
         hof();
         einfuehrungAnbieten();
@@ -593,7 +594,7 @@
   function einstellungen() {
     const p = app.profil;
     dialog(`<h3>Einstellungen – ${esc(p.hfName)}</h3>
-      <label>Schwierigkeit<select id="esw">${Object.entries(career.SCHWIERIGKEIT).map(([k, v]) => `<option value="${k}" ${k === (p.schwierigkeit || 'normal') ? 'selected' : ''}>${v.name} (Lernen ×${v.lernen}, Konkurrenz ${v.kiNiveau >= 0 ? '+' : ''}${v.kiNiveau})</option>`).join('')}</select></label>
+      <label>Schwierigkeit<select id="esw">${Object.entries(career.SCHWIERIGKEIT).map(([k, v]) => `<option value="${k}" ${k === (p.schwierigkeit || 'normal') ? 'selected' : ''}>${v.name} (Lernen ×${v.lernen}, Konkurrenz ${v.kiNiveau >= 0 ? '+' : ''}${v.kiNiveau}${v.startBonus ? `, Starthund +${v.startBonus}` : ''})</option>`).join('')}</select></label>
       <label class="check"><input type="checkbox" id="eton" ${SHS.ton.istAn() ? 'checked' : ''}> Töne</label>`, [
       { text: 'Abbrechen' },
       { text: 'Speichern', primaer: true, aktion: (bg) => { schwierigkeitSetzen(bg.querySelector('#esw').value); SHS.ton.setzeAn(bg.querySelector('#eton').checked); hof(); } },
@@ -812,7 +813,7 @@
         pruefungId: a.id, woche: a.woche, datum: career.datumText(a.woche), verein: a.verein, art: a.art,
         lk: p.lk, einzelwerte: p.einzelwerte, punkte: eigenes.punkte, note: eigenes.text, abk: eigenes.abk,
         status: p.status, platz: ich.platz, teilnehmer: teilnehmer.length, meisterschaft: a.meisterschaft || null,
-        details: Object.fromEntries(Object.entries(p.details).map(([d, r]) => [d, r ? { such: r.such, anzeige: r.anzeige, begruendung: r.begruendung } : null])),
+        details: Object.fromEntries(Object.entries(p.details).map(([d, r]) => [d, r ? { such: r.such, anzeige: r.anzeige, begruendung: r.begruendung, blatt: r.blatt } : null])),
       };
       const { aufstieg } = career.eintragen(s, eintrag);
       speichern();
@@ -858,7 +859,15 @@
     const note = e.status === 'disq' ? 'Disqualifikation' : `${e.punkte} P. – ${e.note}`;
     return `<tr><td>${e.datum}</td><td>${e.meisterschaft ? '🏆 ' : ''}${esc(e.verein)}<br><span class="klein">${e.art === 'DK' ? 'Dreikampf' : 'Einzeldisziplin'} LK ${e.lk}</span></td>
       <td class="klein">${werte}</td><td><b>${note}</b>${e.platz ? `<br><span class="klein">Platz ${e.platz}/${e.teilnehmer}</span>` : ''}</td>
-      <td><button class="klein-knopf" data-urkunde="${esc(e.pruefungId)}" title="Urkunde und Bewertungsbogen drucken">🖨</button></td></tr>`;
+      <td>${Object.values(e.details || {}).some((x) => x && x.blatt) ? `<button class="klein-knopf" data-blatt="${esc(e.pruefungId)}" title="Richterblatt ansehen">📋</button> ` : ''}<button class="klein-knopf" data-urkunde="${esc(e.pruefungId)}" title="Urkunde und Bewertungsbogen drucken">🖨</button></td></tr>`;
+  }
+
+  // Richterblatt je Disziplin eines Leistungsnachweis-Eintrags.
+  function blattZeigen(e) {
+    if (!e) return;
+    const teile = Object.entries(e.details || {}).filter(([, d]) => d && d.blatt)
+      .map(([d, det]) => `<h3>${esc(diszName(d))} <small class="klein">${e.einzelwerte[d] === null ? '–' : e.einzelwerte[d]} Punkte</small></h3>${SHS.richterblattHtml(det.blatt)}`).join('');
+    dialog(`<h2>Richterblatt <small class="klein">${esc(e.verein)} · ${esc(e.datum)}</small></h2><div class="blatt-liste">${teile}</div>`);
   }
 
   function leistungsnachweis() {
@@ -879,6 +888,8 @@
       </div>`);
     app.root.querySelector('[data-a=hof]').addEventListener('click', hof);
     app.root.querySelector('.ln').addEventListener('click', (ev) => {
+      const bl = ev.target.closest('[data-blatt]');
+      if (bl) { blattZeigen(s.leistungsnachweis.find((x) => x.pruefungId === bl.dataset.blatt)); return; }
       const b = ev.target.closest('[data-urkunde]');
       if (b) urkundeDrucken(s, s.leistungsnachweis.find((x) => x.pruefungId === b.dataset.urkunde));
     });
@@ -916,7 +927,8 @@
     const zeilen = disz.map((d) => {
       const det = (e.details || {})[d] || {};
       return `<tr><td>${diszName(d)}</td><td>${det.such ?? '–'}</td><td>${det.anzeige ?? '–'}</td><td>${e.einzelwerte[d] === null ? '–' : e.einzelwerte[d]}</td></tr>
-        ${det.begruendung ? `<tr class="b"><td colspan="4">${det.begruendung.filter(Boolean).map(esc).join('<br>')}</td></tr>` : ''}`;
+        ${det.blatt ? `<tr class="b"><td colspan="4">${SHS.richterblattHtml(det.blatt)}</td></tr>`
+    : det.begruendung ? `<tr class="b"><td colspan="4">${det.begruendung.filter(Boolean).map(esc).join('<br>')}</td></tr>` : ''}`;
     }).join('');
     const h = s.hund;
     const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Urkunde ${esc(h.name)} ${esc(e.datum)}</title>
@@ -929,6 +941,15 @@
         table { width: 100%; border-collapse: collapse; margin-top: 1em; font-family: system-ui, sans-serif; font-size: 10.5pt; }
         th, td { border-bottom: 1px solid #bbb; padding: 4px 6px; text-align: left; }
         tr.b td { color: #555; font-size: 9pt; border-bottom: 1px solid #ddd; }
+        .richterblatt { display: grid; gap: 6px; }
+        .blatt-teil { border: 1px solid #ccc; padding: 4px 6px; }
+        .blatt-kopf { display: flex; justify-content: space-between; }
+        .blatt-baender { display: flex; gap: 4px; margin: 3px 0; }
+        .band { border: 1px solid #ccc; padding: 0 4px; font-size: 8pt; }
+        .band.aktuell { background: #3d7a2a; color: #fff; font-weight: bold; }
+        .blatt-abzuege td { border-bottom: 1px dotted #ccc; padding: 1px 4px; }
+        .blatt-abzuege .zahl { text-align: right; white-space: nowrap; }
+        .blatt-abzuege .deckel, .blatt-fa { color: #a33; }
         .fuss { display: flex; justify-content: space-between; margin-top: 2cm; font-family: system-ui, sans-serif; font-size: 10pt; }
         .fuss div { border-top: 1px solid #555; width: 40%; padding-top: 4px; text-align: center; }
         .knopf { text-align: center; margin: 1em; } @media print { .knopf { display: none; } body { margin: 0; } }
@@ -1081,6 +1102,7 @@
             : '<p class="klein">Noch keine Suchen protokolliert. Mach eine Übungssuche – danach wertet die Empfehlung auch die Fehler aus.</p>'}
         </section>
       </div>
+      ${verlusteHtml(e.verluste, s.lk)}
       ${verlaufHtml(s)}
       <div class="knopfreihe"><button class="primaer" data-a="hof">Zurück zum Training</button></div>
     </div>`);
@@ -1093,6 +1115,15 @@
     });
   }
 
+
+  // Wo gehen in welcher Disziplin die meisten Punkte verloren (Ø je Suche, aktuelle LK)?
+  function verlusteHtml(verluste, lk) {
+    const fmt = (x) => (Math.round(x * 10) / 10).toString().replace('.', ',');
+    const spalten = Object.entries(verluste).map(([d, v]) => `<div class="verlust-disz"><h3>${esc(diszName(d))} <small class="klein">${v.suchen} Suche(n) · Ø −${fmt(v.gesamt)}</small></h3>
+      <table class="ln">${v.zeilen.map((z) => `<tr><td>${esc(z.text)}</td><td class="zahl">−${fmt(z.proSuche)}</td></tr>`).join('') || '<tr><td>Keine Punktverluste.</td></tr>'}</table></div>`).join('');
+    return `<section class="karte"><h2>Wo du Punkte verlierst <small>Ø je Suche, LK ${lk}</small></h2>
+      ${spalten || '<p class="klein">Noch keine Suchen in dieser Leistungsklasse. Nach einer Übungssuche siehst du hier, in welcher Disziplin welche Fehler am meisten kosten.</p>'}</section>`;
+  }
 
   // Entwicklung der Werte: kleine Einzeldiagramme je Wert (eine Linie, Ziel der aktuellen LK gestrichelt).
   function verlaufHtml(s) {

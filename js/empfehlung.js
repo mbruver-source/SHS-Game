@@ -22,6 +22,20 @@
     aktivKratzen: ['anzeige', 'Kratzen am Versteck'],
     aktivLecken: ['anzeige', 'Lecken am Gegenstand'],
     aktivBellen: ['anzeige', 'Bellen in der Anzeige'],
+    kratzenLeicht: ['anzeige', 'leichtes Kratzen in der Anzeige'],
+    anstossen: ['anzeige', 'Gegenstand angestoßen'],
+    aufnehmen: ['anzeige', 'Gegenstand aufgenommen'],
+    apportieren: ['anzeige', 'Gegenstand apportiert'],
+    halbliegen: ['anzeige', 'nur halb liegende Anzeige'],
+    kinnanzeige: ['anzeige', 'Kinnanzeige in der Fläche'],
+    lochUnsauber: ['anzeige', 'Anzeige nicht sauber am Loch'],
+    ersterFundVerpasst: ['anzeige', 'beim ersten Auffinden nicht angezeigt'],
+    startzoegern: ['kondition', 'zögerlicher Suchbeginn'],
+    markieren: ['umwelt', 'Markieren/Lösen während der Suche'],
+    leine: ['impuls', 'Zug in die Leine'],
+    rueckweg: ['geruch', 'Gegenstand erst auf dem Rückweg gefunden'],
+    ausgelassen: ['geruch', 'Behältnisse ausgelassen'],
+    lokalisiert: ['geruch', 'Gegenstand lokalisiert, aber nicht gefunden'],
     ungenau: ['anzeige', 'ungenaue Anzeige (> 20 cm)'],
     unruhig: ['anzeige', 'unruhige Anzeige (Zurückschauen)'],
     aufstehen: ['anzeige', 'Anzeige vor der Erwiderung aufgelöst'],
@@ -37,6 +51,8 @@
   const HF_HINWEISE = {
     mittelweg: 'Fläche: Als Hundeführer konsequent auf dem Mittelweg bleiben.',
     hilfe: 'Weniger Hörzeichen geben – den Hund selbstständig arbeiten lassen und eher mitgehen.',
+    ablegen: 'Den Hund nicht ablegen und führen: Er soll selbstständig suchen und seine Anzeige selbst einnehmen.',
+    dauerlob: 'Während der Suche sparsam loben – Dauerlob zählt als Fehler, gelobt wird erst nach der Erwiderung des WR.',
     fehlanzeige: 'Den Hund genauer lesen: Zurückschauen und eine tiefe, ruhige Rute in der Anzeige deuten auf Unsicherheit.',
   };
 
@@ -84,6 +100,44 @@
     return { anzahl: liste.length, summe, gewichtet, fehlanzeigen, nichtGefunden, intensitaet, liste };
   }
 
+  // Punkte, die ein Fehler kostet: feste Abzüge bzw. der Verlust durch den Notendeckel.
+  function verlustPunkte(art, n) {
+    const r = po.ABZUEGE[art];
+    if (!r || r.alt) return 0;
+    if (r.punkte) return Math.min(r.max, r.punkte * n);
+    return (r.bereich === 'such' ? po.MAX_SUCHLEISTUNG : po.MAX_ANZEIGELEISTUNG) - po.OBERGRENZE[r.bereich][r.deckel];
+  }
+
+  const VERLUST_TEXT = {
+    fehlanzeige: 'Fehlanzeigen',
+    nichtGefunden: 'Gegenstand nicht gefunden (keine Anzeigeleistung)',
+  };
+
+  // Wo gehen in welcher Disziplin die meisten Punkte verloren? Auswertung der letzten Suchen der aktuellen LK.
+  function verlusteNachDisziplin(stand, anzahl) {
+    const alle = (stand.suchprotokoll || []).filter((e) => e.lk === stand.lk && e.status === 'ok').slice(-(anzahl || 15));
+    const out = {};
+    for (const d of po.DISZIPLIN_REIHENFOLGE) {
+      const liste = alle.filter((e) => e.disziplin === d);
+      if (!liste.length) continue;
+      const summe = {};
+      for (const e of liste) {
+        for (const [art, n] of Object.entries(e.fehler || {})) {
+          const v = verlustPunkte(art, n);
+          if (v > 0) summe[art] = (summe[art] || 0) + v;
+        }
+        if (e.intensitaet > 0) summe.intensitaet = (summe.intensitaet || 0) + e.intensitaet;
+        if (e.fehlanzeigen > 0) summe.fehlanzeige = (summe.fehlanzeige || 0) + e.fehlanzeigen * po.FEHLANZEIGE_ABZUG;
+        if (!e.gefunden) summe.nichtGefunden = (summe.nichtGefunden || 0) + po.MAX_ANZEIGELEISTUNG;
+      }
+      const zeilen = Object.entries(summe)
+        .map(([art, v]) => ({ art, text: VERLUST_TEXT[art] || (po.ABZUEGE[art] ? po.ABZUEGE[art].text : art), proSuche: v / liste.length }))
+        .sort((a, b) => b.proSuche - a.proSuche);
+      out[d] = { suchen: liste.length, zeilen: zeilen.slice(0, 4), gesamt: zeilen.reduce((a, z) => a + z.proSuche, 0) };
+    }
+    return out;
+  }
+
   function empfehlungen(stand) {
     const lk = stand.lk;
     const punkte = {}; // ziel -> { prio, gruende[] }
@@ -115,6 +169,15 @@
       add('geruch:' + (gb.kandidaten[0] ? gb.kandidaten[0].id : 'korken'), f.nichtGefunden * 5, `${f.nichtGefunden}× Gegenstand nicht gefunden`);
     }
     if (f.intensitaet > 0) add('kondition', f.intensitaet * 1.5, 'Suchintensität ließ nach');
+
+    // 3b) Größter Punktverlust je Disziplin (ab zwei Suchen)
+    const verluste = verlusteNachDisziplin(stand);
+    for (const [d, v] of Object.entries(verluste)) {
+      const top = v.zeilen.find((z) => z.art !== 'nichtGefunden');
+      if (v.suchen >= 2 && top && top.proSuche >= 3) {
+        add('uebung:' + d, Math.min(14, top.proSuche * 2), `${po.DISZIPLINEN[d].name}: größter Punktverlust durch „${top.text}“ (Ø −${String(Math.round(top.proSuche * 10) / 10).replace('.', ',')} je Suche)`);
+      }
+    }
 
     // 4) Aufstieg: Disziplinen ohne 70 Punkte in der aktuellen LK üben
     if (lk < 3) {
@@ -151,7 +214,9 @@
     if ((f.summe.mittelweg || 0) > 0) hinweise.push(HF_HINWEISE.mittelweg);
     if ((f.summe.hilfe || 0) >= 3) hinweise.push(HF_HINWEISE.hilfe);
     if (f.fehlanzeigen > 0) hinweise.push(HF_HINWEISE.fehlanzeige);
-    return { liste: liste.slice(0, 6), hinweise, profil: profil(stand), geruch: gb, fehler: f, naechste };
+    if ((f.summe.ablegen || 0) > 0) hinweise.push(HF_HINWEISE.ablegen);
+    if ((f.summe.dauerlob || 0) > 0) hinweise.push(HF_HINWEISE.dauerlob);
+    return { liste: liste.slice(0, 6), hinweise, profil: profil(stand), geruch: gb, fehler: f, verluste, naechste };
   }
 
   function beschreibe(ziel) {
@@ -168,5 +233,5 @@
     return { titel: t ? t.name : ziel, training: ziel, text: t ? t.text : '' };
   }
 
-  SHS.empfehlung = { ZIEL, zielwert, profil, geruchsbilder, fehlerAuswertung, empfehlungen };
+  SHS.empfehlung = { ZIEL, zielwert, profil, geruchsbilder, fehlerAuswertung, verlusteNachDisziplin, empfehlungen };
 })(globalThis.SHS = globalThis.SHS || {});

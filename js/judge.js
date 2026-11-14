@@ -85,7 +85,8 @@
     teilPunkte(bereich, hoechst) {
       const deckel = this.deckelFuer(bereich);
       const rest = hoechst - this.abzugFuer(bereich);
-      return Math.max(0, deckel ? Math.min(deckel.punkte, rest) : rest);
+      // Halbe Punkte (ausgelassene Behältnisse) werden kaufmännisch auf ganze Punkte gerundet.
+      return Math.max(0, Math.round(deckel ? Math.min(deckel.punkte, rest) : rest));
     }
 
     ergebnis() {
@@ -104,7 +105,39 @@
         gefunden: this.gefunden, fehlanzeigen: this.fehlanzeigen,
         bestanden: punkte >= po.MINDESTPUNKTE_JE_DISZIPLIN,
         begruendung: this.begruendung(such, anzeige, punkte),
+        blatt: this.blatt(such, anzeige, punkte),
       };
+    }
+
+    // Strukturierte Bewertung („Richterblatt“): je Teilleistung Punkte, Note, Abzüge und Deckel.
+    blatt(such, anzeige, punkte) {
+      const teil = (bereich, hoechst, wert) => {
+        const abzuege = [];
+        for (const [art, n] of Object.entries(this.fehlerListe)) {
+          const r = po.ABZUEGE[art];
+          if (r.bereich !== bereich) continue;
+          abzuege.push({ text: r.text, anzahl: n, abzug: r.punkte ? Math.min(r.max, r.punkte * n) : 0, deckel: r.deckel || null });
+        }
+        if (bereich === 'such' && this.intensitaetsAbzug > 0) {
+          abzuege.push({ text: po.ABZUEGE.intensitaet.text, anzahl: 1, abzug: this.intensitaetsAbzug, deckel: null });
+        }
+        const d = this.deckelFuer(bereich);
+        return { bereich, punkte: wert, hoechst, note: po.teilnote(wert, bereich), abzuege, deckel: d ? { punkte: d.punkte, note: d.note } : null };
+      };
+      return {
+        such: teil('such', po.MAX_SUCHLEISTUNG, such),
+        anzeige: teil('anzeige', po.MAX_ANZEIGELEISTUNG, anzeige),
+        gefunden: this.gefunden, fehlanzeigen: this.fehlanzeigen, fehlanzeigeAbzug: this.fehlanzeigen * po.FEHLANZEIGE_ABZUG,
+        gesamt: punkte, fazit: this.fazit(punkte),
+      };
+    }
+
+    fazit(punkte) {
+      if (punkte >= 96) return 'Zielstrebig, intensiv und freudig gearbeitet, spontane und ruhige Anzeige.';
+      if (punkte >= 90) return 'Sehr gute Arbeit mit kleinen Unsauberkeiten.';
+      if (punkte >= 80) return 'Gute Suche, einige Fehler.';
+      if (punkte >= 70) return 'Befriedigende Leistung mit deutlichen Fehlern.';
+      return 'Die Anforderungen wurden nicht erfüllt.';
     }
 
     begruendung(such, anzeige, punkte) {
@@ -117,25 +150,54 @@
         const r = po.ABZUEGE[art];
         if (r.punkte) {
           const abzug = Math.min(r.max, r.punkte * this.fehlerListe[art]);
-          zeilen.push(`${r.text}${anzahlText(art)}: −${abzug}`);
+          zeilen.push(`${r.text}${anzahlText(art)}: −${String(abzug).replace('.', ',')}`);
         } else {
-          zeilen.push(`${r.text}${anzahlText(art)}: Anzeige höchstens ${NOTE_NAME[r.deckel]} (${po.OBERGRENZE[r.bereich][r.deckel]})`);
+          zeilen.push(`${r.text}${anzahlText(art)}: ${r.bereich === 'such' ? 'Suchleistung' : 'Anzeige'} höchstens ${NOTE_NAME[r.deckel]} (${po.OBERGRENZE[r.bereich][r.deckel]})`);
         }
       }
       if (this.intensitaetsAbzug > 0) zeilen.push(`${po.ABZUEGE.intensitaet.text}: −${this.intensitaetsAbzug}`);
       if (this.fehlanzeigen > 0) zeilen.push(`Fehlanzeigen (${this.fehlanzeigen}×): −${this.fehlanzeigen * po.FEHLANZEIGE_ABZUG}`);
       if (!this.gefunden) zeilen.push('Gegenstand nicht gefunden – keine Anzeigeleistung');
-      let fazit;
-      if (punkte >= 96) fazit = 'Zielstrebig, intensiv und freudig gearbeitet, spontane und ruhige Anzeige.';
-      else if (punkte >= 90) fazit = 'Sehr gute Arbeit mit kleinen Unsauberkeiten.';
-      else if (punkte >= 80) fazit = 'Gute Suche, einige Fehler.';
-      else if (punkte >= 70) fazit = 'Befriedigende Leistung mit deutlichen Fehlern.';
-      else fazit = 'Die Anforderungen wurden nicht erfüllt.';
+      const fazit = this.fazit(punkte);
       const note = (p, bereich) => { const n = po.teilnote(p, bereich); return n ? ` (${n})` : ''; };
       zeilen.unshift(`Suchleistung ${such}/60${note(such, 'such')}, Anzeigeleistung ${anzeige}/40${this.gefunden ? note(anzeige, 'anzeige') : ''}. ${fazit}`);
       return zeilen;
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Richterblatt als HTML-Text (ohne DOM-Zugriff): Notenbänder, Abzüge, Deckel.
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const zahl = (n) => String(n).replace('.', ',');
+  const KURZ = ['V', 'SG', 'G', 'B'];
+
+  function teilHtml(t, titel, ohneWertung) {
+    const baender = po.TEILNOTEN[t.bereich];
+    const obere = [t.hoechst].concat(baender.map((b) => b[0] - 1));
+    const bandHtml = baender.map(([von, name], i) => {
+      const bis = obere[i];
+      const aktuell = !ohneWertung && t.note === name;
+      return `<span class="band${aktuell ? ' aktuell' : ''}" title="${esc(name)}">${KURZ[i]} ${von}–${bis}</span>`;
+    }).join('');
+    const zeilen = t.abzuege.map((a) => {
+      const anz = a.anzahl > 1 ? ` (${a.anzahl}×)` : '';
+      const wert = a.abzug ? `−${zahl(a.abzug)}` : '';
+      const deckel = a.deckel ? `<span class="deckel">höchstens ${esc(a.deckel === 'SG' ? 'Sehr Gut' : 'Gut')} (${po.OBERGRENZE[t.bereich][a.deckel]})</span>` : '';
+      return `<tr><td>${esc(a.text)}${anz}</td><td class="zahl">${wert}${wert && deckel ? ' · ' : ''}${deckel}</td></tr>`;
+    }).join('');
+    const kopfWert = ohneWertung ? '– (kein Fund)' : `${t.punkte} / ${t.hoechst}${t.note ? ` · ${t.note}` : ''}`;
+    return `<section class="blatt-teil"><div class="blatt-kopf"><b>${titel}</b><span>${kopfWert}</span></div>
+      <div class="blatt-baender">${bandHtml}</div>
+      ${zeilen ? `<table class="blatt-abzuege">${zeilen}</table>` : '<p class="klein">Keine Abzüge.</p>'}
+      ${t.deckel && !ohneWertung ? `<p class="klein">Es gilt der niedrigste Deckel: höchstens ${t.deckel.punkte} Punkte.</p>` : ''}</section>`;
+  }
+
+  function blattHtml(b) {
+    if (!b) return '';
+    const fa = b.fehlanzeigen ? `<p class="blatt-fa">Fehlanzeigen ${b.fehlanzeigen}× · −${b.fehlanzeigeAbzug} von der Summe</p>` : '';
+    return `<div class="richterblatt">${teilHtml(b.such, 'Suchleistung', false)}${teilHtml(b.anzeige, 'Anzeigeleistung', !b.gefunden)}${fa}</div>`;
+  }
+
   SHS.Wertungsrichter = Wertungsrichter;
+  SHS.richterblattHtml = blattHtml;
 })(globalThis.SHS = globalThis.SHS || {});

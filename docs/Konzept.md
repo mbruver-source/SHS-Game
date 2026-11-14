@@ -58,6 +58,24 @@ Teilnoten-Bänder: Suche V 58–60, SG 54–57, G 48–53, B 42–47; Anzeige V 
 | Hundekopf dreht sich zum HF (`unruhig`) | Anzeige | Max. SG | Deckel 37, ANNAHME zusätzlich −1 je weiteres Mal, Deckel 4 |
 | Anzeige vor der Richtererwiderung verlassen (`aufstehen`) | Anzeige | Wertungsnote | ANNAHME −6, Deckel 12 |
 | Unterstützung der Anzeige durch den HF | Anzeige | Wertungsnote bis 0 | ANNAHME −5, bis 0 |
+| Markieren / Lösen (`markieren`) | Such | 10 | −10, höchstens einmal (selten, unkonzentrierte Hunde nach 20 s Suche) |
+| Leineneinwirkung (`leine`) | Such | 1–2 | ANNAHME −1, wenn der Hund in die Leine läuft (höchstens alle 5 s), Deckel 6; nur mit Leine |
+| Ausgelassenes Behältnis (`ausgelassen`) | Such | 0,5 je | −0,5 je Behältnis, das der Hund auf dem Weg bis zum weitesten Punkt nicht abgesucht hat, Deckel 4 |
+| Hund beginnt nach dem Ansatz nicht direkt (`startzoegern`) | Such | Max. SG | Deckel 57; Hund wartet 2,5–4,5 s beim ersten „Such!“ |
+| Fund erst auf dem Rückweg (`rueckweg`) | Such | Max. SG | Deckel 57; Behältnisstrecke: das Ende war schon erreicht, das Behältnis liegt davor |
+| Gegenstand lokalisiert, Hund findet ihn nicht (`lokalisiert`) | Such | Max. SG | Deckel 57; > 6 s dicht am Gegenstand ohne Anzeige |
+| Anzeige durch Führung des HF (`anzeigeGefuehrt`) | Such | je nach Intensität max. G | Deckel 53; ein Richtungszeichen nahe (< 1,5 m) am Gegenstand, danach Anzeige |
+| Beim Führen zeigt der Hund an, HF ignoriert (`fuehrenIgnoriert`) | Such | 5 | −5 je Mal, Deckel 10; HF schickt den Hund von der geführten, richtigen Anzeige weg |
+| Hund zeigt beim ersten Auffinden nicht an (`ersterFundVerpasst`) | Anzeige | Max. G | Deckel 35; Hund läuft über den Gegenstand hinweg |
+| Aufnehmen des Gegenstandes (`aufnehmen`) | Anzeige | Max. G | Deckel 35 |
+| Apportieren mehr als eine Körperlänge (`apportieren`) | Anzeige | bis 10 | ANNAHME −5, Deckel 10 |
+| Hund stößt den Gegenstand deutlich an (`anstossen`) | Anzeige | SG–G | ANNAHME Deckel 35 (G) |
+| Hund kratzt leicht (`kratzenLeicht`) | Anzeige | SG–G | ANNAHME Deckel 37 (SG) |
+| Hund liegt nur halb (`halbliegen`) | Anzeige | Wertungsnote | ANNAHME −2, Deckel 4; in der Darstellung steht der Hund hinten |
+| Kinnanzeige in der Fläche (`kinnanzeige`) | Anzeige | Max. SG | Deckel 37, nur in der Flächensuche |
+| Anzeige nicht sauber am Loch (`lochUnsauber`) | Anzeige | Wertungsnote | ANNAHME −3, Deckel 6, nur an der Behältnisstrecke |
+| Ablegen durch Führung (`ablegen`) | Such | 5 | −5 je „Platz!“ (Taste X), Deckel 10; der Hund liegt 3 s und sucht dann weiter (oder früher mit „Such!“) |
+| Dauerlob (`dauerlob`) | Such | Wertungsnote | ANNAHME −2 je Serie, Deckel 10: ab dem 4. Lob (Taste L) innerhalb von 20 s, dann 8 s Pause bis zur nächsten Wertung; Lob gibt +3 % Motivation |
 | Fehlanzeige | Gesamt | 10 | −10 je Fehlanzeige von der Summe, die dritte beendet die Vorführung |
 
 Auslegungen und Abweichungen:
@@ -65,7 +83,16 @@ Auslegungen und Abweichungen:
 - **Verschieben von Verstecken** zählt laut Richterhilfe zur Anzeige und wirkt deshalb nur, wenn der Gegenstand gefunden wird.
 - **Art der aktiven Anzeige:** Kratzen, Lecken oder Bellen wird aus der Lage der Quelle abgeleitet (kein zusätzlicher Zufallswurf, die Seeds bleiben stabil).
 - **Alte Spielstände:** Die frühere Fehlerart `aktiv` bleibt les- und rechenbar (−8, Deckel 16), wird aber nicht mehr vergeben.
-- **Nicht abgebildet** (das Spiel hat dafür kein Signal): Markieren/Lösen, Leineneinwirkung, ausgelassene Behältnisse (0,5), Fund erst auf dem Rückweg, Hund beginnt nach dem Ansatz nicht direkt mit der Suche, Ablegen durch Führung, Anzeige durch Führung bzw. HF ignoriert Anzeige, Dauerlob, Hund findet lokalisierten Gegenstand nicht, Aufnehmen des Gegenstands, Apportieren, Hund stößt Gegenstand an, Halbliegen, Kinnanzeige in der Fläche, Anzeige nicht sauber am Loch. Die Wertnoten Ungenügend/Mangelhaft entfallen.
+- **Aktive Anzeige, Verteilung:** Kratzen, Lecken, Bellen (doppelt gewichtet), leichtes Kratzen, Anstoßen, Aufnehmen und Apportieren werden aus der Lage der Quelle abgeleitet; in der Darstellung erscheint der passende Text („*scharr*“, „*schleck*“, „*stups*“ …).
+- **Eigener Zufallsstrom:** Die neuen Fehler (Zögern, Markieren, erster Fund, halb liegen, Kinn, Loch) ziehen aus einem zweiten Strom (`rndZusatz`, Seed ^ 0x9e3779b9). Die übrige Simulation bleibt je Seed unverändert.
+- **Rundung:** Halbe Punkte (ausgelassene Behältnisse) werden bei der Teilleistung kaufmännisch auf ganze Punkte gerundet; Punktzahlen bleiben ganzzahlig.
+- **Führung:** Das Richtungszeichen zählt weiterhin als Hilfe (−1); die Notendeckel für die Führung kommen dazu. Der HFBot führt nie, die Abzüge treffen nur menschliche Spieler.
+- **Richterblatt:** Nach jeder Suche zeigt das Ergebnis (und die Nachbetrachtung) je Teilleistung die Punkte mit Notenband (V/SG/G/B, aktuelles Band hervorgehoben), jeden Abzug und die Deckel („höchstens Sehr Gut (37)“). Die Daten liefert `Wertungsrichter.blatt()` (`ergebnis.blatt`), den HTML-Text `SHS.richterblattHtml` (ohne DOM). Das Leistungsnachweis-Archiv zeigt weiterhin die Textbegründung.
+- **HFBot macht Fehler:** Je geringer die Erfahrung, desto eher führt der HF den Hund zum Gegenstand (Richtungszeichen), legt ab („Platz!“) und lobt zu viel (Serie von 4 Lob in 8 s). Die Wahrscheinlichkeiten wachsen mit dem Quadrat der Unerfahrenheit; bei Erfahrung 100 % entstehen diese Fehler nie. Bei mittlerem Hund sinkt der Durchschnitt von Erfahrung 80 % auf 20 % um rund 2 Punkte.
+- **Behältnisstrecke, Überspringen:** Beim Wählen des nächsten Wegpunkts springt der Hund mit einer vom Ausbildungsstand und der Konzentration abhängigen Wahrscheinlichkeit (3–25 %, aus dem Zusatzstrom) über das nächste Behältnis. Als „besucht“ zählt ein Behältnis nur, wenn der Hund langsam (< 0,75 m/s) an eine Kammer geht. Dadurch kommen ausgelassene Behältnisse bei rund 5 % der Läufe vor (0,5 Punkte, kaufmännisch gerundet, ein einzelnes kostet daher nichts), und der Fund auf dem Rückweg wird häufiger.
+- **Punktverluste je Disziplin:** Die Trainingsempfehlung rechnet aus den letzten 15 Suchen der aktuellen LK (nur reguläre Wertungen) je Disziplin den Ø-Verlust je Fehlerart (feste Abzüge bzw. Differenz zum Deckel, Fehlanzeigen −10, kein Fund = −40 Anzeige). Ab zwei Suchen und mindestens 3 Punkten Ø-Verlust wird die Übungssuche dieser Disziplin mit Begründung empfohlen. Die Seite zeigt dazu die Karte „Wo du Punkte verlierst“.
+- **Einführung:** Die geführte erste Suche erklärt R, X, L, Richtungszeichen, die Folgen von Führung, Platz und Dauerlob sowie das Richterblatt; der Hof-Rundgang erwähnt den Punktverlust je Disziplin.
+- **Nicht abgebildet:** nichts mehr aus der Richterhilfe außer den Wertnoten Ungenügend/Mangelhaft (entfallen).
 
 ### Weitere Auslegungen
 - **Handzeichen ohne Anzeige:** Hebt der HF den Arm, ohne dass der Hund anzeigt, zählt das als Fehlanzeige.
@@ -227,7 +254,7 @@ Den eigenen Menüpunkt „Trainingsempfehlung“ erreichst du im Hof (💡 neben
   - HF-Erfahrung: `hfErfahrungProfil` zählt Training, Übungen und Prüfungen aller Hunde.
 - **Speicher:** `shs-game-profile` (Index) und `shs-game-profil-<id>` (je Profil). Ein alter Einzel-Spielstand (`shs-game-spielstand`) wird beim ersten Start automatisch als Profil übernommen und bleibt als Sicherung liegen. Der Import nimmt Version 1 und Version 2 an und legt immer ein eigenes Profil an.
 - **Startbildschirm:** Er zeigt alle Benutzer mit ihren Hunden. Dort legst du neue Benutzer an oder löschst bestehende, nach Rückfrage und mit dem Angebot, vorher zu exportieren.
-- **Hof:** Die Hundeleiste oben wechselt den aktiven Hund, „+ Hund“ nimmt einen weiteren Hund auf (12 Monate, aktuelle Woche).
+- **Hof:** Die Hundeleiste oben wechselt den aktiven Hund, „+ Hund“ nimmt einen weiteren Hund auf (10 Monate, aktuelle Woche).
 - **Prüfung (PO: höchstens 2 Hunde je HF):**
   - Nach dem ersten Start bietet die Ergebnisseite „Mit … starten“ für den zweiten Hund an.
   - Eigene Hunde in derselben LK stehen gemeinsam in der Rangliste, die KI-Teams füllen auf 8 Teilnehmer auf.
@@ -260,7 +287,7 @@ ANNAHME (Spiel): Landesmeisterschaft alle 20 Wochen (16 Teams), Bundesmeistersch
 Die Meisterschaften stehen mit 🏆 und Qualifikationsstand in den Ausschreibungen. Ein Sieg bringt einen Titel (z. B. „Landesmeister 2027“), der im Hof neben dem Hundenamen erscheint.
 
 ## Touch-Bedienung (v0.12)
-- **Bildschirm-Steuerung in der Suchlage:** Steuerkreis zum Bewegen des HF sowie Tasten für Such!, Arm, Hier!, Bleib!, Anfassen (gedrückt halten) und Nahaufnahme.
+- **Bildschirm-Steuerung in der Suchlage:** Steuerkreis zum Bewegen des HF sowie Tasten für Such!, Arm, Hier!, Bleib!, Platz!, Lob, Anfassen (gedrückt halten) und Nahaufnahme.
 - **Ein- und Ausschalten:** Auf Touch-Geräten (`pointer: coarse`) ist sie automatisch aktiv, sonst über „Touch“ im HUD. Die Einstellung wird gespeichert.
 - **Automatische Vorführung:** Hier ist nur die Taste für die Nahaufnahme zu sehen.
 - **Wetter:** Bei 0 °C oder kälter fällt Schnee statt Regen; er deckt den Geruch teilweise ab.
@@ -268,7 +295,7 @@ Die Meisterschaften stehen mit 🏆 und Qualifikationsstand in den Ausschreibung
 ## Figuren und Töne (v0.13)
 - **Figuren:** HF und WR werden von oben als Personen gezeichnet: Jacke, Kopf mit Haaren, schwingende Arme und Schritte beim Gehen. Das Handzeichen ist als ✋ zu sehen. Der WR trägt Klemmbrett und Mütze und schaut zum Hund.
 - **Töne** (`ton.js`): Sie werden synthetisch per WebAudio erzeugt, ohne Dateien, also auch offline.
-  - Pfiffe für Such!, Hier! und Bleib!
+  - Pfiffe für Such!, Hier!, Bleib! und Platz! sowie ein kurzer Lobton
   - Glocke bei der Erwiderung des WR, kleine Fanfare beim Fund, Brummen bei Fehlern
   - Bellen bei aktiver Anzeige
   - Geräusche zu den Außenreizen (Vogel, Bellen, Klingel, Klatschen, Knacken)
@@ -322,3 +349,13 @@ Die Meisterschaften stehen mit 🏆 und Qualifikationsstand in den Ausschreibung
   - **Mensch:** Oberkörper mit Schultern und Hals, schlankere Beine, Schuhe mit Kappe.
   - **2D-Ansicht:** Rasen mit Halmen, Kies mit Schatten und Lichtkante, körniger Sandweg, Holzmaserung, Behältnisse in Typfarbe mit Deckel und Griff. Das Licht kommt immer von links oben; alle Schatten fallen unabhängig von der Drehung eines Teils nach rechts unten.
 - **ANNAHMEN** (die Lage kennt nur Grundflächen): Höhen der Trümmerteile Brett 3 cm, Palette 12 cm, Kiste 28 cm, Stein bis 20 cm, Reifen 18 cm, Ziegelstapel 13 cm, Eimer 30 cm. Das Rohr liegt mit dem Durchmesser der schmalen Seite. Behältnisse sind rund 42 cm bzw. eckig 32 cm hoch.
+
+## Schwierigkeit und Lerneffekt (v1.4)
+- **Startwerte:** Ein neuer Hund beginnt mit Basiswert 18 (vorher 30) plus Rassenwerten und ist **10 Monate** alt (vorher 12). Bis zum Mindestalter von 15 Monaten bleiben rund 5 Monate (ca. 22 Wochen) Grundausbildung, wie im echten Leben (4–6 Monate vor dem ersten Turnier). Bestehende Spielstände bleiben unverändert.
+- **Lerneffekt:** Mit drei Einheiten pro Woche steigt der Durchschnittswert in ca. 22 Wochen von rund 18 auf rund 68. Ein frischer Hund besteht LK 1 in rund 75–85 % der Suchen (Ø 73–80 Punkte), ein trainierter in über 95 % (Ø 93).
+- **Schwierigkeit je LK, ANNAHME** (`po.LK_SCHWIERIGKEIT`): Die wirksamen Hundewerte werden in LK 1/2/3 mit 1,0 / 0,8 / 0,65 multipliziert (`SuchHund.setzeSchwierigkeit`). Ein Hund mit Wert 60 erreicht im Schnitt rund 94 / 87 / 78 Punkte. Ein Hund auf dem Zielwert der Klasse (45 / 60 / 75, siehe Trainingsempfehlung) kommt auf rund 90 / 87 / 83 Punkte.
+- Die KI-Konkurrenz nutzt dieselbe Simulation und wird dadurch in höheren LK ebenfalls etwas schwächer; ihre Stärke wird weiter über `niveau` je LK gesteuert.
+- **Schwierigkeitsgrad „Einsteiger“:** Der Starthund bekommt einmalig +8 auf alle Werte (`career.startwerteAnpassen`, gilt auch für weitere Hunde des Profils). Normal und Profi starten unverändert. Spätere Wechsel der Schwierigkeit in den Einstellungen ändern bestehende Hunde nicht.
+- **Leistungsnachweis:** Pro Prüfungsdisziplin wird das Richterblatt mit gespeichert (`details.<disziplin>.blatt`). Im Leistungsnachweis öffnet 📋 das Richterblatt je Disziplin, die Urkunde druckt es statt der Textbegründung. Ältere Einträge ohne Blatt behalten die Textbegründung.
+- **Nachbetrachtung:** Die aufgezeichnete Anzeige enthält `aktivArt`, `halb` und `kinn`. In der Wiedergabe erscheint daher der passende Text („*schleck*“, „*stups*“ ...), der Hund liegt bei „halb“ hinten stehend.
+- **Touch-Steuerung:** Die acht Tasten (Such!, Arm, Hier!, Bleib!, Platz!, Lob, Anfassen, Nah) stehen in vier Spalten und zwei Reihen; geprüft bei 360 px und 320 px Breite (kein Überlauf, das Coach-Fenster bleibt frei).

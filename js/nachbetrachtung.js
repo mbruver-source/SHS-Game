@@ -31,7 +31,7 @@
         leine: s.leine, schleppleine: s.schleppleine, suchzeit: s.suchzeit,
         wetter: s.wetter || null, windBasis: s.windBasis,
         hund: { name: s.opts.hund.name, rasse: s.opts.hund.rasse, fell: s.opts.hund.fell },
-        ergebnis: s.ergebnis ? { status: s.ergebnis.status, punkte: s.ergebnis.punkte, such: s.ergebnis.such, anzeige: s.ergebnis.anzeige, begruendung: s.ergebnis.begruendung } : null,
+        ergebnis: s.ergebnis ? { status: s.ergebnis.status, punkte: s.ergebnis.punkte, such: s.ergebnis.such, anzeige: s.ergebnis.anzeige, begruendung: s.ergebnis.begruendung, blatt: s.ergebnis.blatt } : null,
       }, meta || {}),
       verstecke: s.lage.verstecke.map((v) => ({ id: v.id, x: r2(v.x), y: r2(v.y), rot: r2(v.rot || 0) })),
       quellen: s.quellen.map((q) => ({ typ: q.typ, name: q.name, x: r2(q.x), y: r2(q.y), hoehe: r2(q.hoehe || 0), versteckId: q.versteckId || null, staerke: q.staerke, reichweite: q.reichweite })),
@@ -180,7 +180,9 @@
           <span class="nb-t">${this.zeitText(e.t)}</span> ${e.typ === 'wr' ? 'WR: ' : ''}${escapeHtml(e.text)}</li>`;
       }).join('') || '<li class="klein">Keine Ereignisse aufgezeichnet.</li>';
       if (erg && erg.begruendung) {
-        liste.insertAdjacentHTML('beforeend', `<li class="nb-bewertung"><b>Bewertung</b><ul>${erg.begruendung.filter(Boolean).map((b) => `<li>${escapeHtml(b)}</li>`).join('')}</ul></li>`);
+        liste.insertAdjacentHTML('beforeend', erg.blatt
+          ? `<li class="nb-bewertung"><b>Richterblatt</b>${SHS.richterblattHtml(erg.blatt)}</li>`
+          : `<li class="nb-bewertung"><b>Bewertung</b><ul>${erg.begruendung.filter(Boolean).map((b) => `<li>${escapeHtml(b)}</li>`).join('')}</ul></li>`);
       }
       liste.addEventListener('click', (ev) => {
         const li = ev.target.closest('li[data-i]');
@@ -269,7 +271,7 @@
       if (f.zustand === 'anzeige' || f.zustand === 'anzeigeEinnehmen') {
         for (const e of this.d.ereignisse) {
           if (e.t > this.t + 0.05) break;
-          if (e.typ === 'anzeige' || e.typ === 'fehlanzeige') h.anzeige = { quelle: e.quelle, punkt: e.punkt, aktiv: e.aktiv, ungenau: e.ungenau, richtig: e.richtig };
+          if (e.typ === 'anzeige' || e.typ === 'fehlanzeige') h.anzeige = { quelle: e.quelle, punkt: e.punkt, aktiv: e.aktiv, aktivArt: e.aktivArt, halb: e.halb, kinn: e.kinn, ungenau: e.ungenau, richtig: e.richtig };
         }
       }
       this.slider.value = this.t;

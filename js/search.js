@@ -78,6 +78,8 @@
               <button data-t="arm" class="touch-gross">✋ Arm</button>
               <button data-t="hier">Hier!</button>
               <button data-t="bleib">Bleib!</button>
+              <button data-t="platz">Platz!</button>
+              <button data-t="lob">Lob</button>
               <button data-t="anfassen">Anfassen</button>
               <button data-t="nah">Nah</button>
             </div>
@@ -96,6 +98,8 @@
             <tr><td>Mausklick</td><td>Richtungszeichen (Führen, Punktabzug)</td></tr>
             <tr><td>R</td><td>„Hier!“ (Hilfe)</td></tr>
             <tr><td>B</td><td>„Bleib!“ während der Anzeige (Unterstützung, Abzug)</td></tr>
+            <tr><td>X</td><td>„Platz!“ – Hund ablegen (Ablegen durch Führung, Abzug)</td></tr>
+            <tr><td>L</td><td>Hund loben (einzeln frei, Dauerlob kostet Punkte)</td></tr>
             <tr><td>E halten</td><td>Versteck anfassen (Eigengeruch, 3 s) / Antäuschen</td></tr>
             ${this.uebung ? '<tr><td>G</td><td>Geruchsansicht ein/aus (nur Übung)</td></tr>' : ''}
             <tr><td>N</td><td>Nahaufnahme der Anzeige ein/aus</td></tr>
@@ -300,6 +304,8 @@
         if (k === ' ') this.s.befehlSuch();
         if (k === 'r') this.s.befehlHier();
         if (k === 'b') this.s.befehlBleib();
+        if (k === 'x') this.s.befehlPlatz();
+        if (k === 'l') this.s.befehlLob();
       };
       this.onKeyUp = (e) => {
         const k = e.key.toLowerCase();
@@ -373,6 +379,8 @@
         if (t.dataset.t === 'arm') this.s.armHeben();
         if (t.dataset.t === 'hier') this.s.befehlHier();
         if (t.dataset.t === 'bleib') this.s.befehlBleib();
+        if (t.dataset.t === 'platz') this.s.befehlPlatz();
+        if (t.dataset.t === 'lob') this.s.befehlLob();
         if (t.dataset.t === 'anfassen') { this.tasten.add('e'); t.classList.add('gedrueckt'); }
       });
       const ende = (ev) => {
@@ -405,6 +413,8 @@
       if (/„Such!“/.test(t)) k = 'such';
       else if (/„Hier!“/.test(t)) k = 'hier';
       else if (/„Bleib!“/.test(t)) k = 'bleib';
+      else if (/„Platz!“/.test(t)) k = 'platz';
+      else if (/^HF lobt/.test(t)) k = 'lob';
       else if (/meldet die Anzeige|Zweites Handzeichen/.test(t)) k = 'arm';
       else if (/^Erwidert – Fund/.test(t)) k = 'fund';
       else if (/^Erwidert/.test(t)) k = 'erwidert';
@@ -537,8 +547,9 @@
         <p>Suchleistung <b>${e.such}</b>/60 · Anzeigeleistung <b>${e.anzeige}</b>/40${e.fehlanzeigen ? ` · Fehlanzeigen −${e.fehlanzeigen * 10}` : ''}</p>`;
       o.innerHTML = `<div class="ergebnis-karte">
         ${kopf}
-        <h3>Begründung des Wertungsrichters</h3>
-        <ul>${e.begruendung.filter(Boolean).map((z) => `<li>${z}</li>`).join('')}</ul>
+        <h3>Richterblatt</h3>
+        ${e.blatt ? `<p class="klein">${e.blatt.fazit}</p>${SHS.richterblattHtml(e.blatt)}`
+    : `<ul>${e.begruendung.filter(Boolean).map((z) => `<li>${z}</li>`).join('')}</ul>`}
         <p class="hinweis">Der gelbe Ring zeigt, wo der Gegenstand lag.</p>
         <div class="knopfreihe"><button data-a="nachbetrachtung">Nachbetrachtung ansehen</button>
         <button class="primaer" data-a="weiter">Weiter</button></div>
@@ -621,7 +632,7 @@
         g.beginPath(); g.arc(px, py, 20, -Math.PI / 2, -Math.PI / 2 + a * Math.PI * 2); g.stroke();
       }
       const h = this.s.hund;
-      if (h.aktivAnim && Math.sin(t * 6) > 0) this.textPx(h.zustand === 'verleitung' ? '*schnapp*' : 'Wuff! *scharr*', h.x, h.y, 0.7, -6, '#ffe0e0', 12);
+      if (h.aktivAnim && Math.sin(t * 6) > 0) this.textPx(SHS.dog.aktivText(h), h.x, h.y, 0.7, -6, '#ffe0e0', 12);
       if (h.zustand === 'geruch' && this.uebung && this.geruchsAnsicht) this.textPx('im Geruch', h.x, h.y, 0, 16, '#bfe3ff', 10);
       this.zeichneWind(W);
       this.zeichneRegen(W, H);
@@ -999,7 +1010,7 @@
 
       // Aktive Anzeige / Verleitung sichtbar machen
       if (h.aktivAnim && Math.sin(t * 6) > 0) {
-        this.text(h.zustand === 'verleitung' ? '*schnapp*' : 'Wuff! *scharr*', h.x, h.y - 0.5, '#ffe0e0', 12);
+        this.text(SHS.dog.aktivText(h), h.x, h.y - 0.5, '#ffe0e0', 12);
       }
       if (h.zustand === 'geruch' && this.uebung && this.geruchsAnsicht) this.text('im Geruch', h.x, h.y + 0.5, '#bfe3ff', 10);
     }

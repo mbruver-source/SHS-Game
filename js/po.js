@@ -81,6 +81,10 @@
     },
   };
 
+  // ANNAHME (Spiel): Mit jeder Leistungsklasse wird es schwieriger. Die wirksamen Hundewerte (Nase, Anzeigesicherheit ...)
+  // werden mit diesem Faktor multipliziert, derselbe Hund arbeitet in LK 2 und LK 3 also schlechter als in LK 1.
+  const LK_SCHWIERIGKEIT = { 1: 1, 2: 0.8, 3: 0.65 };
+
   // Teilnoten-Bänder der Richterhilfe „Wertungsabzüge SH-R“ (Untergrenzen je Note).
   // Ungenügend/Mangelhaft werden im Spiel nicht ausgewiesen (mit dem Projektinhaber abgestimmt).
   // ANNAHME: Die Vorlage druckt Anzeige/Befriedigend als „31 – 38“; gemeint ist 31–28.
@@ -110,7 +114,25 @@
     intensitaet: { bereich: 'such', punkte: 1, max: 10, text: 'Unselbstständigkeit / Konzentrationsschwäche' }, // Wertungsnote, anteilig
     mittelweg: { bereich: 'such', punkte: 3, max: 60, text: 'Verlassen des Mittelwegs durch den HF' }, // Wertungsnote bis 0
     augensuche: { bereich: 'such', punkte: 2, max: 6, text: 'Augensuche' }, // nicht in der Richterhilfe (ANNAHME)
+    markieren: { bereich: 'such', punkte: 10, max: 10, text: 'Markieren / Lösen' }, // 10 (einmal)
+    leine: { bereich: 'such', punkte: 1, max: 6, text: 'Leineneinwirkung' }, // 1–2 (ANNAHME: 1 je Zug)
+    ausgelassen: { bereich: 'such', punkte: 0.5, max: 4, text: 'Ausgelassenes Behältnis' }, // 0,5 je Behältnis
+    startzoegern: { bereich: 'such', deckel: 'SG', text: 'Hund beginnt nach dem Ansatz nicht direkt mit der Suche' }, // Max. SG
+    rueckweg: { bereich: 'such', deckel: 'SG', text: 'Gegenstand erst auf dem Rückweg gefunden' }, // Max. SG
+    lokalisiert: { bereich: 'such', deckel: 'SG', text: 'Gegenstand lokalisiert, Hund kann ihn nicht finden' }, // Max. SG
+    anzeigeGefuehrt: { bereich: 'such', deckel: 'G', text: 'Anzeige durch Führung des HF' }, // je nach Intensität max. G
+    ablegen: { bereich: 'such', punkte: 5, max: 10, text: 'Ablegen durch Führung (Hund sucht danach weiter)' }, // 5
+    dauerlob: { bereich: 'such', punkte: 2, max: 10, text: 'Dauerlob' }, // Wertungsnote (ANNAHME: ab dem 4. Lob in 20 s, −2 je Serie)
+    fuehrenIgnoriert: { bereich: 'such', punkte: 5, max: 10, text: 'Hund zeigt beim Führen an, HF ignoriert die Anzeige' }, // 5
     // Anzeige
+    ersterFundVerpasst: { bereich: 'anzeige', deckel: 'G', text: 'Hund zeigt beim ersten Auffinden nicht an' }, // Max. G
+    aufnehmen: { bereich: 'anzeige', deckel: 'G', text: 'Aufnehmen des Gegenstandes' }, // Max. G
+    apportieren: { bereich: 'anzeige', punkte: 5, max: 10, text: 'Apportieren mehr als eine Körperlänge' }, // bis 10 (ANNAHME 5)
+    anstossen: { bereich: 'anzeige', deckel: 'G', text: 'Hund stößt den Gegenstand deutlich an' }, // SG–G (ANNAHME: G)
+    kratzenLeicht: { bereich: 'anzeige', deckel: 'SG', text: 'Hund kratzt leicht' }, // SG–G (ANNAHME: SG)
+    halbliegen: { bereich: 'anzeige', punkte: 2, max: 4, text: 'Hund liegt nur halb (z. B. hinten stehend)' }, // Wertungsnote (ANNAHME)
+    kinnanzeige: { bereich: 'anzeige', deckel: 'SG', text: 'Kinnanzeige in der Fläche' }, // Max. SG
+    lochUnsauber: { bereich: 'anzeige', punkte: 3, max: 6, text: 'Hund zeigt nicht sauber am Loch an' }, // Wertungsnote (ANNAHME)
     aktivKratzen: { bereich: 'anzeige', deckel: 'G', text: 'Kratzen am Versteck' }, // Max. G
     aktivLecken: { bereich: 'anzeige', deckel: 'SG', text: 'Hund leckt am Gegenstand' }, // Max. SG
     aktivBellen: { bereich: 'anzeige', punkte: 3, max: 6, text: 'Bellen in der Anzeige' }, // Wertungsnote (ANNAHME)
@@ -184,7 +206,7 @@
     DISZIPLINEN, DISZIPLIN_REIHENFOLGE, LK, ABZUEGE, GEGENSTAENDE, SPIELZEUG, FUTTER,
     MAX_SUCHLEISTUNG, MAX_ANZEIGELEISTUNG, MAX_JE_DISZIPLIN, MINDESTPUNKTE_JE_DISZIPLIN,
     FEHLANZEIGE_ABZUG, FEHLANZEIGEN_BIS_ABBRUCH, MINDESTALTER_MONATE, MINDEST_TEILNEHMER,
-    WERTNOTEN_ED, WERTNOTEN_DK, TEILNOTEN, OBERGRENZE,
+    WERTNOTEN_ED, WERTNOTEN_DK, TEILNOTEN, OBERGRENZE, LK_SCHWIERIGKEIT,
     suchzeit, leineErlaubt, wertnote, teilnote, bewertePruefung, platzierung,
   };
 })(globalThis.SHS = globalThis.SHS || {});

@@ -33,7 +33,9 @@
       this.windBasis = this.lage.wind.richtung;
       this.hierVersuche = 0;
       this.quellen = this.lage.quellen.slice();
-      this.hund = new SHS.dog.SuchHund(opts.hund, opts.gegenstand, this.lage, this.rnd);
+      this.rndZusatz = SHS.rng((opts.seed ^ 0x9e3779b9) >>> 0); // eigener Strom für die Richterhilfe-Fehler
+      this.hund = new SHS.dog.SuchHund(opts.hund, opts.gegenstand, this.lage, this.rnd, this.rndZusatz);
+      this.hund.setzeSchwierigkeit(opts.lk);
       this.hund.setzePosition(this.ansatz.x, this.ansatz.y);
       this.hund.richtung = Math.atan2(this.lage.bereich.y + this.lage.bereich.h / 2 - this.ansatz.y,
         this.lage.bereich.x + this.lage.bereich.w / 2 - this.ansatz.x);
@@ -46,6 +48,7 @@
       this.eigengeruchErledigt = false;
       this.ersterSuchFrei = true;
       this.letzteHilfe = -99;
+      this.letztesLob = -99; this.letztesDauerlob = -99; this.lobZeiten = [];
       this.meldung = null; // laufende Anzeige-Meldung
       this.warteZweitesZeichen = false;
       this.ausserhalb = false;
@@ -120,7 +123,7 @@
         const text = a.richtig ? 'Hund zeigt am Gegenstand an' : `Hund zeigt falsch an (${q.name})`;
         this.ereignis(a.richtig ? 'anzeige' : 'fehlanzeige', text, {
           quelle: { x: q.x, y: q.y, hoehe: q.hoehe || 0, typ: q.typ, name: q.name, versteckId: q.versteckId || null },
-          punkt: { x: a.punkt.x, y: a.punkt.y }, aktiv: a.aktiv, ungenau: a.ungenau, richtig: a.richtig,
+          punkt: { x: a.punkt.x, y: a.punkt.y }, aktiv: a.aktiv, aktivArt: a.aktivArt || null, halb: !!a.halb, kinn: !!a.kinn, ungenau: a.ungenau, richtig: a.richtig,
         });
       } else if (z === 'verleitung') this.ereignis('verleitung', 'Hund geht zur Verleitung');
       else if (z === 'schautHF') this.ereignis('hinweis', 'Hund bleibt stehen und schaut zum HF');
@@ -170,7 +173,12 @@
       if (this.phase !== 'suche' || this.meldung) return;
       if (this.ersterSuchFrei) this.ersterSuchFrei = false;
       else this.hilfe('Wiederholtes Hörzeichen „Such!“');
-      this.hund.such();
+      // Der HF schickt den Hund von einer richtigen, durch Führung erreichten Anzeige weg.
+      const a = this.hund.anzeige;
+      if (a && a.richtig && a.gefuehrt && (this.hund.zustand === 'anzeige' || this.hund.zustand === 'anzeigeEinnehmen')) {
+        this.richter.fehler('fuehrenIgnoriert');
+      }
+      this.hund.such(this.ctx);
       this.meldeInfo('HF: „Such!“');
     }
 
@@ -205,6 +213,30 @@
         this.richter.fehler('unterstuetzung');
         this.hund.bleib();
         this.meldeInfo('HF: „Bleib!“ – Unterstützung der Anzeige');
+      }
+    }
+
+    // X: „Platz!“ – Ablegen durch Führung (Abzug), der Hund sucht danach weiter.
+    befehlPlatz() {
+      if (this.phase !== 'suche' || this.meldung) return;
+      if (!this.hund.ablegen()) return;
+      this.richter.fehler('ablegen');
+      this.meldeInfo('HF: „Platz!“ – der Hund wird abgelegt.');
+    }
+
+    // L: Lob während der Suche. Einzelnes Lob ist frei, Dauerlob (4× in 20 s) kostet Punkte.
+    befehlLob() {
+      if (this.phase !== 'suche' || this.meldung) return;
+      if (this.t - this.letztesLob < 1.2) return;
+      this.letztesLob = this.t;
+      this.lobZeiten = this.lobZeiten.filter((z) => this.t - z < 20);
+      this.lobZeiten.push(this.t);
+      this.hund.lob();
+      this.meldeInfo('HF lobt den Hund.');
+      if (this.lobZeiten.length >= 4 && this.t - this.letztesDauerlob > 8) {
+        this.letztesDauerlob = this.t;
+        this.richter.fehler('dauerlob');
+        this.meldeWR('Dauerlob wird gewertet.');
       }
     }
 
@@ -353,6 +385,26 @@
         case 'augensuche':
           this.richter.fehler('augensuche');
           break;
+        case 'startzoegern':
+          this.richter.fehler('startzoegern');
+          this.meldeInfo('Der Hund beginnt nicht direkt mit der Suche.');
+          break;
+        case 'markieren':
+          this.richter.fehler('markieren');
+          this.meldeInfo('Der Hund markiert bzw. löst sich.');
+          break;
+        case 'leine':
+          this.richter.fehler('leine');
+          this.meldeInfo('Der Hund läuft in die Leine.');
+          break;
+        case 'lokalisiert':
+          this.richter.fehler('lokalisiert');
+          this.meldeInfo('Der Hund hat den Gegenstand lokalisiert, kann ihn aber nicht finden.');
+          break;
+        case 'ueberlaufen':
+          this.richter.fehler('ersterFundVerpasst');
+          this.meldeInfo('Der Hund läuft über den Gegenstand hinweg, ohne anzuzeigen.');
+          break;
         case 'entlaufen':
           this.richter.fehler('aussenreiz');
           this.meldeWR('Der Hund verlässt den Hundeführer! Mit „Hier!“ (R) zurückrufen.');
@@ -434,6 +486,11 @@
       // Erfolgreiche Anzeige
       if (m.anzeige.aktiv) this.richter.fehler(m.anzeige.aktivArt || 'aktivBellen');
       if (m.anzeige.ungenau) this.richter.fehler('ungenau');
+      if (m.anzeige.halb) this.richter.fehler('halbliegen');
+      if (m.anzeige.kinn) this.richter.fehler('kinnanzeige');
+      if (m.anzeige.unsauber) this.richter.fehler('lochUnsauber');
+      if (m.anzeige.gefuehrt) this.richter.fehler('anzeigeGefuehrt');
+      if (m.anzeige.rueckweg) this.richter.fehler('rueckweg');
       this.richter.fund();
       this.meldeWR('Erwidert – Fund! Die Zeitmessung endet.');
       this.meldung = null;
@@ -499,6 +556,8 @@
       const h = this.hund;
       const anteil = h.suchZeit > 5 ? h.schwachZeit / h.suchZeit : 0;
       this.richter.setzeIntensitaet(anteil);
+      // Behältnisstrecke: auf dem Weg ausgelassene Behältnisse (0,5 je Behältnis).
+      for (let i = 0; i < h.ausgelasseneBehaeltnisse(); i++) this.richter.fehler('ausgelassen');
       this.ergebnis = this.richter.ergebnis();
       this.aufzeichnen();
     }
@@ -534,6 +593,25 @@
       if (Math.hypot(dx, dy) < 0.15) return true;
       this.s.hfBewegen(dx, dy, dt);
       return false;
+    }
+
+    // Unerfahrene Hundeführer machen typische Fehler der Richterhilfe: den Hund zum Gegenstand führen,
+    // ihn ablegen und ihn zu viel loben. Erfahrene HF tun das kaum.
+    typischeFehler(dt) {
+      const s = this.s; const h = s.hund;
+      const unerfahren = 1 - this.erfahrung;
+      if (h.zustand === 'sucht' && !s.meldung) {
+        if (this.rnd() < dt * 0.005 * unerfahren * unerfahren) s.befehlPlatz();
+        const ziel = s.lage.quellen.find((q) => q.typ === 'ziel');
+        if (ziel && Math.hypot(h.x - ziel.x, h.y - ziel.y) < 3 && this.rnd() < dt * 0.1 * unerfahren * unerfahren) s.richtungsZeichen(ziel.x, ziel.y);
+      }
+      if ((h.zustand === 'sucht' || h.zustand === 'geruch') && !(this.lobRest > 0) && this.rnd() < dt * 0.004 * unerfahren * unerfahren) {
+        this.lobRest = 8; this.lobTimer = 0;
+      }
+      if (this.lobRest > 0) {
+        this.lobRest -= dt; this.lobTimer -= dt;
+        if (this.lobTimer <= 0) { s.befehlLob(); this.lobTimer = 2.2; }
+      }
     }
 
     update(dt) {
@@ -573,6 +651,7 @@
       }
       this.anzeigeBeobachtet = 0;
       if (h.zustand === 'beiHF') { s.befehlSuch(); return; }
+      this.typischeFehler(dt);
       if (h.zustand === 'entlaufen') {
         this.rufZeit = (this.rufZeit || 0) + dt;
         if (this.rufZeit > 1.5 + (1 - this.erfahrung) * 2) { s.befehlHier(); this.rufZeit = 0; }
