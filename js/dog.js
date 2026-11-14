@@ -445,9 +445,13 @@
       const ungenau = !hochlage && this.rnd() < 0.55 * (1 - this.w.praezision);
       const abstand = ungenau ? this.rnd.range(0.26, 0.45) : this.rnd.range(0.06, 0.17);
       const winkel = Math.atan2(this.y - q.y, this.x - q.x);
+      const aktiv = this.rnd() < 0.35 * (1 - this.w.anzeige);
+      // Art der aktiven Anzeige aus der Lage der Quelle abgeleitet (kein weiterer Zufallswurf: Seeds bleiben stabil).
+      const aktivArt = aktiv
+        ? ['aktivKratzen', 'aktivLecken', 'aktivBellen'][Math.floor(Math.abs(q.x * 13.7 + q.y * 7.3) * 10) % 3]
+        : null;
       this.anzeige = {
-        quelle: q, richtig, ungenau,
-        aktiv: this.rnd() < 0.35 * (1 - this.w.anzeige),
+        quelle: q, richtig, ungenau, aktiv, aktivArt,
         punkt: { x: q.x + Math.cos(winkel) * abstand, y: q.y + Math.sin(winkel) * abstand },
         unsicher: !richtig,
       };

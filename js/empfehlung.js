@@ -19,6 +19,9 @@
   // Welcher Fehler des WR auf welches Training hinweist.
   const FEHLER_TRAINING = {
     aktiv: ['anzeige', 'aktive Anzeige (bellen, scharren)'],
+    aktivKratzen: ['anzeige', 'Kratzen am Versteck'],
+    aktivLecken: ['anzeige', 'Lecken am Gegenstand'],
+    aktivBellen: ['anzeige', 'Bellen in der Anzeige'],
     ungenau: ['anzeige', 'ungenaue Anzeige (> 20 cm)'],
     unruhig: ['anzeige', 'unruhige Anzeige (Zurückschauen)'],
     aufstehen: ['anzeige', 'Anzeige vor der Erwiderung aufgelöst'],

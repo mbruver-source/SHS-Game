@@ -32,24 +32,40 @@ Die Wertnoten sind identisch zu `shs_core.py` des SHS-Prüfungsprogramms:
 | G | 80 | 240 |
 | B | 70 | 210 |
 
-## Spielannahmen (die PO nennt hier keine Zahlen)
-Alle Werte stehen zentral in `po.ABZUEGE` und lassen sich dort anpassen.
+## Wertungsabzüge (Richterhilfe „Wertungsabzüge SH-R“)
+Quelle ist die Richterhilfe `Wertungsabzuge_SH-R.pdf`. Alle Werte stehen zentral in `po.ABZUEGE`, die Notenbänder in `po.TEILNOTEN` und `po.OBERGRENZE`.
+Ungenügend und Mangelhaft werden im Spiel nicht ausgewiesen (so abgestimmt). Es gibt drei Arten von Abzügen:
+- **Feste Punkte** je Fehler (Deckel je Fehlerart).
+- **Notendeckel** („Max. SG“ / „Max. G“): Die Teilleistung kann höchstens den obersten Punkt des Bandes erreichen (Suche SG 57, G 53; Anzeige SG 37, G 35). ANNAHME: Mehrere Deckel stapeln nicht, es gilt der niedrigste; Punktabzüge wirken zusätzlich.
+- **Wertungsnote** (Richterermessen): hier steht eine ANNAHME als Punktwert.
 
-| Fehler | Bereich | Abzug | Deckel |
+Teilnoten-Bänder: Suche V 58–60, SG 54–57, G 48–53, B 42–47; Anzeige V 38–40, SG 36–37, G 32–35, B 28–31 (ANNAHME: Die Vorlage druckt „31 – 38“, gemeint ist 31–28).
+
+| Fehler | Bereich | Richterhilfe | Im Spiel |
 |---|---|---|---|
-| Hilfestellung/Führen (Hörzeichen, Richtungszeichen) | Such | 2 | 15 |
-| Annahme einer Verleitung | Such | 5 | 20 |
-| Wiederholtes Verlassen des Suchbereichs (ab dem 2.) | Such | 3 | 12 |
-| Reaktion auf Außenreize | Such | 2 | 8 |
-| Nachlassende Intensität / unselbstständig (anteilig) | Such | bis 10 | 10 |
-| Übertreten des Mittelwegs (Fläche) | Such | 3 | 12 |
-| Randalieren | Such | 3 | 9 |
-| Augensuche | Such | 2 | 6 |
-| Aktive Anzeige | Anzeige | 8 | 16 |
-| Ungenaue Anzeige (> 20 cm, nicht bei Hochlagen) | Anzeige | 5 | 10 |
-| Unruhige Anzeige (Zurückschauen) | Anzeige | 3 | 10 |
-| Anzeige vor der Erwiderung aufgelöst | Anzeige | 6 | 12 |
-| Unterstützung der Anzeige („Bleib!“) | Anzeige | 5 | 10 |
+| Verbale Korrektur / Führen (`hilfe`) | Such | 1 pro | −1, Deckel 15 |
+| Verlassen des Suchbereichs über eine Hundekörperlänge (`verlassen`) | Such | 1 pro | −1 bei jedem Verlassen (Rand 0,7 m), Deckel 12 |
+| Annahme einer Verleitung | Such | Wertungsnote | ANNAHME −5, Deckel 20 |
+| Ablenkbarkeit / Außenreiz | Such | Wertungsnote | ANNAHME −2, Deckel 8 |
+| Unselbstständigkeit / Konzentrationsschwäche (`intensitaet`) | Such | Wertungsnote | anteilig bis −10 |
+| Verlassen des Mittelwegs durch den HF | Such | Wertungsnote bis 0 | ANNAHME −3, bis 0 |
+| Augensuche | Such | nicht genannt | ANNAHME −2, Deckel 6 |
+| Kratzen am Versteck (`aktivKratzen`) | Anzeige | Max. G | Deckel 35 |
+| Lecken am Gegenstand (`aktivLecken`) | Anzeige | Max. SG | Deckel 37 |
+| Bellen (`aktivBellen`) | Anzeige | Wertungsnote | ANNAHME −3, Deckel 6 |
+| Verschieben von Verstecken (`randalieren`) | Anzeige | Wertungsnote | ANNAHME −3, Deckel 9 |
+| Ungenaue Anzeige (> 20 cm) | Anzeige | Wertungsnote | ANNAHME −5, Deckel 10 |
+| Hundekopf dreht sich zum HF (`unruhig`) | Anzeige | Max. SG | Deckel 37, ANNAHME zusätzlich −1 je weiteres Mal, Deckel 4 |
+| Anzeige vor der Richtererwiderung verlassen (`aufstehen`) | Anzeige | Wertungsnote | ANNAHME −6, Deckel 12 |
+| Unterstützung der Anzeige durch den HF | Anzeige | Wertungsnote bis 0 | ANNAHME −5, bis 0 |
+| Fehlanzeige | Gesamt | 10 | −10 je Fehlanzeige von der Summe, die dritte beendet die Vorführung |
+
+Auslegungen und Abweichungen:
+- **Fehlanzeige** steht in der Richterhilfe unter Anzeige. Im Spiel wird sie von der Gesamtsumme abgezogen, damit sie auch ohne Fund −10 kostet (PO).
+- **Verschieben von Verstecken** zählt laut Richterhilfe zur Anzeige und wirkt deshalb nur, wenn der Gegenstand gefunden wird.
+- **Art der aktiven Anzeige:** Kratzen, Lecken oder Bellen wird aus der Lage der Quelle abgeleitet (kein zusätzlicher Zufallswurf, die Seeds bleiben stabil).
+- **Alte Spielstände:** Die frühere Fehlerart `aktiv` bleibt les- und rechenbar (−8, Deckel 16), wird aber nicht mehr vergeben.
+- **Nicht abgebildet** (das Spiel hat dafür kein Signal): Markieren/Lösen, Leineneinwirkung, ausgelassene Behältnisse (0,5), Fund erst auf dem Rückweg, Hund beginnt nach dem Ansatz nicht direkt mit der Suche, Ablegen durch Führung, Anzeige durch Führung bzw. HF ignoriert Anzeige, Dauerlob, Hund findet lokalisierten Gegenstand nicht, Aufnehmen des Gegenstands, Apportieren, Hund stößt Gegenstand an, Halbliegen, Kinnanzeige in der Fläche, Anzeige nicht sauber am Loch. Die Wertnoten Ungenügend/Mangelhaft entfallen.
 
 ### Weitere Auslegungen
 - **Handzeichen ohne Anzeige:** Hebt der HF den Arm, ohne dass der Hund anzeigt, zählt das als Fehlanzeige.

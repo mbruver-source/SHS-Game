@@ -432,7 +432,7 @@
         return;
       }
       // Erfolgreiche Anzeige
-      if (m.anzeige.aktiv) this.richter.fehler('aktiv');
+      if (m.anzeige.aktiv) this.richter.fehler(m.anzeige.aktivArt || 'aktivBellen');
       if (m.anzeige.ungenau) this.richter.fehler('ungenau');
       this.richter.fund();
       this.meldeWR('Erwidert – Fund! Die Zeitmessung endet.');
@@ -459,7 +459,7 @@
       const draussen = !SHS.layouts.imBereich(this.lage, h.x, h.y, 0.7);
       if (draussen && !this.ausserhalb) {
         this.verlassenZaehler += 1;
-        if (this.verlassenZaehler >= 2) this.richter.fehler('verlassen');
+        this.richter.fehler('verlassen');
         this.meldeInfo('Der Hund verlässt den Suchbereich.');
       }
       this.ausserhalb = draussen;

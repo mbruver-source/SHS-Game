@@ -3,6 +3,7 @@
 (function (SHS) {
   'use strict';
   const po = SHS.po;
+  const NOTE_NAME = { SG: 'Sehr Gut', G: 'Gut' };
 
   class Wertungsrichter {
     constructor(lk, disziplin) {
@@ -56,15 +57,35 @@
       this.statusGrund = grund || 'Abbruch wegen Ungehorsams des Hundes';
     }
 
+    // Punktabzüge eines Bereichs (Notendeckel zählen hier nicht mit).
     abzugFuer(bereich) {
       let summe = 0;
       for (const [art, anzahl] of Object.entries(this.fehlerListe)) {
         const regel = po.ABZUEGE[art];
-        if (regel.bereich !== bereich) continue;
+        if (regel.bereich !== bereich || !regel.punkte) continue;
         summe += Math.min(regel.max, regel.punkte * anzahl);
       }
       if (bereich === 'such') summe += this.intensitaetsAbzug;
       return summe;
+    }
+
+    // Niedrigster Notendeckel („Max. SG/G“) eines Bereichs: { punkte, note, text } oder null.
+    deckelFuer(bereich) {
+      let best = null;
+      for (const art of Object.keys(this.fehlerListe)) {
+        const regel = po.ABZUEGE[art];
+        if (regel.bereich !== bereich || !regel.deckel) continue;
+        const grenze = po.OBERGRENZE[bereich][regel.deckel];
+        if (!best || grenze < best.punkte) best = { punkte: grenze, note: regel.deckel, text: regel.text };
+      }
+      return best;
+    }
+
+    // Teilleistung = Höchstpunkte minus Punktabzüge, nicht über dem niedrigsten Notendeckel.
+    teilPunkte(bereich, hoechst) {
+      const deckel = this.deckelFuer(bereich);
+      const rest = hoechst - this.abzugFuer(bereich);
+      return Math.max(0, deckel ? Math.min(deckel.punkte, rest) : rest);
     }
 
     ergebnis() {
@@ -75,8 +96,8 @@
           begruendung: [this.statusGrund, ...this.protokoll],
         };
       }
-      const such = Math.max(0, po.MAX_SUCHLEISTUNG - this.abzugFuer('such'));
-      const anzeige = this.gefunden ? Math.max(0, po.MAX_ANZEIGELEISTUNG - this.abzugFuer('anzeige')) : 0;
+      const such = this.teilPunkte('such', po.MAX_SUCHLEISTUNG);
+      const anzeige = this.gefunden ? this.teilPunkte('anzeige', po.MAX_ANZEIGELEISTUNG) : 0;
       const punkte = Math.max(0, such + anzeige - this.fehlanzeigen * po.FEHLANZEIGE_ABZUG);
       return {
         status: 'ok', punkte, such, anzeige, fehler: { ...this.fehlerListe }, intensitaet: this.intensitaetsAbzug,
@@ -94,8 +115,12 @@
       };
       for (const art of Object.keys(this.fehlerListe)) {
         const r = po.ABZUEGE[art];
-        const abzug = Math.min(r.max, r.punkte * this.fehlerListe[art]);
-        zeilen.push(`${r.text}${anzahlText(art)}: −${abzug}`);
+        if (r.punkte) {
+          const abzug = Math.min(r.max, r.punkte * this.fehlerListe[art]);
+          zeilen.push(`${r.text}${anzahlText(art)}: −${abzug}`);
+        } else {
+          zeilen.push(`${r.text}${anzahlText(art)}: Anzeige höchstens ${NOTE_NAME[r.deckel]} (${po.OBERGRENZE[r.bereich][r.deckel]})`);
+        }
       }
       if (this.intensitaetsAbzug > 0) zeilen.push(`${po.ABZUEGE.intensitaet.text}: −${this.intensitaetsAbzug}`);
       if (this.fehlanzeigen > 0) zeilen.push(`Fehlanzeigen (${this.fehlanzeigen}×): −${this.fehlanzeigen * po.FEHLANZEIGE_ABZUG}`);
@@ -106,7 +131,8 @@
       else if (punkte >= 80) fazit = 'Gute Suche, einige Fehler.';
       else if (punkte >= 70) fazit = 'Befriedigende Leistung mit deutlichen Fehlern.';
       else fazit = 'Die Anforderungen wurden nicht erfüllt.';
-      zeilen.unshift(`Suchleistung ${such}/60, Anzeigeleistung ${anzeige}/40. ${fazit}`);
+      const note = (p, bereich) => { const n = po.teilnote(p, bereich); return n ? ` (${n})` : ''; };
+      zeilen.unshift(`Suchleistung ${such}/60${note(such, 'such')}, Anzeigeleistung ${anzeige}/40${this.gefunden ? note(anzeige, 'anzeige') : ''}. ${fazit}`);
       return zeilen;
     }
   }

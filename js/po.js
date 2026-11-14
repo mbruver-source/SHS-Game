@@ -81,23 +81,53 @@
     },
   };
 
-  // ANNAHME: Die PO nennt die Fehler, aber nicht deren Punktwert. Werte hier zentral anpassbar.
-  // bereich: 'such' (von 60) oder 'anzeige' (von 40); max: Deckel je Fehlerart.
-  const ABZUEGE = {
-    hilfe: { bereich: 'such', punkte: 2, max: 15, text: 'Hilfestellung/Führen durch den HF' },
-    verleitung: { bereich: 'such', punkte: 5, max: 20, text: 'Annahme einer Verleitung' },
-    verlassen: { bereich: 'such', punkte: 3, max: 12, text: 'Wiederholtes Verlassen des Suchbereichs' },
-    aussenreiz: { bereich: 'such', punkte: 2, max: 8, text: 'Reaktion auf Außenreize' },
-    intensitaet: { bereich: 'such', punkte: 1, max: 10, text: 'Abbruch der Suchintensität / unselbstständiges Suchen' },
-    mittelweg: { bereich: 'such', punkte: 3, max: 12, text: 'Übertreten des Mittelwegs durch den HF' },
-    randalieren: { bereich: 'such', punkte: 3, max: 9, text: 'Verschieben von Versteckmöglichkeiten' },
-    augensuche: { bereich: 'such', punkte: 2, max: 6, text: 'Augensuche' },
-    aktiv: { bereich: 'anzeige', punkte: 8, max: 16, text: 'Aktive Anzeige (bellen, scharren, aufnehmen, lecken)' },
-    ungenau: { bereich: 'anzeige', punkte: 5, max: 10, text: 'Ungenaue Anzeige (mehr als 20 cm von der Quelle)' },
-    unruhig: { bereich: 'anzeige', punkte: 3, max: 10, text: 'Unruhige Anzeige (Hoch-/Zurückschauen zum HF)' },
-    aufstehen: { bereich: 'anzeige', punkte: 6, max: 12, text: 'Anzeige vor der Erwiderung des WR aufgelöst' },
-    unterstuetzung: { bereich: 'anzeige', punkte: 5, max: 10, text: 'Unterstützung der Anzeige durch den HF' },
+  // Teilnoten-Bänder der Richterhilfe „Wertungsabzüge SH-R“ (Untergrenzen je Note).
+  // Ungenügend/Mangelhaft werden im Spiel nicht ausgewiesen (mit dem Projektinhaber abgestimmt).
+  // ANNAHME: Die Vorlage druckt Anzeige/Befriedigend als „31 – 38“; gemeint ist 31–28.
+  const TEILNOTEN = {
+    such: [[58, 'Vorzüglich'], [54, 'Sehr Gut'], [48, 'Gut'], [42, 'Befriedigend']],
+    anzeige: [[38, 'Vorzüglich'], [36, 'Sehr Gut'], [32, 'Gut'], [28, 'Befriedigend']],
   };
+  // „Max. SG“ / „Max. G“ der Richterhilfe = Obergrenze der Teilleistung (oberster Punkt des Bandes).
+  const OBERGRENZE = {
+    such: { SG: 57, G: 53 },
+    anzeige: { SG: 37, G: 35 },
+  };
+
+  // Abzüge nach der Richterhilfe „Wertungsabzüge SH-R“.
+  // bereich: 'such' (von 60) oder 'anzeige' (von 40).
+  // punkte/max: feste Abzugspunkte je Fehler und Deckel je Fehlerart (bei „bis 0“ = ganze Teilleistung).
+  // deckel: 'SG' | 'G' = die Teilleistung kann höchstens diese Note erreichen („Max. SG/G“);
+  //         mehrere Deckel stapeln nicht, es gilt der niedrigste (ANNAHME).
+  // ANNAHME: Wo die Hilfe nur „Wertungsnote“ (Richterermessen) nennt, steht hier ein Punktwert.
+  // alt: nicht mehr vergeben, nur für alte Spielstände lesbar.
+  const ABZUEGE = {
+    // Suche
+    hilfe: { bereich: 'such', punkte: 1, max: 15, text: 'Verbale Korrektur / Führen durch den HF' }, // 1 pro (Richterhilfe)
+    verleitung: { bereich: 'such', punkte: 5, max: 20, text: 'Annahme einer Verleitung' }, // Wertungsnote (ANNAHME)
+    verlassen: { bereich: 'such', punkte: 1, max: 12, text: 'Verlassen des Suchbereichs über eine Hundekörperlänge' }, // 1 pro
+    aussenreiz: { bereich: 'such', punkte: 2, max: 8, text: 'Ablenkbarkeit / Reaktion auf Außenreize' }, // Wertungsnote (ANNAHME)
+    intensitaet: { bereich: 'such', punkte: 1, max: 10, text: 'Unselbstständigkeit / Konzentrationsschwäche' }, // Wertungsnote, anteilig
+    mittelweg: { bereich: 'such', punkte: 3, max: 60, text: 'Verlassen des Mittelwegs durch den HF' }, // Wertungsnote bis 0
+    augensuche: { bereich: 'such', punkte: 2, max: 6, text: 'Augensuche' }, // nicht in der Richterhilfe (ANNAHME)
+    // Anzeige
+    aktivKratzen: { bereich: 'anzeige', deckel: 'G', text: 'Kratzen am Versteck' }, // Max. G
+    aktivLecken: { bereich: 'anzeige', deckel: 'SG', text: 'Hund leckt am Gegenstand' }, // Max. SG
+    aktivBellen: { bereich: 'anzeige', punkte: 3, max: 6, text: 'Bellen in der Anzeige' }, // Wertungsnote (ANNAHME)
+    randalieren: { bereich: 'anzeige', punkte: 3, max: 9, text: 'Verschieben von Verstecken' }, // Wertungsnote (ANNAHME)
+    ungenau: { bereich: 'anzeige', punkte: 5, max: 10, text: 'Ungenaue Anzeige (mehr als 20 cm von der Quelle)' }, // Wertungsnote (ANNAHME)
+    unruhig: { bereich: 'anzeige', deckel: 'SG', punkte: 1, max: 4, text: 'Hundekopf dreht sich in der Anzeige zum HF' }, // Max. SG, 1 je weiteres Mal (ANNAHME)
+    aufstehen: { bereich: 'anzeige', punkte: 6, max: 12, text: 'Anzeige vor der Richtererwiderung verlassen' }, // Wertungsnote (ANNAHME)
+    unterstuetzung: { bereich: 'anzeige', punkte: 5, max: 40, text: 'Unterstützung der Anzeige durch den HF' }, // Wertungsnote bis 0
+    // Alte Spielstände (vor der Richterhilfe): nicht mehr vergeben.
+    aktiv: { bereich: 'anzeige', punkte: 8, max: 16, alt: true, text: 'Aktive Anzeige (bellen, scharren)' },
+  };
+
+  // Name der Teilnote (Vorzüglich ... Befriedigend), darunter null.
+  function teilnote(punkte, bereich) {
+    for (const [schwelle, text] of TEILNOTEN[bereich]) if (punkte >= schwelle) return text;
+    return null;
+  }
 
   function suchzeit(lk, disziplin) {
     return LK[lk].suchzeit[disziplin];
@@ -154,7 +184,7 @@
     DISZIPLINEN, DISZIPLIN_REIHENFOLGE, LK, ABZUEGE, GEGENSTAENDE, SPIELZEUG, FUTTER,
     MAX_SUCHLEISTUNG, MAX_ANZEIGELEISTUNG, MAX_JE_DISZIPLIN, MINDESTPUNKTE_JE_DISZIPLIN,
     FEHLANZEIGE_ABZUG, FEHLANZEIGEN_BIS_ABBRUCH, MINDESTALTER_MONATE, MINDEST_TEILNEHMER,
-    WERTNOTEN_ED, WERTNOTEN_DK,
-    suchzeit, leineErlaubt, wertnote, bewertePruefung, platzierung,
+    WERTNOTEN_ED, WERTNOTEN_DK, TEILNOTEN, OBERGRENZE,
+    suchzeit, leineErlaubt, wertnote, teilnote, bewertePruefung, platzierung,
   };
 })(globalThis.SHS = globalThis.SHS || {});
